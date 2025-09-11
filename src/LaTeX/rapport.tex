@@ -1,0 +1,175 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath}
+
+\geometry{margin=2.5cm}
+
+\title{Système de Simulation et d'Évaluation de Flottes de Drones}
+\author{Projet Smalltalk / Pharo 13}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+La multiplication des systèmes autonomes, et notamment des drones, transforme profondément
+les doctrines militaires modernes. Dans un contexte de \textbf{guerre de haute intensité},
+les forces doivent affronter des adversaires disposant de moyens équivalents ou supérieurs,
+où la masse, la coordination et la vitesse d'action jouent un rôle déterminant.  
+
+La simulation de telles situations représente un outil stratégique : elle permet d'explorer
+des scénarios variés, de tester des stratégies, et d'évaluer la robustesse de doctrines
+opérationnelles avant leur mise en œuvre réelle.  
+
+Le présent travail propose un environnement modulaire et extensible, développé en Pharo 13,
+basé sur les traits et intégrant à la fois la modélisation de flottes de drones alliées et
+hostiles, l'affectation de missions, la gestion de comportements et l'évaluation de stratégies
+heuristiques. L'objectif est double : \textbf{tester la viabilité opérationnelle} et
+\textbf{aider à la prise de décision} par simulation.
+
+\section{Spécifications Fonctionnelles}
+\begin{itemize}
+  \item Gestion de drones avec attributs réels (latitude, longitude, altitude, carburant...).
+  \item Support multi-flottes : alliées et hostiles.
+  \item Définition de comportements : patrouille, retour à la base, aller en aide, statique.
+  \item Missions de flotte : surveillance et sécurisation de zones polygonales.
+  \item Détection d'ennemis, communication avec consensus.
+  \item Gestion temps-réel configurable, exact si nécessaire.
+\end{itemize}
+
+\section{Architecture du Système}
+\subsection{Traits}
+\begin{itemize}
+  \item \texttt{TLocatable} : gère la position (lat/lon/alt).
+  \item \texttt{TEnergyConsumer} : gère carburant et consommation.
+  \item \texttt{TSensorCarrier} : gère la perception et détection.
+  \item \texttt{TCombatUnit} : gère les armes et attaques.
+\end{itemize}
+
+\subsection{Classes Principales}
+\begin{itemize}
+  \item \texttt{Drone} : unité de base, compose les traits.
+  \item \texttt{DroneBehavior} et sous-classes (Patrol, ReturnToBase...).
+  \item \texttt{DroneCluster} : gère un ensemble de drones.
+  \item \texttt{ClusterMission} : assignation de missions.
+  \item \texttt{SimulationState} : état global et moteur de simulation.
+  \item \texttt{DroneMapView} : interface graphique (Roassal3 ou PharoOWS).
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{architecture.png}}
+\caption{Diagramme d’architecture simplifié du système}
+\end{figure}
+
+\section{Évaluation de Stratégies}
+\subsection{Stratégies Heuristiques Implémentées}
+\begin{itemize}
+  \item \textbf{ProactiveInterceptionStrategy}
+  \item \textbf{AdaptiveEnergyStrategy}
+  \item \textbf{DivideAndSurroundStrategy}
+  \item \textbf{PriorityDefenseStrategy}
+  \item \textbf{LearningBasedStrategy}
+\end{itemize}
+
+\subsection{Comparaison et Visualisation}
+Chaque stratégie est évaluée selon :
+\begin{itemize}
+  \item Nombre de drones alliés survivants.
+  \item Nombre de drones hostiles neutralisés.
+  \item Consommation énergétique moyenne.
+  \item Missions accomplies.
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\fbox{\includegraphics[width=0.8\linewidth]{strategies.png}}
+\caption{Exemple de graphe comparatif des stratégies exporté en PNG}
+\end{figure}
+
+\section{Exports Disponibles}
+\begin{itemize}
+  \item \textbf{CSV} : résultats numériques tabulés.
+  \item \textbf{PNG} : graphes comparatifs.
+  \item \textbf{JSON} : résultats exploitables en Python/JS.
+  \item \textbf{LOG} : événements de simulation.
+  \item \textbf{HTML (Chart.js)} : visualisation interactive dans le navigateur.
+\end{itemize}
+
+\section{Intégration avec PharoOWS}
+PharoOWS peut être utilisé comme fond de carte pour visualiser la simulation
+dans un contexte géographique réel (centré sur l’Europe).  
+En absence de PharoOWS, le système reste fonctionnel avec Roassal3.
+
+\begin{figure}[h!]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{map_example.png}}
+\caption{Exemple d’intégration avec PharoOWS pour fond de carte}
+\end{figure}
+
+\section{Application à la Guerre de Haute Intensité}
+
+Dans un contexte de \textbf{guerre de haute intensité}, les opérations impliquent de multiples systèmes
+autonomes, opérant dans des environnements fortement contestés et dynamiques.  
+
+La démarche présentée ici trouve une utilité directe dans plusieurs dimensions :
+
+\begin{itemize}
+  \item \textbf{Planification et entraînement} : la possibilité de simuler différents scénarios
+  avec plusieurs flottes hostiles permet aux états-majors de tester des doctrines, évaluer la robustesse
+  de leurs tactiques et identifier les vulnérabilités potentielles avant un engagement réel.
+
+  \item \textbf{Évaluation de missions complexes} : la gestion simultanée de missions (patrouille,
+  sécurisation, interception) permet de reproduire les tensions d'une opération de haute intensité,
+  où les ressources sont limitées et doivent être allouées intelligemment.
+
+  \item \textbf{Comparaison de stratégies} : l’intégration d’heuristiques variées (interception proactive,
+  défense prioritaire, adaptation énergétique, apprentissage) fournit une base expérimentale
+  pour comparer l’efficacité de différentes approches face à des attaques massives de drones hostiles.
+
+  \item \textbf{Résilience et coordination} : la simulation multi-flottes met en lumière les
+  capacités de coopération inter-drones, de communication par consensus et de résilience
+  en cas de perte de nœuds dans le réseau, des problématiques centrales dans la guerre moderne.
+
+  \item \textbf{Décision assistée par simulation} : l’export automatique (CSV, JSON, HTML)
+  facilite l’intégration des résultats dans des systèmes tiers (outils d’IA, plateformes C2),
+  permettant de nourrir en temps réel la boucle décisionnelle.
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\fbox{\includegraphics[width=0.8\linewidth]{wargame_scenario.png}}
+\caption{Exemple de scénario simulé avec confrontation de flottes alliées et hostiles}
+\end{figure}
+
+\section{Conclusion}
+L'environnement développé constitue une plateforme complète de simulation et d'évaluation
+des stratégies de gestion de flottes de drones.  
+
+Ses points forts sont :
+\begin{itemize}
+  \item la modularité de l'architecture (traits, comportements, missions, stratégies),
+  \item la prise en charge du multi-flottes avec drones alliés et hostiles,
+  \item l’intégration d’un moteur de simulation configurable en temps réel ou exact,
+  \item les exports multiples (CSV, PNG, JSON, LOG, HTML) pour l’analyse et l’intégration
+  dans des outils tiers,
+  \item la compatibilité optionnelle avec PharoOWS pour un ancrage géographique réel.
+\end{itemize}
+
+\textbf{Le bénéfice majeur de cet environnement est de fournir un laboratoire virtuel
+permettant d'expérimenter, comparer et affiner des stratégies dans un contexte réaliste
+de guerre de haute intensité.}  
+
+Il sert ainsi de support à la recherche opérationnelle, à l’entraînement et à la préparation
+des forces, tout en réduisant les coûts et les risques associés aux expérimentations sur le terrain.
+
+\end{document}
