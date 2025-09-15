@@ -14,8 +14,8 @@ Class {
 		'hostileFleets',
 		'verificationFunctions'
 	],
-	#category : 'DroneSystem-Simulation',
-	#package : 'DroneSystem-Simulation'
+	#category : 'DroneSystem-Core',
+	#package : 'DroneSystem-Core'
 }
 
 { #category : 'initialization' }
@@ -96,7 +96,7 @@ SimulationState >> current [
 { #category : 'initialization' }
 SimulationState >> deepCopy [
     | copy droneMap clusterMap fleetMap newDrones newClusters newFleets |
-    copy := SimulationState new initialize.
+    copy := "SimulationState new initialize." nil.
     "Clone standalone drones"
     droneMap := Dictionary new.
     newDrones := OrderedCollection new.
@@ -106,14 +106,14 @@ SimulationState >> deepCopy [
         droneMap at: d put: cd.
         newDrones add: cd.
     ].
-    copy drones: newDrones ifResponds: [] ifFalse: [].
+    copy drones: newDrones  .
     "Clone clusters and remap drone references"
     clusterMap := Dictionary new.
     newClusters := OrderedCollection new.
     clusters do: [:c |
         | cc mapping newClusterDrones |
         cc := DroneCluster new.
-        cc clusterId: c clusterId ifResponds: [] ifFalse: [].
+        cc clusterId: c clusterId  .
         mapping := Dictionary new.
         newClusterDrones := OrderedCollection new.
         c drones do: [:d |
@@ -128,14 +128,14 @@ SimulationState >> deepCopy [
         clusterMap at: c put: cc.
         newClusters add: cc.
     ].
-    copy clusters: newClusters ifResponds: [] ifFalse: [].
+    copy clusters: newClusters .
     "Clone fleets and remap cluster references"
     fleetMap := Dictionary new.
     newFleets := OrderedCollection new.
     allFleets do: [:f |
         | nf |
         nf := DroneFleet new.
-        nf fleetId: f fleetId "ifResponds: [] ifFalse: []".
+    "    nf fleetId: f fleetId " "ifResponds: [] ifFalse: []".
         nf isHostile: f isHostile "ifResponds: [] ifFalse: []".
         nf name: f name "ifResponds: [] ifFalse: []".
         nf clusters: (f clusters collect: [:c | (clusterMap at: c) ifAbsent: [ c deepCopy ] ])" ifResponds: [] ifFalse: []".

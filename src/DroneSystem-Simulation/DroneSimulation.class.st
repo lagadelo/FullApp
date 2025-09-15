@@ -45,9 +45,9 @@ DroneSimulation >> fleets: anObject [
 
 { #category : 'initialization' }
 DroneSimulation >> initialize [
-    state := SimulationState new.
+   " state := SimulationState new. "
     fleets := OrderedCollection new.
-
+ 
 ]
 
 { #category : 'accessing' }

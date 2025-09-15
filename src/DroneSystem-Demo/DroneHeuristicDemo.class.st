@@ -20,7 +20,7 @@ DroneHeuristicDemo class >> runWithAllies: nAllies hostiles: nHostiles steps: nS
     | sim strategies results |
 
     "1. Créer la simulation"
-    sim := SimulationState new.
+   " sim := SimulationState new."
     sim addAllies: nAllies.
     sim addHostiles: nHostiles.
     sim assignDefaultMissions.

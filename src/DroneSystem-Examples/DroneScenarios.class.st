@@ -13,8 +13,8 @@ Class {
 
 { #category : 'as yet unclassified' }
 DroneScenarios class >> exampleSecuring [
-    | sim drones cluster mission polygon view |
-    sim := SimulationState new initialize.
+    | sim drones cluster mission polygon   |
+   " sim := SimulationState new initialize." sim := nil.
     sim setAsCurrent.
     drones := { Drone new. Drone new. Drone new } asOrderedCollection.
     (drones at: 1) moveToLatitude: 48.8566 longitude: 2.3522 altitude: 120.
@@ -32,8 +32,8 @@ DroneScenarios class >> exampleSecuring [
 
 { #category : 'as yet unclassified' }
 DroneScenarios class >> exampleSurveillance [
-    | sim drones cluster mission polygon view |
-    sim := SimulationState new initialize.
+    | sim drones cluster mission polygon   |
+"    sim := SimulationState new initialize." sim := nil.
     sim setAsCurrent.
     drones := { Drone new. Drone new. Drone new } asOrderedCollection.
     (drones at: 1) moveToLatitude: 48.8566 longitude: 2.3522 altitude: 120.
@@ -44,8 +44,8 @@ DroneScenarios class >> exampleSurveillance [
     polygon := { { 48.86. 2.34. 100 }. { 48.87. 2.36. 100 }. { 48.85. 2.37. 100 }. }.
     mission := ClusterMission new initializeWithType: #surveillance zoneParameters: (Dictionary new at: #polygon put: polygon; yourself).
     mission assignToCluster: cluster.
-    view := DroneMapWithOWSView new initializeWithSimulation: sim centerLat: 48.8566 centerLon: 2.3522 zoom: 12.
-    view open.
+  "  view := DroneMapWithOWSView new initializeWithSimulation: sim centerLat: 48.8566 centerLon: 2.3522 zoom: 12.
+    view open."
     ^ sim.
 
 ]

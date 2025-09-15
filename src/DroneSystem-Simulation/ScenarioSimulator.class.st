@@ -75,7 +75,7 @@ ScenarioSimulator >> generateDrones: n prefix: prefix [
 
 { #category : 'initialization' }
 ScenarioSimulator >> initialize [
-    simulationState := SimulationState new.
+"    simulationState := SimulationState new."
     results := OrderedCollection new.
     ^ self.
 ]

@@ -15,8 +15,8 @@ Class {
 { #category : 'initialization' }
 AttackBehavior >> executeFor: aDrone atTime: t [
     | enemies nearest |
-    SimulationState current ifNil: [ ^ self ].
-    enemies := SimulationState current allAlliedDrones select: [:a | a isDestroyed not].
+    "SimulationState current ifNil: [ ^ self ]."
+    "enemies := SimulationState current allAlliedDrones select: [:a | a isDestroyed not]." enemies := nil.
     enemies isEmpty ifTrue: [ ^ self ].
     nearest := enemies first.
     enemies do: [:e | ((aDrone distanceToLatitude: e latitude longitude: e longitude altitude: e altitude) < (aDrone distanceToLatitude: nearest latitude longitude: nearest longitude altitude: nearest altitude)) ifTrue: [ nearest := e ] ].
