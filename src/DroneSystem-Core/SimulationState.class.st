@@ -2,19 +2,20 @@ Class {
 	#name : 'SimulationState',
 	#superclass : 'Object',
 	#instVars : [
+		'time',
+		'allFleets',
+		'eventLog',
 		'drones',
 		'clusters',
-		'allFleets',
-		'hostileFleets',
 		'missionHistory',
-		'eventLog',
 		'reactionLog',
-		'verificationFunctions',
-		'time',
-		'engagementMode'
+		'engagementMode',
+		'steps',
+		'hostileFleets',
+		'verificationFunctions'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Simulation',
+	#package : 'DroneSystem-Simulation'
 }
 
 { #category : 'initialization' }
@@ -31,11 +32,8 @@ SimulationState >> addFleet: aFleet [
 
 { #category : 'initialization' }
 SimulationState >> allAlliedDrones [
-    | allies |
-    allies := OrderedCollection new.
-    allFleets do: [:f | f isHostile ifFalse: [ allies addAll: (f clusters collectMany: [:c | c drones ]) ] ].
-    ^ allies.
-
+    ^ (self allFleets
+        selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  
 ]
 
 { #category : 'accessing' }
@@ -52,10 +50,8 @@ SimulationState >> allFleets: anObject [
 
 { #category : 'initialization' }
 SimulationState >> allHostileDrones [
-    | hostiles |
-    hostiles := OrderedCollection new.
-    allFleets do: [:f | f isHostile ifTrue: [ hostiles addAll: (f clusters collectMany: [:c | c drones ]) ] ].
-    ^ hostiles.
+    ^ (self allFleets
+        selectMany: [:f | f hostileClusters ]) collectMany:[:f| f drones  ]
 ]
 
 { #category : 'initialization' }
@@ -76,6 +72,19 @@ SimulationState >> clusters [
 SimulationState >> clusters: anObject [
 
 	clusters := anObject
+]
+
+{ #category : 'accessing' }
+SimulationState >> countAlliedAlive [
+    "Retourne le nombre de drones alliés encore actifs (non détruits)."
+    ^ (self allAlliedDrones select: [:d | d isDestroyed not]) size
+
+]
+
+{ #category : 'accessing' }
+SimulationState >> countHostileAlive [
+    "Retourne le nombre de drones hostiles encore actifs (non détruits)."
+    ^ (self allHostileDrones select: [:d | d isDestroyed not]) size
 ]
 
 { #category : 'initialization' }
@@ -201,6 +210,7 @@ SimulationState >> initialize [
     reactionLog := OrderedCollection new.
     verificationFunctions := OrderedCollection new.
     time := 0.
+    steps := OrderedCollection new.
     engagementMode := #droneLevel.  "Default mode"
 ]
 
@@ -321,6 +331,18 @@ SimulationState >> resolveEngagementsDroneLevel [
 ]
 
 { #category : 'initialization' }
+SimulationState >> runSteps: n [
+    "Fait avancer la simulation de n pas de temps, en enchaînant les appels à advanceStep."
+    | snapshots |
+    snapshots := OrderedCollection new.
+
+    1 to: n do: [:i |
+        snapshots add: self step ].
+
+    ^ snapshots
+]
+
+{ #category : 'initialization' }
 SimulationState >> setAsCurrent [
     Smalltalk at: #CurrentSimulation put: self.
     ^ self.
@@ -331,7 +353,7 @@ SimulationState >> setAsCurrent [
 { #category : 'initialization' }
 SimulationState >> step [
     "Behaviors for standalone drones"
-    drones do: [:d |
+   |snapshot|  drones do: [:d |
         d behavior ifNotNil: [
             d behavior executeFor: d atTime: time
         ]
@@ -356,7 +378,30 @@ SimulationState >> step [
     "Advance time"
     time := time + 1.
 
-    ^ self
+    snapshot := Dictionary new.
+    snapshot at: #time put: time.
+    snapshot at: #fleets put: (self allFleets collect: [:f | f deepCopy]).
+
+    "4. Stocker dans steps"
+    time := time + 1.
+    steps size < time
+        ifTrue: [ steps add: snapshot ]
+        ifFalse: [ steps at: time put: snapshot ].
+
+     
+    ^ snapshot
+]
+
+{ #category : 'accessing' }
+SimulationState >> steps [
+
+	^ steps
+]
+
+{ #category : 'accessing' }
+SimulationState >> steps: anObject [
+
+	steps := anObject
 ]
 
 { #category : 'accessing' }

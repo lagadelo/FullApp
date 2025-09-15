@@ -32,8 +32,8 @@ SimulationState >> addFleet: aFleet [
 
 { #category : 'initialization' }
 SimulationState >> allAlliedDrones [
-    ^ self allFleets
-        selectMany: [:f | f isHostile not ifTrue: [ f drones ] ifFalse: [ #() ] ]
+    ^ (self allFleets
+        selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  
 ]
 
 { #category : 'accessing' }
@@ -50,8 +50,8 @@ SimulationState >> allFleets: anObject [
 
 { #category : 'initialization' }
 SimulationState >> allHostileDrones [
-    ^ self allFleets
-        selectMany: [:f | f isHostile ifTrue: [ f drones ] ifFalse: [ #() ] ]
+    ^ (self allFleets
+        selectMany: [:f | f hostileClusters ]) collectMany:[:f| f drones  ]
 ]
 
 { #category : 'initialization' }
@@ -210,6 +210,7 @@ SimulationState >> initialize [
     reactionLog := OrderedCollection new.
     verificationFunctions := OrderedCollection new.
     time := 0.
+    steps := OrderedCollection new.
     engagementMode := #droneLevel.  "Default mode"
 ]
 

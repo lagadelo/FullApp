@@ -25,7 +25,13 @@ DroneFleet >> addHostileCluster: aCluster [
     log add: 'Cluster hostile ', aCluster clusterId asString, ' détecté.'.
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
+DroneFleet >> alliedClusters [
+
+^self clusters reject:[:c|  self hostileClusters includes:c]
+]
+
+{ #category : 'execution' }
 DroneFleet >> assignMission: aMission toCluster: aCluster [
     aCluster currentMission: aMission.
     aMission assignToCluster: aCluster.
@@ -51,19 +57,19 @@ DroneFleet >> clusters: anObject [
 	clusters := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'evaluation' }
 DroneFleet >> evaluateCoverage [
     "Retourne la couverture combinée de tous les clusters"
     ^ clusters collectMany: [ :c | c coverage ].
 ]
 
-{ #category : 'initialization' }
+{ #category : 'evaluation' }
 DroneFleet >> evaluateDefense [
     "Évalue la résilience face aux attaques hostiles"
     ^ clusters collect: [ :c | { c clusterId . c isOperational } ].
 ]
 
-{ #category : 'initialization' }
+{ #category : 'evaluation' }
 DroneFleet >> evaluateStrategy: aStrategyBlock [
     "Applique une heuristique d’évaluation à la flotte"
     ^ aStrategyBlock value: self

@@ -37,7 +37,7 @@ Drone >> altitude: anObject [
 	altitude := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'damages' }
 Drone >> applyDamage: damage [
     fuel := (fuel - damage) max: 0.
     speed := (speed - (damage / 10)) max: 0.
@@ -45,7 +45,7 @@ Drone >> applyDamage: damage [
     ^ self.
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'action' }
 Drone >> attackDrone: targetDrone withWeapon: weaponName quantity: qty probability: prob impact: impactValue [
    | availableQty hits totalImpact |  (self canPerceiveDrone: targetDrone)
         ifFalse: [ ^'Cible hors de portée' ].
@@ -123,14 +123,14 @@ Drone >> behavior: anObject [
 	behavior := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'testing' }
 Drone >> canPerceiveDrone: otherDrone [
     ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
 
 
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'action' }
 Drone >> communicateWithConsensus: consensus [
     consensus receiveStatusMessage: self statusMessage.
 
@@ -148,7 +148,7 @@ Drone >> consumables: anObject [
 	consumables := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'action' }
 Drone >> consumeFuel: amount [
 	"Réduit le niveau de carburant/énergie"
 
@@ -168,11 +168,11 @@ Drone >> currentMission: anObject [
 	currentMission := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'copying' }
 Drone >> deepCopy [
     | d |
     d := self class new initialize.
-    d latitude: latitude ifResponds: [] ifFalse: []. "for slot setter compatibility"
+    d latitude: latitude . "for slot setter compatibility"
     "If direct slot assignment available, use it; otherwise use moveToLatitude:..."
     d moveToLatitude: latitude longitude: longitude altitude: altitude.
     d fuel: fuel.
@@ -201,7 +201,7 @@ Drone >> detectedEnemy: anObject [
 	detectedEnemy := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'computing' }
 Drone >> distanceToLatitude: lat longitude: lon altitude: alt [
     "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
     | dLat dLon meanLat earthRadius horizDist altDiff |
@@ -238,7 +238,7 @@ Drone >> health: anObject [
 	health := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'action' }
 Drone >> helpRequestMessage [
     ^ Dictionary new
         at: #type put: #helpRequest;
@@ -255,6 +255,7 @@ Drone >> initialize [
     altitude := 0.
     fuel := 100.
     consumables := Dictionary new.
+    consumables at:#munitions put:1000.
     speed := 10.
 	 health := 100.
     perceptionRange := 50.
@@ -268,29 +269,42 @@ Drone >> initialize [
 ]
 
 { #category : 'initialization' }
+Drone >> initializeWithId: id
+            latitude: aLatitude
+            longitude: aLongiture
+            altitude: anAltitude [ 
+
+  
+latitude := aLatitude .
+longitude := aLongiture .
+altitude := anAltitude .
+uniqueId :=  id.
+]
+
+{ #category : 'initialization' }
 Drone >> isAlly [
 
 ^isHostile not
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'testing' }
 Drone >> isDestroyed [
     ^ fuel = 0 or: [speed = 0].
 ]
 
-{ #category : 'accessing' }
+{ #category : 'testing' }
 Drone >> isHostile [
 
 	^ isHostile
 ]
 
-{ #category : 'accessing' }
+{ #category : 'testing' }
 Drone >> isHostile: anObject [
 
 	isHostile := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'testing' }
 Drone >> isInDanger [
     ^ (health < 50) or: [ fuel < 20 ].
 ]
@@ -319,12 +333,12 @@ Drone >> longitude: anObject [
 	longitude := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'moving' }
 Drone >> moveToLatitude: lat longitude: lon altitude: alt [
     "Déplace le drone et consomme de l’énergie proportionnellement au trajet."
     | distance baseCost altitudeFactor totalCost |
     distance := self distanceToLatitude: lat longitude: lon altitude: alt.
-    baseCost := distance * 0.5.          "0.5% par km"
+    baseCost := distance * 0.005.          "0.5% par km"
     altitudeFactor := (alt / 1000.0) * 0.2.  "pénalité altitude"
     totalCost := baseCost + altitudeFactor.
 
@@ -336,7 +350,7 @@ Drone >> moveToLatitude: lat longitude: lon altitude: alt [
         altitude := alt]
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'moving' }
 Drone >> moveTowardLatitude: targetLat longitude: targetLon altitude: targetAlt [
     "Se rapproche d'une cible (pas fixe en degrés/altitude)"
     | step dLat dLon dAlt |
@@ -362,14 +376,6 @@ Drone >> needsHelp: anObject [
 	needsHelp := anObject
 ]
 
-{ #category : 'as yet unclassified' }
-Drone >> onsumeFuel: amount [
-	"Réduit le niveau de carburant/énergie"
-
-	fuel := fuel - amount.
-	fuel := fuel max: 0
-]
-
 { #category : 'accessing' }
 Drone >> perceptionRange [
 
@@ -382,18 +388,18 @@ Drone >> perceptionRange: anObject [
 	perceptionRange := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'action' }
 Drone >> refuel [
 
 	fuel := 100
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'action' }
 Drone >> sendHelpRequestToConsensus: consensus [
     consensus receiveMessage: self helpRequestMessage.
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 Drone >> setBehavior: aBehavior [
     behavior := aBehavior.
 ]
@@ -410,7 +416,7 @@ Drone >> speed: anObject [
 	speed := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'status' }
 Drone >> statusMessage [
     ^ Dictionary new
         at: #id put: uniqueId;
@@ -423,7 +429,7 @@ Drone >> statusMessage [
 
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'status' }
 Drone >> statusString [
     "Retourne une chaîne lisible pour monitoring"
     ^ String streamContents: [:s |

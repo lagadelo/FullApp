@@ -14,7 +14,7 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'missions' }
 DroneCluster >> assignMission: aMission [
     currentMission := aMission.
     aMission assignToCluster: self.
@@ -32,7 +32,7 @@ DroneCluster >> capabilities: anObject [
 	capabilities := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'missions' }
 DroneCluster >> clearMission [
     currentMission := nil.
     drones do: [:d | d clearBehavior ].
@@ -96,7 +96,7 @@ DroneCluster >> currentMission: anObject [
 DroneCluster >> deepCopy [
     | copy mapping newDrones |
     copy := DroneCluster new.
-    copy clusterId: clusterId ifResponds: [] ifFalse: [].
+    copy clusterId: clusterId .
     "Create fresh drone copies and keep mapping"
     mapping := Dictionary new.
     newDrones := OrderedCollection new.
@@ -109,7 +109,8 @@ DroneCluster >> deepCopy [
     copy drones: newDrones "ifResponds: [] ifFalse: []".
     copy updateCapabilities.
     copy updateCoverage.
-    copy currentMission: (currentMission ifNotNil: [ currentMission deepCopy ] ifNil: [ nil ]).
+"Prevent endless loop - must refactor"
+  "  copy currentMission: (currentMission ifNotNil: [ currentMission deepCopy ] ifNil: [ nil ])."
     ^ copy.
 ]
 
@@ -208,17 +209,17 @@ DroneCluster >> removeDestroyedDrones [
 
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'updating status' }
 DroneCluster >> updateCapabilities [
     "Calcule et met à jour les capacités agrégées du cluster."
     capabilities := Dictionary new.
     capabilities at: #fuel put: (drones sum: [:d | d isDestroyed ifFalse: [ d fuel ] ifTrue: [ 0 ]]).
     capabilities at: #perceptionRange put: (drones collect: [:d | d isDestroyed ifFalse: [ d perceptionRange ] ifTrue: [ 0 ]]) .
-    capabilities at: #munitions put: (drones sum: [:d | d isDestroyed ifFalse: [ (d consumables values sum) ] ifTrue: [ 0 ]]).
+    capabilities at: #munitions put: (drones sum: [:d | d isDestroyed ifFalse: [ (d consumables at: #munitions) ] ifTrue: [ 0 ]]).
     ^ capabilities.
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'updating status' }
 DroneCluster >> updateCoverage [
     "Met à jour la couverture géographique du cluster à partir des drones actifs."
 
