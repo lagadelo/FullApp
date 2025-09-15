@@ -36,7 +36,7 @@ ReinforceWeakestClusterStrategy >> applyTo: aSimulation [
 
 ]
 
-{ #category : 'comparing' }
+{ #category : 'initialization' }
 ReinforceWeakestClusterStrategy >> initialize [
     maxReinforcements := 2. ^ self.
 

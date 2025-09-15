@@ -5,11 +5,19 @@ Class {
 		'clusters',
 		'missions',
 		'hostileClusters',
-		'log'
+		'log',
+		'fleetId',
+		'hostile',
+		'name'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
 }
+
+{ #category : 'as yet unclassified' }
+DroneFleet class >> fleetWithClusters: clusters id: anId hostile: aBool name: aString [
+    ^ (self new) initializeWithClusters: clusters id: anId hostile: aBool name: aString.
+]
 
 { #category : 'initialization' }
 DroneFleet >> addHostileCluster: aCluster [
@@ -86,6 +94,16 @@ DroneFleet >> initialize [
     missions := OrderedCollection new.
     hostileClusters := OrderedCollection new.
     log := OrderedCollection new.
+]
+
+{ #category : 'initialization' }
+DroneFleet >> initializeWithClusters: clusterCollection id: anId hostile: aBool name: aString [
+    clusters := (clusterCollection copy asOrderedCollection).
+    fleetId := anId.
+    hostile := aBool.
+    name := aString.
+    log := OrderedCollection new.
+    ^ self.
 ]
 
 { #category : 'accessing' }

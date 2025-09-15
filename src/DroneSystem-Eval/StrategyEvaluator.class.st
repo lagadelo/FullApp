@@ -1,9 +1,35 @@
 Class {
 	#name : 'StrategyEvaluator',
 	#superclass : 'Object',
-	#category : 'DroneSystem-Heuristics',
-	#package : 'DroneSystem-Heuristics'
+	#category : 'DroneSystem-Eval',
+	#package : 'DroneSystem-Eval'
 }
+
+{ #category : 'initialization' }
+StrategyEvaluator class >> compareStrategies: strategies onSimulation: sim forSteps: nSteps [
+    "Exécute chaque stratégie sur une copie de la simulation et renvoie un dictionnaire
+     associant chaque stratégie à ses résultats."
+
+    | results |
+
+    results := Dictionary new.
+
+    strategies do: [:strategy |
+        | simCopy score |
+
+        "1. Créer une copie de la simulation pour ne pas polluer les autres stratégies"
+        simCopy := sim deepCopy.
+
+        "2. Exécuter la stratégie pendant nSteps"
+        score := self evaluate: strategy onSimulation: simCopy forSteps: nSteps.
+
+        "3. Stocker le score dans le dictionnaire"
+        results at: strategy class name put: score
+    ].
+
+    ^ results
+
+]
 
 { #category : 'initialization' }
 StrategyEvaluator class >> evaluate: aStrategy onSimulation: aSimulation forSteps: n [
@@ -18,6 +44,29 @@ StrategyEvaluator class >> evaluate: aStrategy onSimulation: aSimulation forStep
     results at: #missionsCompleted put: (sim clusters count: [:c | c currentMission notNil]).
     ^ results.
 
+
+]
+
+{ #category : 'examples' }
+StrategyEvaluator class >> example [
+
+
+| strategies results sim |
+
+sim := nil.
+strategies := {
+    ProactiveInterceptionStrategy new.
+    AdaptiveEnergyStrategy new.
+    DivideAndSurroundStrategy new.
+    PriorityDefenseStrategy new.
+    LearningBasedStrategy new }.
+
+results := self new
+    compareStrategies: strategies
+    onSimulation: sim
+    forSteps: 200.
+
+Transcript show: results.
 
 ]
 

@@ -1,27 +1,20 @@
 Class {
 	#name : 'DroneMapWithOWSView',
 	#superclass : 'Object',
+	#traits : 'TDroneVisualizationWithOWS',
+	#classTraits : 'TDroneVisualizationWithOWS classTrait',
 	#instVars : [
 		'simulation',
-		'owsMap',
-		'rsCanvas',
-		'trait',
 		'centerLat',
 		'centerLon',
-		'zoom'
+		'zoom',
+		'owsMap',
+		'rsCanvas'
 	],
-	#category : 'DroneSystem-Visualization',
-	#package : 'DroneSystem-Visualization'
+	#category : 'DroneSystem-Visualization-visualization',
+	#package : 'DroneSystem-Visualization',
+	#tag : 'visualization'
 }
-
-{ #category : 'initialization' }
-DroneMapWithOWSView >> >open [
-    owsMap ifNotNil: [ (owsMap respondsTo: #open) ifTrue: [ owsMap open ] ].
-    rsCanvas open.
-    trait startUpdatingEvery: 1000.
-    ^ self.
-
-]
 
 { #category : 'accessing' }
 DroneMapWithOWSView >> centerLat [
@@ -53,23 +46,24 @@ DroneMapWithOWSView >> initializeWithSimulation: aSimulation centerLat: lat cent
     centerLat := lat.
     centerLon := lon.
     zoom := z.
-    (Smalltalk includesKey: #OWSMapView) ifTrue: [
-        owsMap := (Smalltalk at: #OWSMapView) new.
-        (owsMap respondsTo: #center:) ifTrue: [ owsMap center: lat@lon ].
-        (owsMap respondsTo: #zoom:) ifTrue: [ owsMap zoom: z ].
-    ] ifFalse: [ owsMap := nil ].
+
+    "Si PharoOWS est présent, configurer une carte OWS"
+    (Smalltalk includesKey: #OWSMapView)
+        ifTrue: [
+            owsMap := (Smalltalk at: #OWSMapView) new.
+            (owsMap respondsTo: #center:) ifTrue: [ owsMap center: lat @ lon ].
+            (owsMap respondsTo: #zoom:) ifTrue: [ owsMap zoom: z ].
+        ]
+        ifFalse: [ owsMap := nil ].
+
+    "Créer un canvas Roassal pour superposer les drones"
     rsCanvas := RSCanvas new.
     rsCanvas extent: 1000@700.
-    trait := (TDroneVisualizationWithOWS new).
-    trait simulation: simulation.
-    trait rsCanvas: rsCanvas.
-    trait owsMap: owsMap.
-    trait centerLat: centerLat.
-    trait centerLon: centerLon.
-    trait initializeHUD.
-    ^ self.
 
+    "Installer le HUD fourni par le trait"
+    self initializeHUD.
 
+    ^ self
 ]
 
 { #category : 'accessing' }
@@ -106,18 +100,6 @@ DroneMapWithOWSView >> simulation [
 DroneMapWithOWSView >> simulation: anObject [
 
 	simulation := anObject
-]
-
-{ #category : 'accessing' }
-DroneMapWithOWSView >> trait [
-
-	^ trait
-]
-
-{ #category : 'accessing' }
-DroneMapWithOWSView >> trait: anObject [
-
-	trait := anObject
 ]
 
 { #category : 'accessing' }

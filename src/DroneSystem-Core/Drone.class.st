@@ -8,13 +8,18 @@ Class {
 		'fuel',
 		'consumables',
 		'speed',
+		'baseLatitude',
+		'baseLongitude',
+		'baseAltitude',
 		'perceptionRange',
 		'behavior',
 		'uniqueId',
 		'type',
 		'currentMission',
 		'needsHelp',
-		'detectedEnemy'
+		'detectedEnemy',
+		'health',
+		'isHostile'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -59,6 +64,54 @@ Drone >> attackDrone: targetDrone withWeapon: weaponName quantity: qty probabili
 ]
 
 { #category : 'accessing' }
+Drone >> baseAltitude [
+
+	^ baseAltitude
+]
+
+{ #category : 'accessing' }
+Drone >> baseAltitude: anObject [
+
+	baseAltitude := anObject
+]
+
+{ #category : 'accessing' }
+Drone >> baseLatitude [
+
+	^ baseLatitude
+]
+
+{ #category : 'accessing' }
+Drone >> baseLatitude: anObject [
+
+	baseLatitude := anObject
+]
+
+{ #category : 'accessing' }
+Drone >> baseLongitude [
+
+	^ baseLongitude
+]
+
+{ #category : 'accessing' }
+Drone >> baseLongitude: anObject [
+
+	baseLongitude := anObject
+]
+
+{ #category : 'initialization' }
+Drone >> beAlly [
+
+isHostile := false
+]
+
+{ #category : 'initialization' }
+Drone >> beHostile [
+
+isHostile := true
+]
+
+{ #category : 'accessing' }
 Drone >> behavior [
 
 	^ behavior
@@ -93,6 +146,14 @@ Drone >> consumables [
 Drone >> consumables: anObject [
 
 	consumables := anObject
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> consumeFuel: amount [
+	"Réduit le niveau de carburant/énergie"
+
+	fuel := fuel - amount.
+	fuel := fuel max: 0
 ]
 
 { #category : 'accessing' }
@@ -142,8 +203,15 @@ Drone >> detectedEnemy: anObject [
 
 { #category : 'as yet unclassified' }
 Drone >> distanceToLatitude: lat longitude: lon altitude: alt [
-    ^ ((latitude - lat) squared + (longitude - lon) squared + (altitude - alt) squared) sqrt.
-
+    "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
+    | dLat dLon meanLat earthRadius horizDist altDiff |
+    earthRadius := 6371.0. "km, rayon moyen Terre"
+    dLat := (lat - latitude) degreesToRadians.
+    dLon := (lon - longitude) degreesToRadians.
+    meanLat := ((lat + latitude) / 2) degreesToRadians.
+    horizDist := earthRadius * ((dLat squared + ((dLon * meanLat cos) squared)) sqrt).
+    altDiff := (alt - altitude) / 1000.0. "convertir mètres → km"
+    ^ (horizDist squared + altDiff squared) sqrt.
 ]
 
 { #category : 'accessing' }
@@ -156,6 +224,18 @@ Drone >> fuel [
 Drone >> fuel: anObject [
 
 	fuel := anObject
+]
+
+{ #category : 'accessing' }
+Drone >> health [
+
+	^ health
+]
+
+{ #category : 'accessing' }
+Drone >> health: anObject [
+
+	health := anObject
 ]
 
 { #category : 'as yet unclassified' }
@@ -176,6 +256,7 @@ Drone >> initialize [
     fuel := 100.
     consumables := Dictionary new.
     speed := 10.
+	 health := 100.
     perceptionRange := 50.
     behavior := nil.
     uniqueId := UUID new asString.
@@ -183,11 +264,35 @@ Drone >> initialize [
     currentMission := nil.
     needsHelp := false.
     detectedEnemy := false.
+	isHostile:= false.
+]
+
+{ #category : 'initialization' }
+Drone >> isAlly [
+
+^isHostile not
 ]
 
 { #category : 'as yet unclassified' }
 Drone >> isDestroyed [
     ^ fuel = 0 or: [speed = 0].
+]
+
+{ #category : 'accessing' }
+Drone >> isHostile [
+
+	^ isHostile
+]
+
+{ #category : 'accessing' }
+Drone >> isHostile: anObject [
+
+	isHostile := anObject
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> isInDanger [
+    ^ (health < 50) or: [ fuel < 20 ].
 ]
 
 { #category : 'accessing' }
@@ -214,21 +319,35 @@ Drone >> longitude: anObject [
 	longitude := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'as yet unclassified' }
 Drone >> moveToLatitude: lat longitude: lon altitude: alt [
-    | distance fuelConsumed |
+    "Déplace le drone et consomme de l’énergie proportionnellement au trajet."
+    | distance baseCost altitudeFactor totalCost |
     distance := self distanceToLatitude: lat longitude: lon altitude: alt.
-    fuelConsumed := distance * (speed / 10).
-    (fuel >= fuelConsumed)
-        ifTrue: [
-            latitude := lat.
-            longitude := lon.
-            altitude := alt.
-            fuel := fuel - fuelConsumed.
-        ]
-        ifFalse: [ needsHelp := true. Transcript show: 'Drone ', uniqueId, ' low fuel'; cr ].
+    baseCost := distance * 0.5.          "0.5% par km"
+    altitudeFactor := (alt / 1000.0) * 0.2.  "pénalité altitude"
+    totalCost := baseCost + altitudeFactor.
 
+    self consumeFuel: totalCost.
+    "Mettre à jour la position uniquement si le drone est encore actif"
+    self isDestroyed ifFalse: [
+        latitude := lat.
+        longitude := lon.
+        altitude := alt]
+]
 
+{ #category : 'as yet unclassified' }
+Drone >> moveTowardLatitude: targetLat longitude: targetLon altitude: targetAlt [
+    "Se rapproche d'une cible (pas fixe en degrés/altitude)"
+    | step dLat dLon dAlt |
+    step := 0.01. "environ 1 km en latitude/longitude"
+    dLat := targetLat - latitude.
+    dLon := targetLon - longitude.
+    dAlt := targetAlt - altitude.
+
+    latitude := latitude + (dLat sign * (step min: dLat abs)).
+    longitude := longitude + (dLon sign * (step min: dLon abs)).
+    altitude := altitude + (dAlt sign * (5 min: dAlt abs)). "5 m par pas"
 ]
 
 { #category : 'accessing' }
@@ -243,6 +362,14 @@ Drone >> needsHelp: anObject [
 	needsHelp := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+Drone >> onsumeFuel: amount [
+	"Réduit le niveau de carburant/énergie"
+
+	fuel := fuel - amount.
+	fuel := fuel max: 0
+]
+
 { #category : 'accessing' }
 Drone >> perceptionRange [
 
@@ -253,6 +380,12 @@ Drone >> perceptionRange [
 Drone >> perceptionRange: anObject [
 
 	perceptionRange := anObject
+]
+
+{ #category : 'accessing' }
+Drone >> refuel [
+
+	fuel := 100
 ]
 
 { #category : 'as yet unclassified' }
@@ -288,6 +421,18 @@ Drone >> statusMessage [
         at: #detectedEnemy put: detectedEnemy;
         yourself.
 
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> statusString [
+    "Retourne une chaîne lisible pour monitoring"
+    ^ String streamContents: [:s |
+        s nextPutAll: 'Drone '; nextPutAll: uniqueId;
+        nextPutAll: ' fuel='; nextPutAll: fuel asString;
+        nextPutAll: '% pos=('; 
+        nextPutAll: latitude asString; nextPutAll: ','; nextPutAll: longitude asString;
+        nextPutAll: ') alt='; nextPutAll: altitude asString
+    ].
 ]
 
 { #category : 'accessing' }

@@ -6,11 +6,19 @@ Class {
 		'clusterId',
 		'coverage',
 		'capabilities',
-		'currentMission'
+		'currentMission',
+		'name',
+		'hostile'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
 }
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> assignMission: aMission [
+    currentMission := aMission.
+    aMission assignToCluster: self.
+]
 
 { #category : 'accessing' }
 DroneCluster >> capabilities [
@@ -24,13 +32,28 @@ DroneCluster >> capabilities: anObject [
 	capabilities := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+DroneCluster >> clearMission [
+    currentMission := nil.
+    drones do: [:d | d clearBehavior ].
+
+]
+
 { #category : 'initialization' }
 DroneCluster >> clusterCenter [
-    | lats lons |
-    coverage isNil ifTrue: [ ^ Point x: 0 y: 0 ].
-    lats := coverage collect: [:p | p at: 1].
-    lons := coverage collect: [:p | p at: 2].
-    ^ Point x: (lons sum / lons size) y: (lats sum / lats size).
+    "Retourne le centre géométrique (moyenne des points de coverage)."
+   | lats lons | 
+(coverage isEmpty or: [ coverage size = 0 ]) ifTrue: [
+        "Fallback : moyenne des drones actifs si pas de coverage"
+        | act |
+        act := (drones select: [:d | d isDestroyed not]) collect: [:d | { d latitude. d longitude } ].
+        act isEmpty ifTrue: [ ^ 0@0 ].
+        ^ Point x: ((act collect: [:p | p at: 2]) sum / (act size)) y: ((act collect: [:p | p at: 1]) sum / (act size))
+    ].
+    
+    lats := coverage collect: [:p | p at: 1 ].
+    lons := coverage collect: [:p | p at: 2 ].
+    ^ Point x: ( (lons sum) / lons size ) y: ( (lats sum) / lats size ).
 ]
 
 { #category : 'accessing' }
@@ -90,6 +113,18 @@ DroneCluster >> deepCopy [
     ^ copy.
 ]
 
+{ #category : 'initialization' }
+DroneCluster >> describe [
+    ^ String streamContents: [:s |
+        s nextPutAll: 'Cluster ID: '; nextPutAll: clusterId asString; cr.
+        s nextPutAll: 'Mission: '; nextPutAll: (currentMission ifNil: ['none'] ifNotNil: [ currentMission missionType asString ]); cr.
+        s nextPutAll: 'Drones: '; nextPutAll: drones size asString; cr.
+        s nextPutAll: 'Capabilities: '; nextPutAll: (capabilities ifNil: ['?'] ifNotNil: [ capabilities asString ]); cr.
+        s nextPutAll: 'Coverage: '; nextPutAll: (coverage ifNil: ['?'] ifNotNil: [ coverage size asString , ' points' ]).
+    ].
+
+]
+
 { #category : 'accessing' }
 DroneCluster >> drones [
 
@@ -100,6 +135,18 @@ DroneCluster >> drones [
 DroneCluster >> drones: anObject [
 
 	drones := anObject
+]
+
+{ #category : 'accessing' }
+DroneCluster >> hostile [
+
+	^ hostile
+]
+
+{ #category : 'accessing' }
+DroneCluster >> hostile: anObject [
+
+	hostile := anObject
 ]
 
 { #category : 'initialization' }
@@ -114,8 +161,41 @@ DroneCluster >> initializeWithDrones: droneList clusterId: anId [
 ]
 
 { #category : 'initialization' }
+DroneCluster >> initializeWithDrones: droneList clusterId: anId hostile: whoKnows name: aName [
+
+self initializeWithDrones: droneList clusterId: anId.
+self name: aName.
+self hostile: whoKnows.
+
+    ^ self.
+ 
+]
+
+{ #category : 'initialization' }
+DroneCluster >> initializeWithId: anId drones: aCollection [
+    clusterId := anId.
+    drones := (aCollection ifNil: [ OrderedCollection new ]) asOrderedCollection.
+    coverage := #().
+    capabilities := Dictionary new.
+    currentMission := nil.
+    ^ self.
+]
+
+{ #category : 'initialization' }
 DroneCluster >> isOperational [
     ^ drones anySatisfy: [:d | d isDestroyed not].
+]
+
+{ #category : 'accessing' }
+DroneCluster >> name [
+
+	^ name
+]
+
+{ #category : 'accessing' }
+DroneCluster >> name: anObject [
+
+	name := anObject
 ]
 
 { #category : 'initialization' }
@@ -128,20 +208,35 @@ DroneCluster >> removeDestroyedDrones [
 
 ]
 
-{ #category : 'initialization' }
+{ #category : 'as yet unclassified' }
 DroneCluster >> updateCapabilities [
+    "Calcule et met à jour les capacités agrégées du cluster."
     capabilities := Dictionary new.
-    capabilities at: #fuel put: (drones sum: [:d | d isDestroyed ifFalse: [d fuel] ifTrue: [0]]).
-    capabilities at: #perceptionRange put: (drones collect: [:d | d isDestroyed ifFalse: [d perceptionRange] ifTrue: [0]]) max.
-    capabilities at: #munitions put: (drones sum: [:d | d isDestroyed ifFalse: [ (d consumables values sum) ] ifTrue: [0]]).
-    ^ self.
+    capabilities at: #fuel put: (drones sum: [:d | d isDestroyed ifFalse: [ d fuel ] ifTrue: [ 0 ]]).
+    capabilities at: #perceptionRange put: (drones collect: [:d | d isDestroyed ifFalse: [ d perceptionRange ] ifTrue: [ 0 ]]) .
+    capabilities at: #munitions put: (drones sum: [:d | d isDestroyed ifFalse: [ (d consumables values sum) ] ifTrue: [ 0 ]]).
+    ^ capabilities.
 ]
 
-{ #category : 'initialization' }
+{ #category : 'as yet unclassified' }
 DroneCluster >> updateCoverage [
+    "Met à jour la couverture géographique du cluster à partir des drones actifs."
+
     | activePositions |
-    activePositions := (drones select: [:d | d isDestroyed not]) collect: [:d | { d latitude. d longitude } ].
-    coverage := (activePositions isEmpty ifTrue: [ #() ] ifFalse: [ ConvexHullCalculator new computeHullFrom: activePositions ]).
-    ^ coverage.
+
+    "1. Extraire les positions des drones valides"
+    activePositions := (drones select: [:d | d isDestroyed not])
+        collect: [:d | { d latitude. d longitude } ].
+
+    "2. Si aucun drone actif → pas de couverture"
+    activePositions isEmpty ifTrue: [
+        coverage := #().
+        ^ coverage ].
+
+    "3. Calculer l’enveloppe convexe (zone couverte)"
+    coverage := ConvexHullCalculator new
+        computeHullFrom: activePositions.
+
+    ^ coverage
 
 ]

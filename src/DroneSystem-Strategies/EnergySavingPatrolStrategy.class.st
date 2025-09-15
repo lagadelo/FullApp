@@ -53,6 +53,20 @@ EnergySavingPatrolStrategy >> cycleLength: anObject [
 	cycleLength := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+EnergySavingPatrolStrategy >> executeFor: aDrone in: aSimulation [
+    "Déplacer le drone vers l’allié le plus proche qui est en difficulté (par ex. attaqué ou faible en énergie)."
+    | allyToHelp |
+    allyToHelp := aSimulation allAlliedDrones
+        detect: [:ally | ally ~~ aDrone and: [ ally isInDanger ]]
+        ifNone: [ nil ].
+
+    allyToHelp ifNotNil: [
+        aDrone moveToward: allyToHelp position.
+        aDrone consumeFuel: 2 ].
+
+]
+
 { #category : 'initialization' }
 EnergySavingPatrolStrategy >> initializeWithActiveRatio: ratio cycleLength: cycles [
     activeRatio := ratio. cycleLength := cycles. lastAppliedAt := nil. ^ self.
