@@ -36,6 +36,13 @@ SimulationState >> allAlliedDrones [
         selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  
 ]
 
+{ #category : 'initialization' }
+SimulationState >> allDrones [
+    ^ (self allFleets
+        selectMany: [:f | f clusters ]) collectMany:[:f| f drones  ]"protocol: #initialization"
+
+]
+
 { #category : 'accessing' }
 SimulationState >> allFleets [
 

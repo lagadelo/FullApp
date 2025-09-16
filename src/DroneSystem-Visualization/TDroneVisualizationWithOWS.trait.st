@@ -40,30 +40,6 @@ TDroneVisualizationWithOWS >> initializeWithSimulation: aSimulation centerLat: l
 ]
 
 { #category : 'initialization' }
-TDroneVisualizationWithOWS >> renderDrones [
-    "Affiche tous les drones de la simulation."
-    self renderDronesWith: simulation allDrones.
-
-]
-
-{ #category : 'initialization' }
-TDroneVisualizationWithOWS >> renderDronesWith: droneCollection [
-    "Affiche une collection de drones sur la carte et le canvas."
-    rsCanvas shapes do: [:s | (s isKindOf: RSBox) ifTrue: [ rsCanvas remove: s ]].
-    droneCollection do: [:d |
-        | color dot |
-        color := d isHostile ifTrue: [ Color red ] ifFalse: [ Color green ].
-        dot := RSBox new
-            size: 8@8;
-            color: color;
-            yourself.
-        rsCanvas add: dot.
-        dot translateTo: (d longitude * 5) @ (d latitude * -5). "Projection simplifiée"
-    ].
-    rsCanvas signalUpdate.
-]
-
-{ #category : 'initialization' }
 TDroneVisualizationWithOWS >> saveCanvasAsImage [
     "Sauvegarde le canvas en tant qu'image PNG."
     | file |

@@ -14,6 +14,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'instance creation' }
+DroneCluster class >> with: drones [
+
+^self new  initializeWithDrones: drones  clusterId: nil;yourself
+]
+
 { #category : 'missions' }
 DroneCluster >> assignMission: aMission [
     currentMission := aMission.
@@ -138,6 +144,15 @@ DroneCluster >> drones: anObject [
 	drones := anObject
 ]
 
+{ #category : 'updating status' }
+DroneCluster >> expandedCoverageByFactor: aFactor [
+  | c |
+c :=  self clusterCenter.
+coverage := self updateCoverage.
+^ coverage  collect:[:a| (a - c) * aFactor + c]
+
+]
+
 { #category : 'accessing' }
 DroneCluster >> hostile [
 
@@ -170,16 +185,6 @@ self hostile: whoKnows.
 
     ^ self.
  
-]
-
-{ #category : 'initialization' }
-DroneCluster >> initializeWithId: anId drones: aCollection [
-    clusterId := anId.
-    drones := (aCollection ifNil: [ OrderedCollection new ]) asOrderedCollection.
-    coverage := #().
-    capabilities := Dictionary new.
-    currentMission := nil.
-    ^ self.
 ]
 
 { #category : 'initialization' }
@@ -227,7 +232,7 @@ DroneCluster >> updateCoverage [
 
     "1. Extraire les positions des drones valides"
     activePositions := (drones select: [:d | d isDestroyed not])
-        collect: [:d | { d latitude. d longitude } ].
+        collect: [:d | { d    longitude . d latitude } ].
 
     "2. Si aucun drone actif → pas de couverture"
     activePositions isEmpty ifTrue: [
@@ -236,7 +241,7 @@ DroneCluster >> updateCoverage [
 
     "3. Calculer l’enveloppe convexe (zone couverte)"
     coverage := ConvexHullCalculator new
-        computeHullFrom: activePositions.
+        convexHullVerbose: activePositions.
 
     ^ coverage
 

@@ -14,7 +14,7 @@ Class {
 { #category : 'as yet unclassified' }
 DroneScenarios class >> exampleSecuring [
     | sim drones cluster mission polygon   |
-   " sim := SimulationState new initialize." sim := nil.
+    sim := SimulationState new initialize.
     sim setAsCurrent.
     drones := { Drone new. Drone new. Drone new } asOrderedCollection.
     (drones at: 1) moveToLatitude: 48.8566 longitude: 2.3522 altitude: 120.

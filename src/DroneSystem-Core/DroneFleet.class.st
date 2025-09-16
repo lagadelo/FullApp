@@ -26,6 +26,27 @@ DroneFleet >> addHostileCluster: aCluster [
 ]
 
 { #category : 'accessing' }
+DroneFleet >> allAlliedDrones [ 
+^self alliedClusters collectMany:[:c| c drones]
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allDrones [ 
+^self clusters collectMany:[:c| c drones]
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allHostileDrones [ 
+^self hostileClusters collectMany:[:c| c drones]
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> alliedCenter [
+
+^(DroneCluster with: self allAlliedDrones) clusterCenter 
+]
+
+{ #category : 'accessing' }
 DroneFleet >> alliedClusters [
 
 ^self clusters reject:[:c|  self hostileClusters includes:c]
@@ -80,6 +101,23 @@ DroneFleet >> executeOn: aSimulation [
     self subclassResponsibility.
 
 
+]
+
+{ #category : 'accessing' }
+DroneFleet >> flattenCluster [ 
+^DroneCluster with: (self clusters collectMany:[:c| c drones  ])
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> fleetCenter [
+
+^(DroneCluster with: self allDrones) clusterCenter 
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> hostileCenter [
+
+^(DroneCluster with: self allHostileDrones) clusterCenter 
 ]
 
 { #category : 'accessing' }

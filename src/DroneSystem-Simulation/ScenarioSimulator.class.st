@@ -27,6 +27,45 @@ outcome := simulator runMixedMissionWithRatios: ratios polygon: polygon target: 
 Transcript show: outcome; cr.
 ]
 
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleSurveillance [
+    | sim drones cluster mission polygon   |
+
+    sim := SimulationState new.
+
+    drones := {
+        (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100).   "Paris"
+        (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120).   "Bordeaux"
+        (Drone new moveToLatitude: 45.7640 longitude: 4.8357 altitude: 100). "Lyon"
+    }.
+
+    drones do: [:d | sim addDrone: d ].
+
+    cluster := DroneCluster new initializeWithDrones:  drones clusterId: 1.
+    sim addFleet: cluster.
+
+    polygon := {
+        { 50.6292 . 3.0573  . 100 }. "Lille"
+        {48.3904 . -4.4947 . 100 }. "Brest"
+        { 43.2965 . 5.3698 . 100 }. "Marseille"
+        { -0.1276 . 51.5074 . 100 } "Londres"
+    }.
+
+    mission := ClusterMission surveillanceOn: polygon forCluster: cluster.
+    "Crée une mission de surveillance sur un polygone et l’assigne immédiatement au cluster."
+    
+    mission assignToCluster: cluster.
+^sim 
+"    view := DroneMapWithOWSView new
+        initializeWithSimulation: sim
+        centerLat: 48.85
+        centerLon: 2.35
+        zoom: 12.
+
+    view open."
+
+]
+
 { #category : 'initialization' }
 ScenarioSimulator >> exportResults: results toCSVFile: filePath [
     "results is a collection of Dictionaries with keys #ratio #alliesRemaining #hostilesRemaining #coverageSize"
