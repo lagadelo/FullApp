@@ -198,11 +198,64 @@ ClusterMission >> computeSecuringPositionsFor: aCluster [
 
 { #category : 'as yet unclassified' }
 ClusterMission >> computeSurveillanceWaypointsFor: aCluster [
-    | polygon n segments |
-    polygon := zoneParameters at: #polygon.
-    n := aCluster drones size.
-    segments := (1 to: n) collect: [:i | { (polygon at: i) } ].
-    ^ segments.
+  
+   ^self generateWaypointsForDrones: aCluster drones size existingWaypoints: ( zoneParameters at: #polygon).
+  
+    
+]
+
+{ #category : 'copying' }
+ClusterMission >> copy [ 
+| copy |
+copy := self new copy.
+copy missionType: self missionType.
+copy zoneParameters: self zoneParameters.
+ 
+copy status: self status.
+^copy 
+]
+
+{ #category : 'private - utility' }
+ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoints [ 
+    | nWaypoints segments neededWaypoints result newPoint fraction i j |
+
+    nWaypoints := waypoints size.
+
+    "Si on a déjà assez de waypoints, on retourne la liste telle quelle"
+    nWaypoints >= nDrones ifTrue: [ ^ waypoints copy ].
+
+    result := OrderedCollection new.
+    
+    "Nombre de waypoints supplémentaires à générer"
+    neededWaypoints := nDrones - nWaypoints.
+
+    "Ajouter d’abord les waypoints existants"
+    result addAll: waypoints.
+
+    "Interpolation entre les points existants"
+    segments := (1 to: nWaypoints) collect: [:i |
+        | start end |
+        start := waypoints at: i.
+        end := (i = nWaypoints) ifTrue: [ waypoints first ] ifFalse: [ waypoints at: i + 1 ].
+        {start. end}
+    ].
+
+    "Générer les nouveaux waypoints"
+    1 to: neededWaypoints do: [:k ||start end|
+        i := ((k - 1) \\ segments size) + 1.
+        start := (segments at: i) at:1.
+        end := (segments at: i) at:2.
+        fraction := ((k - 1) // neededWaypoints) + 0.5. "Point au milieu du segment pour régularité"
+        newPoint := {
+            (start at: 1) + ((end at: 1) - (start at: 1)) * fraction.
+            (start at: 2) + ((end at: 2) - (start at: 2)) * fraction.
+            (start at: 3) + ((end at: 3) - (start at: 3)) * fraction.
+        }.
+        result add: newPoint.
+    ].
+
+    ^ result
+
 
 ]
 

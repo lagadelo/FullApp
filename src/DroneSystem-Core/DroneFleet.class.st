@@ -20,9 +20,16 @@ DroneFleet class >> fleetWithClusters: clusters id: anId hostile: aBool name: aS
 ]
 
 { #category : 'initialization' }
+DroneFleet >> addCluster: aCluster [
+    clusters add: aCluster.
+    log add: 'New cluster ', aCluster clusterId asString, ' accepted.'.
+]
+
+{ #category : 'initialization' }
 DroneFleet >> addHostileCluster: aCluster [
-    hostileClusters add: aCluster.
-    log add: 'Cluster hostile ', aCluster clusterId asString, ' détecté.'.
+    self addCluster: aCluster.
+	 hostileClusters add: aCluster.
+    log add: 'Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
 ]
 
 { #category : 'accessing' }
@@ -78,6 +85,22 @@ DroneFleet >> clusters: anObject [
 	clusters := anObject
 ]
 
+{ #category : 'initialization' }
+DroneFleet >> deepCopy [ 
+
+| f  clustersMapping|
+f := self class new. 
+clustersMapping := Dictionary new.
+self clusters do:[:c| clustersMapping at:c put: c deepCopy].
+
+self alliedClusters do:[:c| f addCluster:  (clustersMapping at:c) ].
+self hostileClusters do:[:c| f addHostileCluster: (clustersMapping at:c)].
+f name:  self name.
+f missions: (self missions collect:[:m| |mc| mc := m copy. mc assignToCluster: (clustersMapping at: m cluster)]  ).
+
+ ^f
+]
+
 { #category : 'evaluation' }
 DroneFleet >> evaluateCoverage [
     "Retourne la couverture combinée de tous les clusters"
@@ -112,6 +135,30 @@ DroneFleet >> flattenCluster [
 DroneFleet >> fleetCenter [
 
 ^(DroneCluster with: self allDrones) clusterCenter 
+]
+
+{ #category : 'accessing' }
+DroneFleet >> fleetId [
+
+	^ fleetId
+]
+
+{ #category : 'accessing' }
+DroneFleet >> fleetId: anObject [
+
+	fleetId := anObject
+]
+
+{ #category : 'accessing' }
+DroneFleet >> hostile [
+
+	^ hostile
+]
+
+{ #category : 'accessing' }
+DroneFleet >> hostile: anObject [
+
+	hostile := anObject
 ]
 
 { #category : 'as yet unclassified' }
@@ -172,6 +219,18 @@ DroneFleet >> missions [
 DroneFleet >> missions: anObject [
 
 	missions := anObject
+]
+
+{ #category : 'accessing' }
+DroneFleet >> name [
+
+	^ name
+]
+
+{ #category : 'accessing' }
+DroneFleet >> name: anObject [
+
+	name := anObject
 ]
 
 { #category : 'initialization' }

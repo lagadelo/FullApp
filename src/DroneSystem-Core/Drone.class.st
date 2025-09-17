@@ -25,6 +25,14 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'examples' }
+Drone class >> example [
+^self new initializeWithId: (Random new next *10000000) ceiling
+            latitude: (Random new next *15)+40
+            longitude: (Random new next *10)-5
+            altitude: (Random new next *10)+100
+]
+
 { #category : 'accessing' }
 Drone >> altitude [
 

@@ -29,7 +29,7 @@ Transcript show: outcome; cr.
 
 { #category : 'examples' }
 ScenarioSimulator class >> exampleSurveillance [
-    | sim drones cluster mission polygon   |
+    | sim drones cluster mission polygon     fleet |
 
     sim := SimulationState new.
 
@@ -42,16 +42,18 @@ ScenarioSimulator class >> exampleSurveillance [
     drones do: [:d | sim addDrone: d ].
 
     cluster := DroneCluster new initializeWithDrones:  drones clusterId: 1.
-    sim addFleet: cluster.
+    fleet := DroneFleet new.
+fleet addCluster: cluster.
+sim addFleet: fleet.
 
     polygon := {
         { 50.6292 . 3.0573  . 100 }. "Lille"
         {48.3904 . -4.4947 . 100 }. "Brest"
         { 43.2965 . 5.3698 . 100 }. "Marseille"
-        { -0.1276 . 51.5074 . 100 } "Londres"
+        {51.5074 .-0.1276   . 100 } "Londres"
     }.
 
-    mission := ClusterMission surveillanceOn: polygon forCluster: cluster.
+    mission := ClusterMission securisationOn: polygon forCluster: cluster.
     "Crée une mission de surveillance sur un polygone et l’assigne immédiatement au cluster."
     
     mission assignToCluster: cluster.
@@ -157,8 +159,8 @@ self setupBasicScenario.
 
     ratios do: [:r |
         | mission stateCopy result |
-        stateCopy := simulationState copyDeep. "Cloner l’état initial"
-        allyCluster := stateCopy fleets first.  "récupérer le cluster allié"
+        stateCopy := simulationState deepCopy. "Cloner l’état initial"
+        allyCluster := stateCopy allFleets first alliedClusters first..  "récupérer le cluster allié"
         
         mission := ClusterMission
             mixedOn: polygon
@@ -185,7 +187,9 @@ ScenarioSimulator >> setupBasicScenario [
     "Créer deux flottes : une alliée, une hostile, avec quelques drones"
     
     
-    | allyCluster hostileCluster |
+    | allyCluster hostileCluster f |
+
+simulationState := SimulationState new. 
 allyCluster := DroneCluster new
         initializeWithDrones: (self generateDrones: 10 prefix: 'A')
         clusterId: 1
@@ -198,9 +202,11 @@ allyCluster := DroneCluster new
         hostile: true
         name: 'Hostiles'.
     
-    simulationState addFleet: allyCluster.
-    simulationState addFleet: hostileCluster.
-    ^ Array with: allyCluster with: hostileCluster .
+	f := DroneFleet new.
+	f addCluster:allyCluster.
+	f addHostileCluster: hostileCluster.
+	simulationState addFleet: f.
+ ^ Array with: allyCluster with: hostileCluster .
 ]
 
 { #category : 'accessing' }

@@ -14,6 +14,13 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'accessing' }
+DroneCluster class >> example:n [
+
+^self with: ((1 to: 40) collect:[:i| Drone example])
+
+]
+
 { #category : 'instance creation' }
 DroneCluster class >> with: drones [
 
@@ -98,10 +105,10 @@ DroneCluster >> currentMission: anObject [
 	currentMission := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'copying' }
 DroneCluster >> deepCopy [
     | copy mapping newDrones |
-    copy := DroneCluster new.
+    copy := self class new.
     copy clusterId: clusterId .
     "Create fresh drone copies and keep mapping"
     mapping := Dictionary new.

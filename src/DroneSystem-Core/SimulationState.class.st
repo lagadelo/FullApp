@@ -103,54 +103,15 @@ SimulationState >> current [
 { #category : 'initialization' }
 SimulationState >> deepCopy [
     | copy droneMap clusterMap fleetMap newDrones newClusters newFleets |
-    copy := "SimulationState new initialize." nil.
+    copy :=  SimulationState new initialize.
     "Clone standalone drones"
-    droneMap := Dictionary new.
-    newDrones := OrderedCollection new.
-    drones do: [:d |
-        | cd |
-        cd := d deepCopy.
-        droneMap at: d put: cd.
-        newDrones add: cd.
-    ].
-    copy drones: newDrones  .
-    "Clone clusters and remap drone references"
-    clusterMap := Dictionary new.
-    newClusters := OrderedCollection new.
-    clusters do: [:c |
-        | cc mapping newClusterDrones |
-        cc := DroneCluster new.
-        cc clusterId: c clusterId  .
-        mapping := Dictionary new.
-        newClusterDrones := OrderedCollection new.
-        c drones do: [:d |
-            | cd |
-            cd := (droneMap at: d) ifAbsent: [ d deepCopy ].
-            mapping at: d put: cd.
-            newClusterDrones add: cd.
-        ].
-        cc drones: newClusterDrones "ifResponds: [] ifFalse: []".
-        cc updateCapabilities.
-        cc updateCoverage.
-        clusterMap at: c put: cc.
-        newClusters add: cc.
-    ].
-    copy clusters: newClusters .
-    "Clone fleets and remap cluster references"
-    fleetMap := Dictionary new.
-    newFleets := OrderedCollection new.
-    allFleets do: [:f |
-        | nf |
-        nf := DroneFleet new.
-    "    nf fleetId: f fleetId " "ifResponds: [] ifFalse: []".
-        nf isHostile: f isHostile "ifResponds: [] ifFalse: []".
-        nf name: f name "ifResponds: [] ifFalse: []".
-        nf clusters: (f clusters collect: [:c | (clusterMap at: c) ifAbsent: [ c deepCopy ] ])" ifResponds: [] ifFalse: []".
-        newFleets add: nf.
-    ].
+     
+   
+    newFleets := allFleets collect:[:f| f deepCopy].
+
     copy allFleets: newFleets "ifResponds: [] ifFalse: []".
     "Copy time and logs"
-    copy time: time i"fResponds: [] ifFalse: []".
+    copy time: time "fResponds: [] ifFalse: []".
     copy missionHistory: missionHistory copy "ifResponds: [] ifFalse: []".
     copy eventLog: eventLog copy "ifResponds: [] ifFalse: []".
     copy reactionLog: reactionLog copy "ifResponds: [] ifFalse: []".
