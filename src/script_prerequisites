@@ -1,0 +1,9 @@
+Metacello new
+  baseline: 'XMLParser';
+  repository: 'github://pharo-contributions/XML-XMLParser/src';
+  load.
+Metacello new
+  baseline: 'OWS';
+  repository: 'github://ThalesGroup/PharoOWS:main';
+  load.
+
