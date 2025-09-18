@@ -10,7 +10,12 @@ Class {
 		'rsCanvas',
 		'timeSlider',
 		'fleetSelector',
-		'infoText'
+		'infoText',
+		'boundingBox',
+		'imageSize',
+		'imageWidth',
+		'infoBox',
+		'bitMap'
 	],
 	#category : 'DroneSystem-Visualization-visualization',
 	#package : 'DroneSystem-Visualization',
@@ -26,7 +31,8 @@ DroneMapWithOWSView class >> lonLatToWebMercator: latlon [
 
     x := lon * 20037508.34 / 180.
 
-     
+ 
+
    y := (lat /360+0.25*Float pi ) tan ln * 6378137.
 
     ^ x @ y
@@ -36,6 +42,38 @@ DroneMapWithOWSView class >> lonLatToWebMercator: latlon [
 DroneMapWithOWSView class >> openOnSimulation: sim [
 
 ^(self  simulation: sim) open; yourself
+]
+
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView class >> pixelForLat: lat lon: lon inBbox: aBbox width: widthPx height: heightPx [
+    "Retourne un Point x@y en pixels dans l'image."
+    |  coord xMin yMin xMax yMax xGeo yGeo xNorm yNorm xPx yPx |
+
+    "1) projeter en WebMercator (EPSG:3857)"
+    coord := self  lonLatToWebMercator: (lon @ lat).
+    xGeo := coord x.
+    yGeo := coord y.
+
+    "2) extraire bbox"
+    xMin := aBbox origin x.
+    yMin := aBbox origin y.
+    xMax := aBbox corner x.
+    yMax := aBbox corner y.
+
+    "3) normaliser (attention inversion Y pour l'image)"
+    xNorm := (xGeo - xMin) / (xMax - xMin).
+    yNorm := (yMax - yGeo) / (yMax - yMin).
+
+    "Optionnel : clipper entre 0 et 1"
+    xNorm := xNorm min: 1 max: 0.
+    yNorm := yNorm min: 1 max: 0.
+
+    "4) convertir en pixels"
+    xPx := (xNorm * widthPx) rounded.
+    yPx := (yNorm * heightPx) rounded.
+
+    ^ xPx @ yPx
+
 ]
 
 { #category : 'as yet unclassified' }
@@ -81,7 +119,7 @@ layers := wms layers.
 map := wms
   map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
   bbox: (-546079 @ 6126282 corner: -398839 @ 6212047)
-  size: 800 @ 600
+  size: 800 @ 800
   epsg: '3857'
   format: 'image/png'.
 
@@ -92,6 +130,41 @@ map := wms
 DroneMapWithOWSView class >> simulation: sim [
 
 ^self new simulation: sim; yourself
+]
+
+{ #category : 'rendered elements' }
+DroneMapWithOWSView >> bitMap [
+
+	| wms operations getmap layers map  |
+	self bitMap ifNil:[self computeBoundingBox.
+	wms := OWSServiceWMS new.
+	wms url: 'https://data.geopf.fr/wms-r'.
+
+	operations := wms operations.
+	getmap := operations detect: [ :request | request name = 'GetMap' ].
+	layers := wms layers.
+
+	map := wms
+		       map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
+		       bbox: self boundingBox
+		       size: self imageSize
+		       epsg: '3857'
+		       format: 'image/png'.
+	 bitMap :=  RSBitmap newFrom: map.].
+ ^bitMap
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> boundingBox [
+
+	boundingBox ifNil:[self computeBoundingBox].
+	^ boundingBox
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> boundingBox: anObject [
+
+	boundingBox := anObject
 ]
 
 { #category : 'accessing' }
@@ -118,37 +191,168 @@ DroneMapWithOWSView >> centerLon: anObject [
 	centerLon := anObject
 ]
 
-{ #category : 'as yet unclassified' }
-DroneMapWithOWSView >> drawBaseMap [
-    | wms operations getmap layers size map bitmapShape  center x y borderA borderB convertedBorderA onvertedBorderB convertedBorderB |
-  borderA :=simulation  allFleets first drones first  .
-borderB := simulation  allFleets first drones last  .
-   convertedBorderA := self class lonLatToWebMercator:borderA longitude @ borderA latitude .
-convertedBorderB := self class lonLatToWebMercator:borderB longitude @ borderB latitude .
+{ #category : 'rendered elements' }
+DroneMapWithOWSView >> clusterBox [
+|clusterBox clusterColumn droneColumn detailColumn selectedCluster selectedDrone | 
+clusterBox := RSBox new
+    size: 400@200;
+    color: (Color white alpha: 0.9);
+    border: (RSBorder new color: Color black);
+    translateTo: 500@50.
  
 
-    wms := OWSServiceWMS new.
-    wms url: 'https://data.geopf.fr/wms-r'.
+"--- Colonnes comme des labels groupés ---"
+clusterColumn := RSVerticalLineLayout on: (RSGroup new).
+droneColumn   := RSVerticalLineLayout on: (RSGroup new).
+detailColumn  := RSVerticalLineLayout on: (RSGroup new).
 
-    operations := wms operations.
-    getmap := operations detect: [:request | request name = 'GetMap'].
-    layers := wms layers.
-    size := 1000 @ 700.
+clusterBox add: clusterColumn; add: droneColumn; add:detailColumn .
 
-    map := wms
-        map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
-        bbox: (convertedBorderA    corner: convertedBorderB )
-"example -546079 @ 6126282 corner: -398839 @ 6212047"
-        size: size
-        epsg: '3857'
-        format: 'image/png'.
-    rsCanvas ifNil:[rsCanvas := RSCanvas new.
-    rsCanvas extent: 1000@700. 
-    rsCanvas clear. rsCanvas open].
-    bitmapShape := RSBitmap newFrom: map.
-    "bitmapShape extent: size."
-    rsCanvas add: bitmapShape.
-    "rsCanvas render."
+"--- Remplir la colonne clusters ---"
+self simulation allFleets first clusters do: [:c |
+    | lbl |
+    lbl := RSLabel new text: 'Cluster ', c clusterID printString.
+    lbl when: RSMouseClick do: [:evt |
+        selectedCluster := c.
+        "mettre à jour colonne drones"
+        droneColumn removeAll.
+        (c drones) do: [:d |
+            | dl |
+            dl := RSLabel new text: 'Drone ', d uniqueID printString.
+            dl when: RSMouseClick do: [:evt2 |
+                selectedDrone := d.
+                "mettre à jour détails"
+                detailColumn removeAll.
+                detailColumn addAll: {
+                    RSLabel new text: 'Id: ', (d at: #id).
+                    RSLabel new text: 'Lat: ', (d at: #lat) asString.
+                    RSLabel new text: 'Lon: ', (d at: #lon) asString.
+                    RSLabel new text: 'Fuel: ', (d at: #fuel) asString.
+                }.
+    
+            ].
+            droneColumn add: dl.
+        ].
+     
+    ].
+    clusterColumn add: lbl.
+].
+
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> computeBoundingBox [
+  | borderA borderB convertedBorderA convertedBorderB |
+ borderA :=simulation  allFleets first allDrones first  .
+ borderB := simulation  allFleets first allDrones last  .
+ convertedBorderA := self class lonLatToWebMercator:borderA longitude @ borderA latitude .
+ convertedBorderB := self class lonLatToWebMercator:borderB longitude @ borderB latitude .
+ boundingBox := convertedBorderA    corner: convertedBorderB.
+^ boundingBox
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> computeImageSize [
+  
+   imageSize := self imageWidth @(self heightFor: self boundingBox width: self imageWidth).
+^imageSize
+]
+
+{ #category : 'defaults values' }
+DroneMapWithOWSView >> defaultImageWidth [
+
+^1600
+]
+
+{ #category : 'configuring' }
+DroneMapWithOWSView >> doSupportSelection [
+
+
+rsCanvas when: RSSelectionChangedEvent do: [:evt |
+    | sel |
+  sel := rsCanvas selectedShapes.
+    Transcript show: 'Sélection : ', sel size asString; cr.
+    "feedback visuel : colorer sélection"
+    rsCanvas shapes do: [:s | s color: (s color alpha: 1) ]. "reset"
+    sel do: [:s | s color: Color green ].
+] for: self.
+]
+
+{ #category : 'configuring' }
+DroneMapWithOWSView >> doSupportZoom [
+
+			self rsCanvas
+				when: RSMouseDoubleClick
+				do: [ :evt | rsCanvas camera zoomToFit ]
+				for: self 
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> drawBaseMap [
+
+	| wms operations getmap layers map bitmapShape |
+	self computeBoundingBox.
+	wms := OWSServiceWMS new.
+	wms url: 'https://data.geopf.fr/wms-r'.
+
+	operations := wms operations.
+	getmap := operations detect: [ :request | request name = 'GetMap' ].
+	layers := wms layers.
+
+	map := wms
+		       map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
+		       bbox: self boundingBox
+		       size: self imageSize
+		       epsg: '3857'
+		       format: 'image/png'.
+	rsCanvas ifNil: [
+			rsCanvas := RSCanvas new.
+			rsCanvas extent: imageSize.
+			rsCanvas clear.
+			rsCanvas @ RSCanvasController.
+			rsCanvas open.
+			rsCanvas
+				when: RSMouseDoubleClick
+				do: [ :evt | rsCanvas camera zoomToFit ]
+				for: self ].
+			
+		"	rsCanvas when: RSMouseDown do: [:evt |
+   
+    selectionRect ifNotNil: [ rsCanvas remove: selectionRect ].
+    selectionRect := RSBox new
+        color: (Color red alpha: 0.2);
+        border: (RSBorder new color: Color red);
+        translateTo: evt position.
+    selectionRect extent: 0@0.
+   rsCanvas add: selectionRect.
+    evt userData at: #start put: evt position.
+].
+
+c when: RSMouseMove do: [:evt |
+    (evt buttons anySatisfy: #isPressed) ifTrue: [
+        | start now |
+        start := evt userData at: #start ifAbsent: [ evt position ].
+        now := evt position.
+        selectionRect ifNotNil: [
+            selectionRect translateTo: (start min: now).
+            selectionRect extent: (now - start) abs.
+        ]."
+    
+rsCanvas when: RSSelectionChangedEvent do: [:evt |
+    | sel |
+  sel := rsCanvas selectedShapes.
+    Transcript show: 'Sélection : ', sel size asString; cr.
+    "feedback visuel : colorer sélection"
+    rsCanvas shapes do: [:s | s color: (s color alpha: 1) ]. "reset"
+    sel do: [:s | s color: Color green ].
+] for: self.
+	bitmapShape := RSBitmap newFrom: map.
+	rsCanvas camera zoomToFit.
+	"bitmapShape extent: size."
+	rsCanvas add: bitmapShape
+
+
+	"rsCanvas render."
 ]
 
 { #category : 'accessing' }
@@ -164,10 +368,80 @@ DroneMapWithOWSView >> fleetSelector: anObject [
 	self fleetSelectorHasChanged
 ]
 
-{ #category : 'accessing' }
+{ #category : 'system changes' }
 DroneMapWithOWSView >> fleetSelectorHasChanged [
 
 self renderDrones 
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> floatingInformationBow [
+
+infoBox := RSBox new
+    size: 160@100;
+    color: (Color white alpha: 0.85);
+    border: (RSBorder new color: Color black);
+    visible: false.
+ 
+"--- ajouter un label dans la boîte ---"
+infoBox add: (RSLabel new text: 'Sélection vide').
+
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> heightFor: aBbox width: widthPx [
+    "Calcule la hauteur en pixels qui garde les proportions de la zone (BBOX)."
+    | xMin xMax yMin yMax widthReal heightReal ratio |
+    
+    xMin := aBbox origin x.
+    yMin := aBbox origin y.
+    xMax := aBbox corner x.
+    yMax := aBbox corner y.
+
+    widthReal := xMax - xMin.
+    heightReal := yMax - yMin.
+
+    ratio := heightReal asFloat / widthReal asFloat.
+
+    ^ (widthPx * ratio) rounded
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> imageSize [
+
+	imageSize ifNil:[self computeImageSize].
+	^ imageSize
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> imageSize: anObject [
+
+	imageSize := anObject
+]
+
+{ #category : 'rendering' }
+DroneMapWithOWSView >> imageWidth [
+
+	imageWidth ifNil:[imageWidth := self defaultImageWidth].
+	^imageWidth
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> imageWidth: anObject [
+
+	imageWidth := anObject
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> infoBox [
+
+	^ infoBox
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> infoBox: anObject [
+
+	infoBox := anObject
 ]
 
 { #category : 'accessing' }
@@ -208,10 +482,26 @@ DroneMapWithOWSView >> initializeWithSimulation: aSimulation centerLat: lat cent
     ^ self
 ]
 
+{ #category : 'system changes' }
+DroneMapWithOWSView >> inspectOn: aRSShape [
+
+"Model agnostic"
+(self infoBox shapes first) text: aRSShape model printString.
+       self  infoBox translateTo: aRSShape position + (20@ -20).
+       self  infoBox visible: true.
+		 self rsCanvas signalUpdate 
+]
+
 { #category : 'as yet unclassified' }
 DroneMapWithOWSView >> open [
 
-self drawBaseMap; renderDrones 
+self setUpCanvas. 
+self doSupportZoom.
+self doSupportSelection.
+self rsCanvas add: self bitMap.
+self rsCanvas add: self clusterBox.
+
+"self drawBaseMap; renderDrones "
 ]
 
 { #category : 'accessing' }
@@ -226,7 +516,7 @@ DroneMapWithOWSView >> owsMap: anObject [
 	owsMap := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'rendering' }
 DroneMapWithOWSView >> renderDrones [
     "Change le filtre d’affichage des drones selon la flotte choisie."
     self fleetSelector = 'All Fleets' ifTrue: [
@@ -240,19 +530,54 @@ DroneMapWithOWSView >> renderDrones [
 
 { #category : 'rendering' }
 DroneMapWithOWSView >> renderDronesWith: droneCollection [
-    "Affiche une collection de drones sur la carte et le canvas."
-    rsCanvas shapes do: [:s | (s isKindOf: RSCircle) ifTrue: [ rsCanvas remove: s ]].
-    droneCollection do: [:d |
-        | color dot |
-        color := d isHostile ifTrue: [ Color red ] ifFalse: [ Color green ].
-        dot := RSCircle new
-            size: 8@8;
-            color: color;
-            yourself.
-        rsCanvas add: dot.
-        dot translateTo: (d longitude * 5) @ (d latitude * -5). "Projection simplifiée"
-    ].
-    rsCanvas signalUpdate.
+	"Affiche une collection de drones sur la carte et le canvas."
+
+	rsCanvas shapes do: [ :s |
+		"(s isKindOf: RSCircle)" (s model isKindOf:Drone) ifTrue: [ rsCanvas removeShape: s ] ].
+	droneCollection do: [ :d |
+			| color dot |
+			color := d isHostile
+				         ifTrue: [ Color red ]
+				         ifFalse: [ Color black ].
+			dot := RSCircle new
+				       size: 8 @ 8;
+				       color: color;
+						 model: d;
+				       yourself.
+				"dot@ RSPopup."  "popup sur clic (affiche model par défaut)"
+dot @ RSDraggable.
+			rsCanvas add: dot.
+			dot translateTo: (self class
+					 pixelForLat: d latitude
+					 lon: d longitude
+					 inBbox: self boundingBox
+					 width: imageSize x
+					 height: imageSize y).
+
+		"	dot
+				when: RSMouseClick
+				do: [ :evt |
+						Transcript
+							show: 'Drone cliqué à ' , dot position asString;
+							cr.
+						dot color: Color red.
+						d inspect" "change de couleur en feedback" "]
+				for: self."
+				 dot when: RSMouseClick do: [:evt |
+        self inspectOn:dot]]
+]
+
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> reset [
+
+self rsCanvas shapes do:[:a| self rsCanvas removeShape:a]
+ 
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> resetBitMap [
+
+bitMap := nil
 ]
 
 { #category : 'accessing' }
@@ -265,6 +590,42 @@ DroneMapWithOWSView >> rsCanvas [
 DroneMapWithOWSView >> rsCanvas: anObject [
 
 	rsCanvas := anObject
+]
+
+{ #category : 'rendered elements' }
+DroneMapWithOWSView >> setUpCanvas [
+
+	self rsCanvas ifNil: [
+			rsCanvas := RSCanvas new.
+			rsCanvas extent: self bitMap extend + (500@400).
+			rsCanvas clear.
+			rsCanvas @ RSCanvasController.
+		 
+			"zoom ajuste"
+			rsCanvas
+				when: RSMouseDoubleClick
+				do: [ :evt | rsCanvas camera zoomToFit ]
+				for: self ].
+			
+			"referme l'infobox"
+			rsCanvas
+				when: RSMouseClick
+				do: [ :evt |     ( evt position isInsideRectangle:  self infoBox) ifFalse: [ self infoBox visible: false. rsCanvas signalUpdate ]] 
+				for: self.
+
+
+			"Affoche la selection"
+			
+			rsCanvas 
+			  when: RSSelectionChangedEvent 
+			  do: [:evt | | sel |
+					
+    				sel := rsCanvas selectedShapes.
+    				Transcript show: 'Sélection : ', sel size asString; cr.
+   	 				"feedback visuel : colorer sélection"
+   					 rsCanvas shapes do: [:s | s color: (s color alpha: 1) ]. "reset"
+    					sel do: [:s | s color: Color green ].] 
+			 for: self.
 ]
 
 { #category : 'accessing' }
@@ -291,7 +652,14 @@ DroneMapWithOWSView >> timeSlider: anObject [
 	timeSlider := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'system changes' }
+DroneMapWithOWSView >> update: aSimulationStep [
+
+
+self renderDrones
+]
+
+{ #category : 'system changes' }
 DroneMapWithOWSView >> updateAtStep: step [
     "Met à jour la simulation et l'affichage à l'instant donné."
     simulation stepAt: step.

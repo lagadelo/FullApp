@@ -28,9 +28,9 @@ Class {
 { #category : 'examples' }
 Drone class >> example [
 ^self new initializeWithId: (Random new next *10000000) ceiling
-            latitude: (Random new next *15)+40
-            longitude: (Random new next *10)-5
-            altitude: (Random new next *10)+100
+            latitude: (Random new next *1)+40
+            longitude: (Random new next *1)-    2
+        altitude: (Random new next *10)+2100
 ]
 
 { #category : 'accessing' }

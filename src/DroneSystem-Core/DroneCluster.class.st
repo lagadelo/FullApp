@@ -17,7 +17,7 @@ Class {
 { #category : 'accessing' }
 DroneCluster class >> example:n [
 
-^self with: ((1 to: 40) collect:[:i| Drone example])
+^self with: ((1 to: n) collect:[:i| Drone example])
 
 ]
 

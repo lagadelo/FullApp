@@ -188,11 +188,13 @@ ClusterMission >> assignedCluster: anObject [
 
 { #category : 'as yet unclassified' }
 ClusterMission >> computeSecuringPositionsFor: aCluster [
-    | polygon n positions |
+ "   | polygon n positions |
     polygon := zoneParameters at: #polygon.
     n := aCluster drones size.
     positions := (1 to: n) collect: [:i | polygon at: i ].
-    ^ positions.
+    ^ positions."
+
+   ^self generateWaypointsForDrones: aCluster drones size existingWaypoints: ( zoneParameters at: #polygon).
 
 ]
 

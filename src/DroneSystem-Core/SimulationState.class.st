@@ -12,7 +12,8 @@ Class {
 		'engagementMode',
 		'steps',
 		'hostileFleets',
-		'verificationFunctions'
+		'verificationFunctions',
+		'observers'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -155,6 +156,11 @@ SimulationState >> eventLog: anObject [
 	eventLog := anObject
 ]
 
+{ #category : 'system changes' }
+SimulationState >> hasChanged [
+self observers do:[:a| a update:self] 
+]
+
 { #category : 'accessing' }
 SimulationState >> hostileFleets [
 
@@ -179,6 +185,8 @@ SimulationState >> initialize [
     verificationFunctions := OrderedCollection new.
     time := 0.
     steps := OrderedCollection new.
+	 observers := OrderedCollection new.
+
     engagementMode := #droneLevel.  "Default mode"
 ]
 
@@ -195,6 +203,26 @@ SimulationState >> missionHistory: anObject [
 ]
 
 { #category : 'accessing' }
+SimulationState >> observers [
+
+	^ observers
+]
+
+{ #category : 'accessing' }
+SimulationState >> observers: anObject [
+
+	observers := anObject
+]
+
+{ #category : 'user interface' }
+SimulationState >> open [ 
+| tmp |
+tmp  := (DroneMapWithOWSView  simulation: self ).
+self  registerObserver: tmp.
+tmp open
+]
+
+{ #category : 'accessing' }
 SimulationState >> reactionLog [
 
 	^ reactionLog
@@ -204,6 +232,12 @@ SimulationState >> reactionLog [
 SimulationState >> reactionLog: anObject [
 
 	reactionLog := anObject
+]
+
+{ #category : 'system changes' }
+SimulationState >> registerObserver: aClient [
+
+self observers add:aClient
 ]
 
 { #category : 'initialization' }
