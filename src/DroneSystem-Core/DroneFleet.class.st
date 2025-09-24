@@ -39,7 +39,7 @@ DroneFleet >> allAlliedDrones [
 
 { #category : 'accessing' }
 DroneFleet >> allDrones [ 
-^self clusters collectMany:[:c| c drones]
+^(self clusters reject:[:c| c isNil] )collectMany:[:c| c drones]
 ]
 
 { #category : 'accessing' }

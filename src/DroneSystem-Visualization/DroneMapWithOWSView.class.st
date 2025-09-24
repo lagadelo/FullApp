@@ -1,6 +1,6 @@
 Class {
 	#name : 'DroneMapWithOWSView',
-	#superclass : 'Object',
+	#superclass : 'SpPresenter',
 	#instVars : [
 		'simulation',
 		'centerLat',
@@ -15,7 +15,10 @@ Class {
 		'imageSize',
 		'imageWidth',
 		'infoBox',
-		'bitMap'
+		'bitMap',
+		'clusterList',
+		'dronesList',
+		'mapCanvas'
 	],
 	#category : 'DroneSystem-Visualization-visualization',
 	#package : 'DroneSystem-Visualization',
@@ -129,14 +132,17 @@ map := wms
 { #category : 'accessing' }
 DroneMapWithOWSView class >> simulation: sim [
 
-^self new simulation: sim; yourself
+| tmp |
+tmp := self basicNew simulation: sim.
+tmp initialize.
+^tmp 
 ]
 
 { #category : 'rendered elements' }
 DroneMapWithOWSView >> bitMap [
 
 	| wms operations getmap layers map  |
-	self bitMap ifNil:[self computeBoundingBox.
+	  bitMap ifNil:[self computeBoundingBox.
 	wms := OWSServiceWMS new.
 	wms url: 'https://data.geopf.fr/wms-r'.
 
@@ -167,77 +173,30 @@ DroneMapWithOWSView >> boundingBox: anObject [
 	boundingBox := anObject
 ]
 
-{ #category : 'accessing' }
-DroneMapWithOWSView >> centerLat [
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> buildCanvas [
 
-	^ centerLat
-]
-
-{ #category : 'accessing' }
-DroneMapWithOWSView >> centerLat: anObject [
-
-	centerLat := anObject
-]
-
-{ #category : 'accessing' }
-DroneMapWithOWSView >> centerLon [
-
-	^ centerLon
-]
-
-{ #category : 'accessing' }
-DroneMapWithOWSView >> centerLon: anObject [
-
-	centerLon := anObject
-]
-
-{ #category : 'rendered elements' }
-DroneMapWithOWSView >> clusterBox [
-|clusterBox clusterColumn droneColumn detailColumn selectedCluster selectedDrone | 
-clusterBox := RSBox new
-    size: 400@200;
-    color: (Color white alpha: 0.9);
-    border: (RSBorder new color: Color black);
-    translateTo: 500@50.
+self setUpCanvas. 
+self doSupportZoom.
+self doSupportSelection.
+self rsCanvas add: self bitMap.
  
 
-"--- Colonnes comme des labels groupés ---"
-clusterColumn := RSVerticalLineLayout on: (RSGroup new).
-droneColumn   := RSVerticalLineLayout on: (RSGroup new).
-detailColumn  := RSVerticalLineLayout on: (RSGroup new).
+ 
+ 
+^self rsCanvas 
+]
 
-clusterBox add: clusterColumn; add: droneColumn; add:detailColumn .
+{ #category : 'accessing' }
+DroneMapWithOWSView >> clusterList [
 
-"--- Remplir la colonne clusters ---"
-self simulation allFleets first clusters do: [:c |
-    | lbl |
-    lbl := RSLabel new text: 'Cluster ', c clusterID printString.
-    lbl when: RSMouseClick do: [:evt |
-        selectedCluster := c.
-        "mettre à jour colonne drones"
-        droneColumn removeAll.
-        (c drones) do: [:d |
-            | dl |
-            dl := RSLabel new text: 'Drone ', d uniqueID printString.
-            dl when: RSMouseClick do: [:evt2 |
-                selectedDrone := d.
-                "mettre à jour détails"
-                detailColumn removeAll.
-                detailColumn addAll: {
-                    RSLabel new text: 'Id: ', (d at: #id).
-                    RSLabel new text: 'Lat: ', (d at: #lat) asString.
-                    RSLabel new text: 'Lon: ', (d at: #lon) asString.
-                    RSLabel new text: 'Fuel: ', (d at: #fuel) asString.
-                }.
-    
-            ].
-            droneColumn add: dl.
-        ].
-     
-    ].
-    clusterColumn add: lbl.
-].
+	^ clusterList
+]
 
+{ #category : 'accessing' }
+DroneMapWithOWSView >> clusterList: anObject [
+
+	clusterList := anObject
 ]
 
 { #category : 'rendering' }
@@ -262,6 +221,29 @@ DroneMapWithOWSView >> computeImageSize [
 DroneMapWithOWSView >> defaultImageWidth [
 
 ^1600
+]
+
+{ #category : 'initialization' }
+DroneMapWithOWSView >> defaultLayout [ 
+|   sp2 |
+ 
+ 
+sp2 := self newPresenter.
+ 
+
+sp2 layout: (SpBoxLayout newTopToBottom beHomogeneous;
+
+           add: self clusterList  ;
+           add: self dronesList  ;
+ 
+ 
+           spacing: 1;
+           yourself).
+ 
+
+ 
+^SpBoxLayout newLeftToRight beHomogeneous; add: self mapCanvas   ; add: sp2  ; spacing:10; yourself 
+  
 ]
 
 { #category : 'configuring' }
@@ -353,6 +335,18 @@ rsCanvas when: RSSelectionChangedEvent do: [:evt |
 
 
 	"rsCanvas render."
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> dronesList [
+
+	^ dronesList
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> dronesList: anObject [
+
+	dronesList := anObject
 ]
 
 { #category : 'accessing' }
@@ -457,6 +451,20 @@ DroneMapWithOWSView >> infoText: anObject [
 ]
 
 { #category : 'initialization' }
+DroneMapWithOWSView >> initializePresenters [ 
+
+clusterList := (SpListPresenter new items: (self simulation allFleets first clusters add:nil;yourself); headerTitle:'Clusters'; yourself).
+clusterList display:[:c| c ifNil:[''] ifNotNil:   [c clusterId printString]].
+ 
+
+clusterList whenSelectionChangedDo:[:selection| selection inspect. clusterList selection inspect. dronesList items:(clusterList selectedItem  ifNil: [ OrderedCollection new ] ifNotNil:[clusterList selectedItem drones ] ). self renderDrones. mapCanvas canvas invalidate].
+dronesList := (SpListPresenter new headerTitle:'Drones'; yourself).
+dronesList display:[:d| d uniqueId printString].
+mapCanvas := self newRoassal canvas: self buildCanvas; yourself.
+ 
+]
+
+{ #category : 'initialization' }
 DroneMapWithOWSView >> initializeWithSimulation: aSimulation centerLat: lat centerLon: lon zoom: z [
     simulation := aSimulation.
     centerLat := lat.
@@ -486,22 +494,24 @@ DroneMapWithOWSView >> initializeWithSimulation: aSimulation centerLat: lat cent
 DroneMapWithOWSView >> inspectOn: aRSShape [
 
 "Model agnostic"
-(self infoBox shapes first) text: aRSShape model printString.
+"(self infoBox shapes first) text: aRSShape model printString.
        self  infoBox translateTo: aRSShape position + (20@ -20).
        self  infoBox visible: true.
-		 self rsCanvas signalUpdate 
+		 self rsCanvas signalUpdate "
+		
+	aRSShape model inspect
 ]
 
-{ #category : 'as yet unclassified' }
-DroneMapWithOWSView >> open [
+{ #category : 'system changes' }
+DroneMapWithOWSView >> mapCanvas [
 
-self setUpCanvas. 
-self doSupportZoom.
-self doSupportSelection.
-self rsCanvas add: self bitMap.
-self rsCanvas add: self clusterBox.
+^mapCanvas
+]
 
-"self drawBaseMap; renderDrones "
+{ #category : 'system changes' }
+DroneMapWithOWSView >> mapCanvas: aCanvas [
+
+ mapCanvas := aCanvas
 ]
 
 { #category : 'accessing' }
@@ -520,7 +530,7 @@ DroneMapWithOWSView >> owsMap: anObject [
 DroneMapWithOWSView >> renderDrones [
     "Change le filtre d’affichage des drones selon la flotte choisie."
     self fleetSelector = 'All Fleets' ifTrue: [
-        self renderDronesWith: simulation allDrones ].
+        self renderDronesWith: "simulation allDrones"( clusterList selectedItem ifNil:[#()] ifNotNil:[ clusterList selectedItem drones ])].
     self fleetSelector = 'Allies' ifTrue: [
         self renderDronesWith: simulation allAlliedDrones ].
      self fleetSelector ='Hostiles' ifTrue: [
@@ -532,27 +542,27 @@ DroneMapWithOWSView >> renderDrones [
 DroneMapWithOWSView >> renderDronesWith: droneCollection [
 	"Affiche une collection de drones sur la carte et le canvas."
 
-	rsCanvas shapes do: [ :s |
-		"(s isKindOf: RSCircle)" (s model isKindOf:Drone) ifTrue: [ rsCanvas removeShape: s ] ].
+	rsCanvas shapes do: [ :s | "(s isKindOf: RSCircle)"
+		(s model isKindOf: Drone) ifTrue: [ rsCanvas removeShape: s ] ].
 	droneCollection do: [ :d |
-			| color dot |
-			color := d isHostile
-				         ifTrue: [ Color red ]
-				         ifFalse: [ Color black ].
-			dot := RSCircle new
-				       size: 8 @ 8;
-				       color: color;
-						 model: d;
-				       yourself.
-				"dot@ RSPopup."  "popup sur clic (affiche model par défaut)"
-dot @ RSDraggable.
-			rsCanvas add: dot.
-			dot translateTo: (self class
-					 pixelForLat: d latitude
-					 lon: d longitude
-					 inBbox: self boundingBox
-					 width: imageSize x
-					 height: imageSize y).
+		| color dot |
+		color := d isHostile
+			         ifTrue: [ Color red ]
+			         ifFalse: [ Color black ].
+		dot := RSCircle new
+			       size:  20@20;
+			       color: color;
+			       model: d;
+			       yourself.
+		"dot@ RSPopup." "popup sur clic (affiche model par défaut)"
+		dot @ RSDraggable.
+		rsCanvas add: dot.
+		dot translateTo: (self class
+				 pixelForLat: d latitude
+				 lon: d longitude
+				 inBbox: self boundingBox
+				 width: imageSize x
+				 height: imageSize y).
 
 		"	dot
 				when: RSMouseClick
@@ -563,8 +573,7 @@ dot @ RSDraggable.
 						dot color: Color red.
 						d inspect" "change de couleur en feedback" "]
 				for: self."
-				 dot when: RSMouseClick do: [:evt |
-        self inspectOn:dot]]
+		dot when: RSMouseClick do: [ :evt | self inspectOn: dot ] for: self ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -597,7 +606,7 @@ DroneMapWithOWSView >> setUpCanvas [
 
 	self rsCanvas ifNil: [
 			rsCanvas := RSCanvas new.
-			rsCanvas extent: self bitMap extend + (500@400).
+			rsCanvas extent: self bitMap extent + (500@400).
 			rsCanvas clear.
 			rsCanvas @ RSCanvasController.
 		 
