@@ -37,11 +37,11 @@ GeoPoint >> altitude: anObject [
 GeoPoint >> distanceTo: aGeoPoint [  "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
     | dLat dLon meanLat earthRadius horizDist altDiff |
     earthRadius := 6371.0. "km, rayon moyen Terre"
-    dLat := (aGeoPoint latitude - latitude) degreesToRadians.
-    dLon := (aGeoPoint longitude - longitude) degreesToRadians.
-    meanLat := ((aGeoPoint latitude + latitude) / 2) degreesToRadians.
+    dLat := (aGeoPoint latitude - self latitude) degreesToRadians.
+    dLon := (aGeoPoint longitude - self longitude) degreesToRadians.
+    meanLat := ((aGeoPoint latitude + self latitude) / 2) degreesToRadians.
     horizDist := earthRadius * ((dLat squared + ((dLon * meanLat cos) squared)) sqrt).
-    altDiff := (aGeoPoint altitude  - altitude) / 1000.0. "convertir mètres → km"
+    altDiff := (aGeoPoint altitude  - self altitude) / 1000.0. "convertir mètres → km"
     ^ (horizDist squared + altDiff squared) sqrt.
 ]
 

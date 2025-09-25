@@ -545,7 +545,7 @@ DroneMapWithOWSView >> refresh [
 	"Affiche une collection de drones sur la carte et le canvas."
 
 	rsCanvas shapes do: [ :s |  
-		(s model isKindOf: Drone)| (s model isKindOf: ClusterMission ) ifTrue: [ rsCanvas removeShape: s ] ].
+		(s model isKindOf: Drone)| (s model isKindOf: DroneCluster ) ifTrue: [ rsCanvas removeShape: s ] ].
  
 	 
 ]
@@ -715,15 +715,17 @@ DroneMapWithOWSView >> updateFleetFilter: choice [
 
 { #category : 'visiting' }
 DroneMapWithOWSView >> visitCluster: obj [
-              | dronesShape |
-obj drones do:[:a| self visitDrone:a].
+              | dronesShape poly |
+obj drones do:[:a| self visitDrone:a].self halt. 
 dronesShape := obj updateCoverageGeo collect:[:a |(self visitDrone:a) color:Color purple; yourself].	
  
- 
-	rsCanvas add:  ((RSPolygon new points: (dronesShape collect:[:shape| shape position])
-		 ) color: Color pink;   model: obj; yourself).
-		.
-
+ poly := (RSPolygon new points: (dronesShape collect:[:shape| shape position])
+		 ) color: (Color pink alpha:0.3; yourself);   model: obj; yourself.
+		
+"rsCanvas add:   poly."
+"poly translateBy:  bitMap encompassingRectangle origin negated."
+"
+poly moveTo: bitmap "
 "coverage as RSPolygon"
 ]
 

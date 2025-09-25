@@ -286,6 +286,10 @@ DroneCluster >> updateCoverageGeo [
     coverage := ConvexHullCalculator new
         convexHullGeoVerbose: self allOperational.
 
+
+"ConvexHullCalculator new
+        convexHullVerbose: (self allOperational collect:[:d|Array with:  d longitude with: d latitude])."
+
     ^ coverage
 
 ]

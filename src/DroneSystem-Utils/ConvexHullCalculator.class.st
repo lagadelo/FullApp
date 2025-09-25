@@ -10,8 +10,8 @@ ConvexHullCalculator >> convexHullGeoVerbose: drones [
     
     | sorted lower upper epsilon |
 
-    epsilon := 1e-10.
-    sorted := drones sort: [:a :b | (a latitude) < (b latitude)].
+    epsilon := 0.5.
+    sorted := drones sort: [:a :b | (a longitude) < (b longitude)].
 
     lower := OrderedCollection new.
     sorted do: [:p | 
@@ -22,15 +22,15 @@ ConvexHullCalculator >> convexHullGeoVerbose: drones [
     ].
 
     upper := OrderedCollection new.
-    sorted reversed do: [:p | 
+     sorted reversed do: [:p | 
         [ upper size >= 2 and: [
-            (self turnGeo: (upper at: upper size - 1) to: (upper last) to: p) < epsilon negated
+            (self turnGeo: (upper at: upper size - 1) to: (upper last) to: p)  < epsilon negated 
         ]] whileTrue: [ upper removeLast ].
         upper add: p.
     ].
 
     "Concatène lower et upper sans répéter les extrémités"
-    lower removeLast.
+   lower removeLast.
     upper removeLast.
 
     ^ (lower , upper) asArray
@@ -87,6 +87,6 @@ Résultat	Signification
 < 0	c est à droite de la droite a→b
 = 0	a, b et c sont alignés (colinéaires)"
  
-    ^ ((b latitude) - (a latitude)) * ((c longitude) - (a longitude)) 
-      - ((b longitude) - (a longitude)) * ((c latitude) - (a latitude))
+    ^ ((b longitude) - (a longitude)) * ((c latitude) - (a latitude)) 
+      - ((b latitude) - (a latitude)) * ((c longitude) - (a longitude))
 ]
