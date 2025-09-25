@@ -75,7 +75,7 @@ DroneMapWithOWSView class >> pixelForLat: lat lon: lon inBbox: aBbox width: widt
     xPx := (xNorm * widthPx) rounded.
     yPx := (yNorm * heightPx) rounded.
 
-    ^ xPx @ yPx
+    ^ xPx @ (yPx)
 
 ]
 
@@ -141,17 +141,19 @@ tmp initialize.
 { #category : 'rendered elements' }
 DroneMapWithOWSView >> bitMap [
 
-	| wms operations getmap layers map  |
-	  bitMap ifNil:[self computeBoundingBox.
+ 
+
+	  | wms operations getmap layers map |
+bitMap ifNil:[self computeBoundingBox.
 	wms := OWSServiceWMS new.
 	wms url: 'https://data.geopf.fr/wms-r'.
-
 	operations := wms operations.
 	getmap := operations detect: [ :request | request name = 'GetMap' ].
+	getmap formats.
 	layers := wms layers.
 
 	map := wms
-		       map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
+		       map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' "'HRL_ForestType_2018:FTY_MosaicSymbology'"}
 		       bbox: self boundingBox
 		       size: self imageSize
 		       epsg: '3857'
@@ -201,12 +203,23 @@ DroneMapWithOWSView >> clusterList: anObject [
 
 { #category : 'rendering' }
 DroneMapWithOWSView >> computeBoundingBox [
-  | borderA borderB convertedBorderA convertedBorderB |
- borderA :=simulation  allFleets first allDrones first  .
- borderB := simulation  allFleets first allDrones last  .
- convertedBorderA := self class lonLatToWebMercator:borderA longitude @ borderA latitude .
- convertedBorderB := self class lonLatToWebMercator:borderB longitude @ borderB latitude .
- boundingBox := convertedBorderA    corner: convertedBorderB.
+  | borderA borderB convertedBorderA convertedBorderB latitudeMax latitudeMin longitudeMax longitudeMin tmp |
+" borderA :=simulation  allFleets first allDrones first  .
+ borderB := simulation  allFleets first allDrones last  ."
+tmp := simulation battleZone.
+latitudeMax := tmp first latitude.
+latitudeMin := tmp first latitude.
+longitudeMax := tmp first longitude.
+longitudeMin := tmp first longitude.
+tmp do:[:a|
+	latitudeMax := latitudeMax max: a latitude.
+	latitudeMin := latitudeMin min: a latitude.
+	longitudeMax := longitudeMax max: a longitude.
+	longitudeMin := longitudeMin min: a longitude.].
+	
+ convertedBorderA := self class lonLatToWebMercator:longitudeMin -2 @ (latitudeMax+2) .
+ convertedBorderB := self class lonLatToWebMercator:longitudeMax +2 @ (latitudeMin -2) .
+boundingBox := (convertedBorderA   corner: convertedBorderB) expandBy: 2.
 ^ boundingBox
 ]
 
@@ -453,14 +466,15 @@ DroneMapWithOWSView >> infoText: anObject [
 { #category : 'initialization' }
 DroneMapWithOWSView >> initializePresenters [ 
 
-clusterList := (SpListPresenter new items: (self simulation allFleets first clusters add:nil;yourself); headerTitle:'Clusters'; yourself).
+mapCanvas := self newRoassal canvas: self buildCanvas; yourself.
+clusterList := (SpListPresenter new items: (self simulation allFleets first clusters copy add:nil;yourself); headerTitle:'Clusters'; yourself).
 clusterList display:[:c| c ifNil:[''] ifNotNil:   [c clusterId printString]].
  
 
-clusterList whenSelectionChangedDo:[:selection| selection inspect. clusterList selection inspect. dronesList items:(clusterList selectedItem  ifNil: [ OrderedCollection new ] ifNotNil:[clusterList selectedItem drones ] ). self renderDrones. mapCanvas canvas invalidate].
+clusterList whenSelectionChangedDo:[    dronesList items:(clusterList selectedItem  ifNil: [ OrderedCollection new ] ifNotNil:[clusterList selectedItem drones ] ). self halt. "self renderDrones" self refresh. self visitCluster: clusterList selectedItem . mapCanvas canvas invalidate].
 dronesList := (SpListPresenter new headerTitle:'Drones'; yourself).
 dronesList display:[:d| d uniqueId printString].
-mapCanvas := self newRoassal canvas: self buildCanvas; yourself.
+ 
  
 ]
 
@@ -527,6 +541,16 @@ DroneMapWithOWSView >> owsMap: anObject [
 ]
 
 { #category : 'rendering' }
+DroneMapWithOWSView >> refresh [
+	"Affiche une collection de drones sur la carte et le canvas."
+
+	rsCanvas shapes do: [ :s |  
+		(s model isKindOf: Drone)| (s model isKindOf: ClusterMission ) ifTrue: [ rsCanvas removeShape: s ] ].
+ 
+	 
+]
+
+{ #category : 'rendering' }
 DroneMapWithOWSView >> renderDrones [
     "Change le filtre d’affichage des drones selon la flotte choisie."
     self fleetSelector = 'All Fleets' ifTrue: [
@@ -542,8 +566,8 @@ DroneMapWithOWSView >> renderDrones [
 DroneMapWithOWSView >> renderDronesWith: droneCollection [
 	"Affiche une collection de drones sur la carte et le canvas."
 
-	rsCanvas shapes do: [ :s | "(s isKindOf: RSCircle)"
-		(s model isKindOf: Drone) ifTrue: [ rsCanvas removeShape: s ] ].
+	rsCanvas shapes do: [ :s |  
+		(s model isKindOf: Drone)| (s model isKindOf: ClusterMission ) ifTrue: [ rsCanvas removeShape: s ] ].
 	droneCollection do: [ :d |
 		| color dot |
 		color := d isHostile
@@ -562,7 +586,7 @@ DroneMapWithOWSView >> renderDronesWith: droneCollection [
 				 lon: d longitude
 				 inBbox: self boundingBox
 				 width: imageSize x
-				 height: imageSize y).
+				 height: imageSize y) + bitMap encompassingRectangle origin .
 
 		"	dot
 				when: RSMouseClick
@@ -606,7 +630,7 @@ DroneMapWithOWSView >> setUpCanvas [
 
 	self rsCanvas ifNil: [
 			rsCanvas := RSCanvas new.
-			rsCanvas extent: self bitMap extent + (500@400).
+			rsCanvas extent: self bitMap extent .
 			rsCanvas clear.
 			rsCanvas @ RSCanvasController.
 		 
@@ -687,6 +711,74 @@ DroneMapWithOWSView >> updateFleetFilter: choice [
     choice = 'Hostiles' ifTrue: [
         self renderDronesWith: simulation allHostileDrones ].
 
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitCluster: obj [
+              | dronesShape |
+obj drones do:[:a| self visitDrone:a].
+dronesShape := obj updateCoverageGeo collect:[:a |(self visitDrone:a) color:Color purple; yourself].	
+ 
+ 
+	rsCanvas add:  ((RSPolygon new points: (dronesShape collect:[:shape| shape position])
+		 ) color: Color pink;   model: obj; yourself).
+		.
+
+"coverage as RSPolygon"
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitDrone: obj [
+
+	| dot |
+	dot := RSCircle new
+		       size: 20@20;
+		       color: (obj isHostile ifTrue: [ Color  red]  ifFalse: [Color  green]);
+		       model: obj;
+		       yourself.
+
+	dot @ RSDraggable.
+	rsCanvas add: dot.
+	dot translateTo: (self class
+			 pixelForLat: obj latitude
+			 lon: obj longitude
+			 inBbox: self boundingBox
+			 width: imageSize x
+			 height: imageSize y) + bitMap encompassingRectangle origin.
+
+	^ dot
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitStrikeMission: obj [
+
+ 
+
+	| dot |
+	dot := RSBox new
+		       size: 40;
+		       color:  Color red;
+		       model: obj target;
+		       yourself.
+
+	dot @ RSDraggable.
+	rsCanvas add: dot.
+	dot translateTo: (self class
+			 pixelForLat: obj target latitude
+			 lon: obj target longitude
+			 inBbox: self boundingBox
+			 width: imageSize x
+			 height: imageSize y) + bitMap encompassingRectangle origin.
+
+	^ dot
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitZoneBasedMission: obj [
+              | waypoints poly |
+                waypoints := obj waypoints.
+                poly := (RSPolygon new points: waypoints) color: Color lightBlue.
+                ^ poly  
 ]
 
 { #category : 'accessing' }

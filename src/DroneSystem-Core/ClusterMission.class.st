@@ -2,8 +2,6 @@ Class {
 	#name : 'ClusterMission',
 	#superclass : 'Object',
 	#instVars : [
-		'missionType',
-		'zoneParameters',
 		'assignedCluster',
 		'status'
 	],
@@ -66,6 +64,14 @@ ClusterMission class >> mixedOn: polygon target: target ratio: ratio forCluster:
         assignToCluster: aCluster.
 ]
 
+{ #category : 'acccessing' }
+ClusterMission class >> pointsExtraction [
+
+
+"itemize the fields containing meaning points"
+^#(target polygon)
+]
+
 { #category : 'as yet unclassified' }
 ClusterMission class >> securisationOn: polygon forCluster: aCluster [
     "Crée une mission de sécurisation statique sur un polygone et l’assigne immédiatement au cluster."
@@ -92,6 +98,12 @@ ClusterMission class >> surveillanceOn: polygon forCluster: aCluster [
         zoneParameters: (Dictionary newFrom: { #polygon -> polygon }))
         assignToCluster: aCluster.
 
+]
+
+{ #category : 'private - utility' }
+ClusterMission >> assignBehaviors [
+
+^self assignBehaviors:  self assignedCluster drones 
 ]
 
 { #category : 'as yet unclassified' }
@@ -164,14 +176,12 @@ ClusterMission >> assignSurveillanceBehaviorsTo: aCluster [
 
 { #category : 'initialization' }
 ClusterMission >> assignToCluster: aCluster [
-    assignedCluster := aCluster.
-    aCluster currentMission: self.
-    (missionType = #surveillance) ifTrue: [ self assignSurveillanceBehaviorsTo: aCluster ].
-    (missionType = #securisation) ifTrue: [ self assignSecuringBehaviorsTo: aCluster ].
-    (missionType = #strike) ifTrue: [ self assignStrikeBehaviorsTo: aCluster ].
-    (missionType = #mixed) ifTrue: [ self assignMixedBehaviorsTo: aCluster ].
-    status := #active.
-    ^ self.
+
+	self assignedCluster: aCluster.
+	self assignedCluster currentMission: self.
+
+	status := #active.
+	^ self
 ]
 
 { #category : 'accessing' }
@@ -184,26 +194,6 @@ ClusterMission >> assignedCluster [
 ClusterMission >> assignedCluster: anObject [
 
 	assignedCluster := anObject
-]
-
-{ #category : 'as yet unclassified' }
-ClusterMission >> computeSecuringPositionsFor: aCluster [
- "   | polygon n positions |
-    polygon := zoneParameters at: #polygon.
-    n := aCluster drones size.
-    positions := (1 to: n) collect: [:i | polygon at: i ].
-    ^ positions."
-
-   ^self generateWaypointsForDrones: aCluster drones size existingWaypoints: ( zoneParameters at: #polygon).
-
-]
-
-{ #category : 'as yet unclassified' }
-ClusterMission >> computeSurveillanceWaypointsFor: aCluster [
-  
-   ^self generateWaypointsForDrones: aCluster drones size existingWaypoints: ( zoneParameters at: #polygon).
-  
-    
 ]
 
 { #category : 'copying' }
@@ -219,7 +209,7 @@ copy status: self status.
 
 { #category : 'private - utility' }
 ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoints [ 
-    | nWaypoints segments neededWaypoints result newPoint fraction i j |
+    | nWaypoints segments neededWaypoints result newPoint fraction   |
 
     nWaypoints := waypoints size.
 
@@ -243,7 +233,7 @@ ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoin
     ].
 
     "Générer les nouveaux waypoints"
-    1 to: neededWaypoints do: [:k ||start end|
+    1 to: neededWaypoints do: [:k ||start end i|
         i := ((k - 1) \\ segments size) + 1.
         start := (segments at: i) at:1.
         end := (segments at: i) at:2.
@@ -262,26 +252,45 @@ ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoin
 ]
 
 { #category : 'initialization' }
-ClusterMission >> initializeWithType: aType zoneParameters: params [
-    "Initialise une mission avec un type (#surveillance, #securisation, #strike…)
-     et des paramètres de zone (polygon, target, etc.)."
-    missionType := aType.
-    zoneParameters := params ifNil: [ Dictionary new ].
-    assignedCluster := nil.
+ClusterMission >> initialize [ 
     status := #pending.
-    ^ self.
+ 
+]
+
+{ #category : 'characterization' }
+ClusterMission >> isMixedMission [
+
+^false
+]
+
+{ #category : 'characterization' }
+ClusterMission >> isSecurizationMission [
+
+^false
+]
+
+{ #category : 'characterization' }
+ClusterMission >> isStrikeMission [
+
+^false
+]
+
+{ #category : 'characterization' }
+ClusterMission >> isSurveillanceMission [
+
+^false
+]
+
+{ #category : 'characterization' }
+ClusterMission >> isZoneBasedMission [
+
+^false
 ]
 
 { #category : 'accessing' }
 ClusterMission >> missionType [
 
-	^ missionType
-]
-
-{ #category : 'accessing' }
-ClusterMission >> missionType: anObject [
-
-	missionType := anObject
+	^ self className
 ]
 
 { #category : 'accessing' }
@@ -294,16 +303,4 @@ ClusterMission >> status [
 ClusterMission >> status: anObject [
 
 	status := anObject
-]
-
-{ #category : 'accessing' }
-ClusterMission >> zoneParameters [
-
-	^ zoneParameters
-]
-
-{ #category : 'accessing' }
-ClusterMission >> zoneParameters: anObject [
-
-	zoneParameters := anObject
 ]

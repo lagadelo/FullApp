@@ -17,7 +17,9 @@ Class {
 { #category : 'accessing' }
 DroneCluster class >> example:n [
 
-^self with: ((1 to: n) collect:[:i| Drone example])
+| tmp |
+tmp := self new clusterId: #test; yourself. ((1 to: n) do:  [:i| tmp addDrone: Drone example]).
+^tmp 
 
 ]
 
@@ -25,6 +27,17 @@ DroneCluster class >> example:n [
 DroneCluster class >> with: drones [
 
 ^self new  initializeWithDrones: drones  clusterId: nil;yourself
+]
+
+{ #category : 'accessing' }
+DroneCluster >> addDrone: aDrone [
+
+	self drones add: aDrone
+]
+
+{ #category : 'initialization' }
+DroneCluster >> allOperational [
+    ^ drones select: [:d | d isDestroyed not].
 ]
 
 { #category : 'missions' }
@@ -142,7 +155,7 @@ DroneCluster >> describe [
 { #category : 'accessing' }
 DroneCluster >> drones [
 
-	^ drones
+	drones ifNil:[drones := OrderedCollection new]. ^ drones
 ]
 
 { #category : 'accessing' }
@@ -249,6 +262,29 @@ DroneCluster >> updateCoverage [
     "3. Calculer l’enveloppe convexe (zone couverte)"
     coverage := ConvexHullCalculator new
         convexHullVerbose: activePositions.
+
+    ^ coverage
+
+]
+
+{ #category : 'updating status' }
+DroneCluster >> updateCoverageGeo [
+    "Met à jour la couverture géographique du cluster à partir des drones actifs."
+
+    | activePositions |
+
+    "1. Extraire les positions des drones valides"
+    "activePositions := (drones select: [:d | d isDestroyed not])
+        collect: [:d |  d  geoPoint  ]."
+
+    "2. Si aucun drone actif → pas de couverture"
+   " activePositions" self allOperational  isEmpty ifTrue: [
+        coverage := #().
+        ^ coverage ].
+
+    "3. Calculer l’enveloppe convexe (zone couverte)"
+    coverage := ConvexHullCalculator new
+        convexHullGeoVerbose: self allOperational.
 
     ^ coverage
 

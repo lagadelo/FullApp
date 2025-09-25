@@ -17,7 +17,7 @@ simulator := ScenarioSimulator new.
 polygon := {
     #(48.85 2.35 200).
     #(48.87 2.36 200).
-    #(48.86 2.34 200) }.
+    #(48.86 2.34 200) } collect:[:a|GeoPoint with: a]..
 
 target := #(48.90 2.31 50).
 ratios := #(0.2 0.5 0.8).
@@ -29,36 +29,37 @@ Transcript show: outcome; cr.
 
 { #category : 'examples' }
 ScenarioSimulator class >> exampleSurveillance [
-    | sim drones cluster mission polygon     fleet |
+      | sim     mission polygon     fleet drones cluster1 cluster2 |
 
     sim := SimulationState new.
 
-  "  drones := {
-        (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100).   ""Paris""
-        (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120).   ""Bordeaux""
-        (Drone new moveToLatitude: 45.7640 longitude: 4.8357 altitude: 100). ""Lyon""
-    }.
+    drones := {
+        (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100) beHostile; yourself.   "Paris"
+        (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120)beHostile; yourself.   "Bordeaux"
+        (Drone new moveToLatitude: 45.7640 longitude: 4.8357 altitude: 100)beHostile; yourself. "Lyon"
+    } asOrderedCollection.
 
-    drones do: [:d | sim addDrone: d ].
-
-    cluster := DroneCluster new initializeWithDrones:  drones clusterId: 1."
-cluster := DroneCluster example:40.
+  
+    cluster1 := DroneCluster new initializeWithDrones:  drones clusterId: 1.
+cluster2 := DroneCluster example:20.
+ 
 
     fleet := DroneFleet new.
-fleet addCluster: cluster.
+fleet addCluster: cluster1.
+fleet addCluster: cluster2.
 sim addFleet: fleet.
-
+ 
     polygon := {
         { 50.6292 . 3.0573  . 100 }. "Lille"
         {48.3904 . -4.4947 . 100 }. "Brest"
         { 43.2965 . 5.3698 . 100 }. "Marseille"
         {51.5074 .-0.1276   . 100 } "Londres"
-    }.
+    } collect:[:a|GeoPoint with: a].
 
-    mission := ClusterMission securisationOn: polygon forCluster: cluster.
+    mission := (SecurizationMission new  polygon: polygon) assignToCluster: cluster1.
     "Crée une mission de surveillance sur un polygone et l’assigne immédiatement au cluster."
     
-    mission assignToCluster: cluster.
+   
 ^sim 
 "    view := DroneMapWithOWSView new
         initializeWithSimulation: sim

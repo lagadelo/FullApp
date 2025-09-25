@@ -2,15 +2,10 @@ Class {
 	#name : 'Drone',
 	#superclass : 'Object',
 	#instVars : [
-		'latitude',
-		'longitude',
-		'altitude',
+		'geoPoint',
 		'fuel',
 		'consumables',
 		'speed',
-		'baseLatitude',
-		'baseLongitude',
-		'baseAltitude',
 		'perceptionRange',
 		'behavior',
 		'uniqueId',
@@ -25,24 +20,30 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'as yet unclassified' }
+Drone class >> LandingBase [
+
+^GeoPoint with: {44.1483  . 4.8597 . 0} 
+]
+
 { #category : 'examples' }
 Drone class >> example [
 ^self new initializeWithId: (Random new next *10000000) ceiling
-            latitude: (Random new next *1)+40
-            longitude: (Random new next *1)-    2
-        altitude: (Random new next *10)+2100
+            latitude: (Random new next *4)+41
+            longitude: (Random new next *8)-    4
+        altitude: (Random new next *100) 
 ]
 
 { #category : 'accessing' }
 Drone >> altitude [
 
-	^ altitude
+	^ self geoPoint altitude
 ]
 
 { #category : 'accessing' }
 Drone >> altitude: anObject [
 
-	altitude := anObject
+	self geoPoint altitude: anObject
 ]
 
 { #category : 'damages' }
@@ -69,42 +70,6 @@ Drone >> attackDrone: targetDrone withWeapon: weaponName quantity: qty probabili
         ]
         ifFalse: [ ^'Pas assez de munitions disponibles' ].
 
-]
-
-{ #category : 'accessing' }
-Drone >> baseAltitude [
-
-	^ baseAltitude
-]
-
-{ #category : 'accessing' }
-Drone >> baseAltitude: anObject [
-
-	baseAltitude := anObject
-]
-
-{ #category : 'accessing' }
-Drone >> baseLatitude [
-
-	^ baseLatitude
-]
-
-{ #category : 'accessing' }
-Drone >> baseLatitude: anObject [
-
-	baseLatitude := anObject
-]
-
-{ #category : 'accessing' }
-Drone >> baseLongitude [
-
-	^ baseLongitude
-]
-
-{ #category : 'accessing' }
-Drone >> baseLongitude: anObject [
-
-	baseLongitude := anObject
 ]
 
 { #category : 'initialization' }
@@ -235,6 +200,18 @@ Drone >> fuel: anObject [
 ]
 
 { #category : 'accessing' }
+Drone >> geoPoint [ 
+
+ ^geoPoint 
+]
+
+{ #category : 'accessing' }
+Drone >> geoPoint: a [
+
+geoPoint := a
+]
+
+{ #category : 'accessing' }
 Drone >> health [
 
 	^ health
@@ -258,9 +235,7 @@ Drone >> helpRequestMessage [
 
 { #category : 'initialization' }
 Drone >> initialize [
-    latitude := 0.
-    longitude := 0.
-    altitude := 0.
+ 	geoPoint := self class LandingBase.
     fuel := 100.
     consumables := Dictionary new.
     consumables at:#munitions put:1000.
@@ -283,9 +258,9 @@ Drone >> initializeWithId: id
             altitude: anAltitude [ 
 
   
-latitude := aLatitude .
-longitude := aLongiture .
-altitude := anAltitude .
+self latitude: aLatitude .
+self longitude: aLongiture .
+self altitude: anAltitude .
 uniqueId :=  id.
 ]
 
@@ -320,42 +295,62 @@ Drone >> isInDanger [
 { #category : 'accessing' }
 Drone >> latitude [
 
-	^ latitude
+	^ self geoPoint latitude
 ]
 
 { #category : 'accessing' }
 Drone >> latitude: anObject [
 
-	latitude := anObject
+	self geoPoint latitude: anObject
 ]
 
 { #category : 'accessing' }
 Drone >> longitude [
 
-	^ longitude
+	^ self geoPoint longitude
 ]
 
 { #category : 'accessing' }
 Drone >> longitude: anObject [
 
-	longitude := anObject
+	self geoPoint longitude: anObject
 ]
 
 { #category : 'moving' }
-Drone >> moveToLatitude: lat longitude: lon altitude: alt [
+Drone >> moveTo:aGeoPoint [
     "Déplace le drone et consomme de l’énergie proportionnellement au trajet."
     | distance baseCost altitudeFactor totalCost |
-    distance := self distanceToLatitude: lat longitude: lon altitude: alt.
+    distance := self position distanceTo: aGeoPoint.
     baseCost := distance * 0.005.          "0.5% par km"
-    altitudeFactor := (alt / 1000.0) * 0.2.  "pénalité altitude"
+    altitudeFactor := (aGeoPoint altitude - self altitude / 1000.0) * 0.2.  "pénalité altitude"
     totalCost := baseCost + altitudeFactor.
 
     self consumeFuel: totalCost.
     "Mettre à jour la position uniquement si le drone est encore actif"
     self isDestroyed ifFalse: [
-        latitude := lat.
-        longitude := lon.
-        altitude := alt]
+        self position: aGeoPoint]
+]
+
+{ #category : 'moving' }
+Drone >> moveToLatitude: lat longitude: lon altitude: alt [
+
+
+"legacy - should refactor"
+
+^self moveTo: (GeoPoint with: (Array with: lat with: lon with: alt))
+]
+
+{ #category : 'moving' }
+Drone >> moveTowardGeoPoint: aGeoPoint [
+    "Se rapproche d'une cible (pas fixe en degrés/altitude)"
+    | step dLat dLon dAlt |
+    step := 0.01. "environ 1 km en latitude/longitude"
+aGeoPoint - self position.
+
+"
+    latitude := latitude + (dLat sign * (step min: dLat abs)).
+    longitude := longitude + (dLon sign * (step min: dLon abs)).
+    altitude := altitude + (dAlt sign * (5 min: dAlt abs)). ""5 m par pas"
 ]
 
 { #category : 'moving' }
@@ -394,6 +389,19 @@ Drone >> perceptionRange [
 Drone >> perceptionRange: anObject [
 
 	perceptionRange := anObject
+]
+
+{ #category : 'accessing' }
+Drone >> position [
+
+^self geoPoint 
+]
+
+{ #category : 'accessing' }
+Drone >> position:a [ 
+"facility - should refactor" 
+^self geoPoint: a 
+
 ]
 
 { #category : 'action' }

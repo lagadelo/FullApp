@@ -4,14 +4,12 @@ Class {
 	#instVars : [
 		'time',
 		'allFleets',
+		'missions',
 		'eventLog',
-		'drones',
-		'clusters',
 		'missionHistory',
 		'reactionLog',
 		'engagementMode',
 		'steps',
-		'hostileFleets',
 		'verificationFunctions',
 		'observers'
 	],
@@ -20,27 +18,37 @@ Class {
 }
 
 { #category : 'initialization' }
-SimulationState >> addDrone: d [
-    drones add: d.
-    ^ self.
-]
-
-{ #category : 'initialization' }
 SimulationState >> addFleet: aFleet [
     allFleets add: aFleet.
     ^ self.
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
+SimulationState >> addMission: aMission [ 
+
+self missions add: aMission
+]
+
+{ #category : 'api - selection' }
+SimulationState >> allAlliedClusters [
+    ^ self allClusters reject:[:c | c isHostile] 
+]
+
+{ #category : 'api - selection' }
 SimulationState >> allAlliedDrones [
     ^ (self allFleets
         selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  
 ]
 
-{ #category : 'initialization' }
-SimulationState >> allDrones [
+{ #category : 'api - selection' }
+SimulationState >> allClusters [
     ^ (self allFleets
-        selectMany: [:f | f clusters ]) collectMany:[:f| f drones  ]"protocol: #initialization"
+        selectMany: [:f | f clusters ])  
+]
+
+{ #category : 'api - selection' }
+SimulationState >> allDrones [
+    ^ self allClusters collectMany:[:f| f drones  ]"protocol: #initialization"
 
 ]
 
@@ -56,13 +64,24 @@ SimulationState >> allFleets: anObject [
 	allFleets := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'api - selection' }
+SimulationState >> allHostileClusters [
+    ^ self allClusters select:[:c | c isHostile] 
+]
+
+{ #category : 'api - selection' }
 SimulationState >> allHostileDrones [
     ^ (self allFleets
         selectMany: [:f | f hostileClusters ]) collectMany:[:f| f drones  ]
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
+SimulationState >> allMissions [ 
+"should refactor: select:[:a status ...]"
+^(self allClusters collect:[:c| c currentMission]) reject:  [:a| a isNil]
+]
+
+{ #category : 'api - selection' }
 SimulationState >> areInProximity: clusterA and: clusterB [
     "Simple threshold in km, refine later with Haversine."
     | distance |
@@ -70,26 +89,24 @@ SimulationState >> areInProximity: clusterA and: clusterB [
     ^ distance < 50.0
 ]
 
-{ #category : 'accessing' }
-SimulationState >> clusters [
+{ #category : 'resolution' }
+SimulationState >> battleZone [
 
-	^ clusters
+| tmp |
+tmp := OrderedCollection new.
+tmp addAll: (self allDrones collect:[:d| d position]).
+tmp addAll:(self allMissions collectMany:[:m| m battleZone ]).
+ ^ tmp 
 ]
 
-{ #category : 'accessing' }
-SimulationState >> clusters: anObject [
-
-	clusters := anObject
-]
-
-{ #category : 'accessing' }
+{ #category : 'api - selection' }
 SimulationState >> countAlliedAlive [
     "Retourne le nombre de drones alliés encore actifs (non détruits)."
     ^ (self allAlliedDrones select: [:d | d isDestroyed not]) size
 
 ]
 
-{ #category : 'accessing' }
+{ #category : 'api - selection' }
 SimulationState >> countHostileAlive [
     "Retourne le nombre de drones hostiles encore actifs (non détruits)."
     ^ (self allHostileDrones select: [:d | d isDestroyed not]) size
@@ -121,18 +138,6 @@ SimulationState >> deepCopy [
 ]
 
 { #category : 'accessing' }
-SimulationState >> drones [
-
-	^ drones
-]
-
-{ #category : 'accessing' }
-SimulationState >> drones: anObject [
-
-	drones := anObject
-]
-
-{ #category : 'accessing' }
 SimulationState >> engagementMode [
 
 	^ engagementMode
@@ -161,24 +166,11 @@ SimulationState >> hasChanged [
 self observers do:[:a| a update:self] 
 ]
 
-{ #category : 'accessing' }
-SimulationState >> hostileFleets [
-
-	^ hostileFleets
-]
-
-{ #category : 'accessing' }
-SimulationState >> hostileFleets: anObject [
-
-	hostileFleets := anObject
-]
-
 { #category : 'initialization' }
 SimulationState >> initialize [
-    drones := OrderedCollection new.
-    clusters := OrderedCollection new.
+ 
     allFleets := OrderedCollection new.
-    hostileFleets := OrderedCollection new.
+   
     missionHistory := OrderedCollection new.
     eventLog := OrderedCollection new.
     reactionLog := OrderedCollection new.
@@ -200,6 +192,13 @@ SimulationState >> missionHistory [
 SimulationState >> missionHistory: anObject [
 
 	missionHistory := anObject
+]
+
+{ #category : 'accessing' }
+SimulationState >> missions [ 
+
+missions ifNil:[missions := OrderedCollection new].
+^missions
 ]
 
 { #category : 'accessing' }
@@ -247,7 +246,7 @@ SimulationState >> removeFleet: aFleet [
 
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
 SimulationState >> resolveEngagements [
     engagementMode = #droneLevel
         ifTrue: [ ^ self resolveEngagementsDroneLevel ].
@@ -256,7 +255,7 @@ SimulationState >> resolveEngagements [
     ^ self
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
 SimulationState >> resolveEngagementsClusterLevel [
     "Macro engagements between clusters"
     allFleets do: [:fleet |
@@ -286,7 +285,7 @@ SimulationState >> resolveEngagementsClusterLevel [
     ^ self
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
 SimulationState >> resolveEngagementsDroneLevel [
 
 "Tactical view"
@@ -355,7 +354,7 @@ SimulationState >> setAsCurrent [
 { #category : 'initialization' }
 SimulationState >> step [
     "Behaviors for standalone drones"
-   |snapshot|  drones do: [:d |
+   |snapshot|  self allDrones do: [:d |
         d behavior ifNotNil: [
             d behavior executeFor: d atTime: time
         ]
@@ -418,12 +417,12 @@ SimulationState >> time: anObject [
 	time := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
 SimulationState >> useClusterLevelEngagements [
     engagementMode := #clusterLevel.
 ]
 
-{ #category : 'initialization' }
+{ #category : 'resolution' }
 SimulationState >> useDroneLevelEngagements [
     engagementMode := #droneLevel.
 ]
