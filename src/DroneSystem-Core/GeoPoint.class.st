@@ -21,6 +21,12 @@ GeoPoint class >> with: anArray [
 	^ tmp
 ]
 
+{ #category : 'visiting' }
+GeoPoint >> accept: aVisitor [
+
+^aVisitor visitGeoPoint: self 
+]
+
 { #category : 'accessing' }
 GeoPoint >> altitude [
 
@@ -67,4 +73,9 @@ GeoPoint >> longitude [
 GeoPoint >> longitude: anObject [
 
 	longitude := anObject
+]
+
+{ #category : 'printing' }
+GeoPoint >> printOn: aStream [
+aStream nextPut:$(;nextPutAll: self longitude printString;nextPut:$,;nextPutAll: self latitude printString; nextPut:$,; nextPutAll: self altitude printString;nextPut:$)
 ]

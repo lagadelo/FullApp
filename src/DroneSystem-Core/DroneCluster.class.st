@@ -29,6 +29,12 @@ DroneCluster class >> with: drones [
 ^self new  initializeWithDrones: drones  clusterId: nil;yourself
 ]
 
+{ #category : 'visiting' }
+DroneCluster >> accept: aVisitor [
+
+^aVisitor visitDroneCluster: self 
+]
+
 { #category : 'accessing' }
 DroneCluster >> addDrone: aDrone [
 
@@ -278,13 +284,13 @@ DroneCluster >> updateCoverageGeo [
         collect: [:d |  d  geoPoint  ]."
 
     "2. Si aucun drone actif → pas de couverture"
-   " activePositions" self allOperational  isEmpty ifTrue: [
+   " activePositions" self "allOperational" drones  isEmpty ifTrue: [
         coverage := #().
         ^ coverage ].
 
     "3. Calculer l’enveloppe convexe (zone couverte)"
     coverage := ConvexHullCalculator new
-        convexHullGeoVerbose: self allOperational.
+        convexHullGeoVerbose: self "allOperational" drones.
 
 
 "ConvexHullCalculator new

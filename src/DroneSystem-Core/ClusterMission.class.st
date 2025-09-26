@@ -15,6 +15,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'visiting' }
+ClusterMission class >> accept: aVisitor [
+
+^aVisitor visitClusterMission: self 
+]
+
 { #category : 'examples' }
 ClusterMission class >> exampleSecurisation [
 | cluster |
@@ -98,6 +104,12 @@ ClusterMission class >> surveillanceOn: polygon forCluster: aCluster [
         zoneParameters: (Dictionary newFrom: { #polygon -> polygon }))
         assignToCluster: aCluster.
 
+]
+
+{ #category : 'visiting' }
+ClusterMission >> accept: aVisitor [
+
+^aVisitor visitSurveillanceMission: self 
 ]
 
 { #category : 'private - utility' }

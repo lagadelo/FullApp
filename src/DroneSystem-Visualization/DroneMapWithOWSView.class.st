@@ -545,7 +545,7 @@ DroneMapWithOWSView >> refresh [
 	"Affiche une collection de drones sur la carte et le canvas."
 
 	rsCanvas shapes do: [ :s |  
-		(s model isKindOf: Drone)| (s model isKindOf: DroneCluster ) ifTrue: [ rsCanvas removeShape: s ] ].
+		(s model isKindOf: Drone)| (s model isKindOf: DroneCluster )|(s model isKindOf: ClusterMission ) ifTrue: [ rsCanvas removeShape: s ] ].
  
 	 
 ]
@@ -715,18 +715,18 @@ DroneMapWithOWSView >> updateFleetFilter: choice [
 
 { #category : 'visiting' }
 DroneMapWithOWSView >> visitCluster: obj [
-              | dronesShape poly |
-obj drones do:[:a| self visitDrone:a].self halt. 
-dronesShape := obj updateCoverageGeo collect:[:a |(self visitDrone:a) color:Color purple; yourself].	
+              | dronesShape poly   |
  
+
+
+dronesShape := obj updateCoverageGeo collect:[:a |(self visitDrone:a) color:Color blue].	
+obj drones do:[:a |(self visitDrone:a) ]. 
  poly := (RSPolygon new points: (dronesShape collect:[:shape| shape position])
-		 ) color: (Color pink alpha:0.3; yourself);   model: obj; yourself.
+		 ) color: (Color blue setAlpha:0.5; yourself);   model: obj; yourself.
 		
-"rsCanvas add:   poly."
-"poly translateBy:  bitMap encompassingRectangle origin negated."
-"
-poly moveTo: bitmap "
-"coverage as RSPolygon"
+rsCanvas add:   poly.
+obj updateCoverageGeo do:[:a |(self visitDrone:a) color:Color black;   @ RSHighlightable red.].
+obj currentMission ifNotNil:[  obj currentMission accept: self]
 ]
 
 { #category : 'visiting' }
@@ -735,7 +735,7 @@ DroneMapWithOWSView >> visitDrone: obj [
 	| dot |
 	dot := RSCircle new
 		       size: 20@20;
-		       color: (obj isHostile ifTrue: [ Color  red]  ifFalse: [Color  green]);
+		       color: (obj isHostile ifTrue: [ Color  red]  ifFalse: [Color  black]);
 		       model: obj;
 		       yourself.
 
@@ -752,27 +752,80 @@ DroneMapWithOWSView >> visitDrone: obj [
 ]
 
 { #category : 'visiting' }
-DroneMapWithOWSView >> visitStrikeMission: obj [
+DroneMapWithOWSView >> visitSecurizationMission: aValue [
 
- 
-
-	| dot |
+ |pointShapes poly points |
+points := ConvexHullCalculator new  convexHullGeoVerbose: aValue  polygon.
+ pointShapes:= points collect:[:a| |dot| 
 	dot := RSBox new
 		       size: 40;
-		       color:  Color red;
-		       model: obj target;
+		       color:   Color  red;
+		       model: a ;
 		       yourself.
 
 	dot @ RSDraggable.
 	rsCanvas add: dot.
 	dot translateTo: (self class
-			 pixelForLat: obj target latitude
-			 lon: obj target longitude
+			 pixelForLat: a latitude
+			 lon: a longitude
+			 inBbox: self boundingBox
+			 width: imageSize x
+			 height: imageSize y) + bitMap encompassingRectangle origin.].
+
+ poly := (RSPolygon new points: (pointShapes collect:[:shape| shape position])
+		 ) color: (Color red setAlpha:0.5; yourself);   model: aValue; yourself.  
+			rsCanvas add: poly .
+		"
+		self visitSurveillanceMission: aValue "
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitStrikeMission: obj [
+
+ 
+ 
+
+	| dot |
+	dot := RSBox new
+		       size: 30;
+		       color: Color red;
+		       model: obj target;
+		       yourself.
+	dot rotateByDegrees: 45.
+	dot @ RSDraggable.
+	rsCanvas add: dot.
+	dot translateTo: (self class
+			 pixelForLat: obj latitude
+			 lon: obj longitude
 			 inBbox: self boundingBox
 			 width: imageSize x
 			 height: imageSize y) + bitMap encompassingRectangle origin.
 
 	^ dot
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> visitSurveillanceMission: aValue [
+
+ |pointShapes poly points rsEB |
+points := ConvexHullCalculator new  convexHullGeoVerbose: aValue  polygon.
+ pointShapes:= points collect:[:a| |dot| 
+	dot := RSBox new
+		       size: 40;
+		       color:   Color  brown;
+		       model: a ;
+		       yourself.
+
+	dot @ RSDraggable.
+	rsCanvas add: dot.].
+rsEB := RSEdgeBuilder verticalBezier
+	color: Color red translucent;
+	canvas: rsCanvas; width:40;
+	"withVerticalAttachPoint;"
+	noRepetition; 	useAssociations:
+ ((1 to: pointShapes size)  collect:[:i| ((pointShapes at: i) model ) -> ( (pointShapes at: i % pointShapes size + 1) model )]).
+
+	"rsCanvas add: rsEB. "
 ]
 
 { #category : 'visiting' }

@@ -39,7 +39,7 @@ DroneBattleUI >> buildSpiderChartFor: aCluster [
     labels := #('Coverage' 'Energy' 'Speed' 'Communication').
     metrics := {
         aCluster coverage size.          "nombre de points de couverture"
-        aCluster drones sum: [:d | d energy]. "somme énergie"
+        aCluster drones sum: [:d | d d fuel]. "somme énergie"
         (aCluster drones average: [:d | d speed]) ifNil: [0].
         (aCluster capabilities size).    "exemple: nombre de capacités"
     }.
@@ -63,13 +63,13 @@ DroneBattleUI >> buildSpiderChartFor: aCluster [
         "dessiner l’axe"
         radarView add: (RTLine from: center to: (center + (100 * angle cos) @ (100 * angle sin))).
         "dessiner le label"
-        lblShape := RTLabel new text: lbl.
+        lblShape := RSLabel new text: lbl.
         radarView add: lblShape elementOn: nil.
         lblShape translateTo: (center + (120 * angle cos) @ (120 * angle sin)).
     ].
 
     "=== Polygone du radar ==="
-    polygon := RTPolygon new points: points.
+    polygon := RSPolygon new points: points.
     polygon color: (Color blue alpha: 0.3).
     radarView add: polygon.
 

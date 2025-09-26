@@ -10,24 +10,26 @@ ConvexHullCalculator >> convexHullGeoVerbose: drones [
     
     | sorted lower upper epsilon |
 
-    epsilon := 0.5.
-    sorted := drones sort: [:a :b | (a longitude) < (b longitude)].
-
+    epsilon := 0.0.
+    sorted := drones sort: [:a :b | (a longitude) <= (b longitude)].
+ 
     lower := OrderedCollection new.
-    sorted do: [:p | 
+     sorted do: [:p | 
         [ lower size >= 2 and: [
-            (self turnGeo: (lower at: lower size - 1) to: (lower last) to: p) <  epsilon negated
+            (self turnGeo: (lower at: lower size - 1) to: (lower last) to: p) <  epsilon 
         ]] whileTrue: [ lower removeLast ].
         lower add: p.
     ].
-
+ 
+     
     upper := OrderedCollection new.
-     sorted reversed do: [:p | 
-        [ upper size >= 2 and: [
-            (self turnGeo: (upper at: upper size - 1) to: (upper last) to: p)  < epsilon negated 
-        ]] whileTrue: [ upper removeLast ].
-        upper add: p.
+      sorted reversed  do: [:p |
+        [ upper size >= 2 and: [  
+            (self turnGeo: (upper at: upper size - 1) to: (upper last) to: p)  < epsilon  
+        ]] whileTrue: [   upper removeLast    ].
+         upper add: p.
     ].
+ 
 
     "Concatène lower et upper sans répéter les extrémités"
    lower removeLast.
@@ -83,10 +85,12 @@ Résultat	Signification
 ConvexHullCalculator >> turnGeo: a to: b to: c [
   "Le signe du résultat indique l’orientation du triplet (a, b, c) :
 Résultat	Signification
-> 0	c est à gauche de la droite a→b
-< 0	c est à droite de la droite a→b
-= 0	a, b et c sont alignés (colinéaires)"
+> 0	 c est à gauche de la droite a→b
+< 0 	c est à droite de la droite a→b
+= 0 	a, b et c sont alignés (colinéaires)"
  
     ^ ((b longitude) - (a longitude)) * ((c latitude) - (a latitude)) 
-      - ((b latitude) - (a latitude)) * ((c longitude) - (a longitude))
+      - (((b latitude) - (a latitude)) * ((c longitude) - (a longitude)))
+
+ 
 ]

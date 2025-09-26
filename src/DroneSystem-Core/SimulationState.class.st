@@ -17,6 +17,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'visiting' }
+SimulationState >> accept: aVisitor [
+
+^aVisitor visitSimulationState: self 
+]
+
 { #category : 'initialization' }
 SimulationState >> addFleet: aFleet [
     allFleets add: aFleet.

@@ -9,6 +9,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'visiting' }
+ZoneBasedMission >> accept: aVisitor [
+
+^aVisitor visitZoneBasedMission: self 
+]
+
 { #category : 'assignments' }
 ZoneBasedMission >> assignBehaviors [ 
   ^self assignBehaviors: self assignedCluster drones

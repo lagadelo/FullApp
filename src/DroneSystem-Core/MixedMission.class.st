@@ -9,6 +9,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'visiting' }
+MixedMission >> accept: aVisitor [
+
+^aVisitor visitMixedMission: self 
+]
+
 { #category : 'accessing' }
 MixedMission >> addSubMission: aMission weight: aValue [
 

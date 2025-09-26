@@ -19,6 +19,12 @@ DroneFleet class >> fleetWithClusters: clusters id: anId hostile: aBool name: aS
     ^ (self new) initializeWithClusters: clusters id: anId hostile: aBool name: aString.
 ]
 
+{ #category : 'visiting' }
+DroneFleet >> accept: aVisitor [
+
+^aVisitor visitDroneFleet: self 
+]
+
 { #category : 'initialization' }
 DroneFleet >> addCluster: aCluster [
     clusters add: aCluster.

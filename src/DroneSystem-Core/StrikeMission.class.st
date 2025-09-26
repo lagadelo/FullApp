@@ -8,6 +8,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'visiting' }
+StrikeMission >> accept: aVisitor [
+
+^aVisitor visitStrikeMission: self 
+]
+
 { #category : 'assignments' }
 StrikeMission >> assignBehaviors [ 
    

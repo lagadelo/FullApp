@@ -34,6 +34,12 @@ Drone class >> example [
         altitude: (Random new next *100) 
 ]
 
+{ #category : 'visiting' }
+Drone >> accept: aVisitor [
+
+^aVisitor visitDrone: self 
+]
+
 { #category : 'accessing' }
 Drone >> altitude [
 
