@@ -474,7 +474,7 @@ clusterList display:[:c| c ifNil:[''] ifNotNil:   [c clusterId printString]].
 clusterList whenSelectionChangedDo:[    dronesList items:(clusterList selectedItem  ifNil: [ OrderedCollection new ] ifNotNil:[clusterList selectedItem drones ] ). self halt. "self renderDrones" self refresh. self visitCluster: clusterList selectedItem . mapCanvas canvas invalidate].
 dronesList := (SpListPresenter new headerTitle:'Drones'; yourself).
 dronesList display:[:d| d uniqueId printString].
- 
+dronesList whenSelectionChangedDo:[dronesList selectedItem inspect].
  
 ]
 
@@ -545,7 +545,7 @@ DroneMapWithOWSView >> refresh [
 	"Affiche une collection de drones sur la carte et le canvas."
 
 	rsCanvas shapes do: [ :s |  
-		(s model isKindOf: Drone)| (s model isKindOf: DroneCluster )|(s model isKindOf: ClusterMission ) ifTrue: [ rsCanvas removeShape: s ] ].
+		"(s model isKindOf: Drone)| (s model isKindOf: DroneCluster )|(s model isKindOf: ClusterMission ) ifTrue:" s model ifNotNil:[ rsCanvas removeShape: s ] ].
  
 	 
 ]

@@ -78,7 +78,7 @@ Résultat	Signification
 = 0	a, b et c sont alignés (colinéaires)"
  
     ^ ((b at: 1) - (a at: 1)) * ((c at: 2) - (a at: 2)) 
-      - ((b at: 2) - (a at: 2)) * ((c at: 1) - (a at: 1))
+      - (((b at: 2) - (a at: 2)) * ((c at: 1) - (a at: 1)))
 ]
 
 { #category : 'as yet unclassified' }
