@@ -42,8 +42,12 @@ SimulationState >> allAlliedClusters [
 
 { #category : 'api - selection' }
 SimulationState >> allAlliedDrones [
-    ^ (self allFleets
-        selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  
+  "  ^ (self allFleets
+        selectMany: [:f | f alliedClusters]) collectMany:[:c| c drones ]  "
+
+| tmp |
+tmp := self allHostileDrones.
+^self allDrones reject:[:a| tmp includes:a].
 ]
 
 { #category : 'api - selection' }
@@ -77,8 +81,10 @@ SimulationState >> allHostileClusters [
 
 { #category : 'api - selection' }
 SimulationState >> allHostileDrones [
-    ^ (self allFleets
-        selectMany: [:f | f hostileClusters ]) collectMany:[:f| f drones  ]
+      "(self allFleets
+        selectMany: [:f | f hostileClusters ]) collectMany:[:f| f drones  ]"
+
+ ^self allDrones select:[:a| a isHostile]
 ]
 
 { #category : 'resolution' }
@@ -90,9 +96,8 @@ SimulationState >> allMissions [
 { #category : 'api - selection' }
 SimulationState >> areInProximity: clusterA and: clusterB [
     "Simple threshold in km, refine later with Haversine."
-    | distance |
-    distance := clusterA position distanceTo: clusterB position.
-    ^ distance < 50.0
+  
+^(clusterA canDetectCluster: clusterB) | (clusterB canDetectCluster: clusterA)
 ]
 
 { #category : 'resolution' }
@@ -265,20 +270,19 @@ SimulationState >> resolveEngagements [
 SimulationState >> resolveEngagementsClusterLevel [
     "Macro engagements between clusters"
     allFleets do: [:fleet |
-        fleet clusters do: [:allyCluster |
-            self hostileFleets do: [:hostileFleet |
-                hostileFleet clusters do: [:hostileCluster |
-                    (self areInProximity: allyCluster and: hostileCluster)
+        fleet alliedClusters do:[:anAlliedCluster| 
+                fleet hostileClusters do:[:anHostileCluster| 
+                    (self areInProximity: anAlliedCluster and: anHostileCluster)
                         ifTrue: [
-                            | allyPower hostilePower winner loser |
-                            allyPower := allyCluster capabilities sum.
-                            hostilePower := hostileCluster capabilities sum.
+                            | allyPower hostilePower winner loser | self halt. 
+                            allyPower := anAlliedCluster capabilities sum.
+                            hostilePower := anHostileCluster capabilities sum.
 
                             (allyPower >= hostilePower)
-                                ifTrue: [ winner := allyCluster. loser := hostileCluster ]
-                                ifFalse: [ winner := hostileCluster. loser := allyCluster ].
+                                ifTrue: [ winner := anAlliedCluster. loser := anHostileCluster ]
+                                ifFalse: [ winner := anHostileCluster. loser := anAlliedCluster ].
 
-                            loser isOperational: false.
+                            loser destroy.
                             reactionLog add: 'Cluster-level engagement: ', 
                                 winner clusterId asString, 
                                 ' neutralized ', loser clusterId asString,
@@ -287,7 +291,7 @@ SimulationState >> resolveEngagementsClusterLevel [
                 ].
             ].
         ].
-    ].
+     
     ^ self
 ]
 
@@ -312,7 +316,7 @@ SimulationState >> resolveEngagementsDroneLevel [
                 s nextPutAll: 'Engagement: Hostile ';
                 nextPutAll: h uniqueId;
                 nextPutAll: ' attacked Allied ';
-                nextPutAll: target uniqueId;
+                nextPutAll: target uniqueId printString;
                 nextPutAll: ' hits='; nextPutAll: hits asString ]).
         ].
     ].
@@ -328,7 +332,7 @@ SimulationState >> resolveEngagementsDroneLevel [
             target applyDamage: hits * impact.
             reactionLog add: (String streamContents: [:s |
                 s nextPutAll: 'Retaliation: Allied ';
-                nextPutAll: a uniqueId;
+                nextPutAll: a uniqueId printString;
                 nextPutAll: ' attacked Hostile ';
                 nextPutAll: target uniqueId;
                 nextPutAll: ' hits='; nextPutAll: hits asString ]).
@@ -387,7 +391,7 @@ SimulationState >> step [
 
     snapshot := Dictionary new.
     snapshot at: #time put: time.
-    snapshot at: #fleets put: (self allFleets collect: [:f | f deepCopy]).
+    snapshot at: #fleets put: (self allFleets "collect: [:f | f deepCopy]").
 
     "4. Stocker dans steps"
     time := time + 1.

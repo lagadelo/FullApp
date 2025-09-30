@@ -104,9 +104,10 @@ Drone >> behavior: anObject [
 
 { #category : 'testing' }
 Drone >> canPerceiveDrone: otherDrone [
-    ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
+   " ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
+"
 
-
+ ^(self  position distanceTo:    otherDrone position  )  <= perceptionRange.
 ]
 
 { #category : 'action' }
@@ -167,6 +168,13 @@ d geoPoint: d geoPoint copy.
     d detectedEnemy: detectedEnemy.
     ^ d.
 
+]
+
+{ #category : 'testing' }
+Drone >> destroy [ 
+"Refactor with a capacilities classd" 
+   fuel := 0. 
+	speed := 0
 ]
 
 { #category : 'accessing' }
@@ -443,7 +451,7 @@ Drone >> speed: anObject [
 Drone >> statusMessage [
     ^ Dictionary new
         at: #id put: uniqueId;
-        at: #position put: { latitude. longitude. altitude };
+        at: #position put: self position;
         at: #fuel put: fuel;
         at: #isDestroyed put: self isDestroyed;
         at: #needsHelp put: needsHelp;
@@ -459,8 +467,7 @@ Drone >> statusString [
         s nextPutAll: 'Drone '; nextPutAll: uniqueId;
         nextPutAll: ' fuel='; nextPutAll: fuel asString;
         nextPutAll: '% pos=('; 
-        nextPutAll: latitude asString; nextPutAll: ','; nextPutAll: longitude asString;
-        nextPutAll: ') alt='; nextPutAll: altitude asString
+        nextPutAll: self position printString;nextPut:$).
     ].
 ]
 

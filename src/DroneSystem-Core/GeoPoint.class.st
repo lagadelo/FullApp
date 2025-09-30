@@ -39,7 +39,7 @@ GeoPoint >> altitude: anObject [
 	altitude := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'distance functions' }
 GeoPoint >> distanceTo: aGeoPoint [  "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
     | dLat dLon meanLat earthRadius horizDist altDiff |
     earthRadius := 6371.0. "km, rayon moyen Terre"

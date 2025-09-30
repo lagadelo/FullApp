@@ -26,16 +26,24 @@ DroneFleet >> accept: aVisitor [
 ]
 
 { #category : 'initialization' }
+DroneFleet >> addAlliedeCluster: aCluster [
+    self addCluster: aCluster.
+	 aCluster beAllied.
+    log add: 'Allied Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
+]
+
+{ #category : 'initialization' }
 DroneFleet >> addCluster: aCluster [
     clusters add: aCluster.
+	
     log add: 'New cluster ', aCluster clusterId asString, ' accepted.'.
 ]
 
 { #category : 'initialization' }
 DroneFleet >> addHostileCluster: aCluster [
     self addCluster: aCluster.
-	 hostileClusters add: aCluster.
-    log add: 'Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
+	 aCluster beHostile.
+    log add: 'Hostile Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
 ]
 
 { #category : 'accessing' }
@@ -62,7 +70,8 @@ DroneFleet >> alliedCenter [
 { #category : 'accessing' }
 DroneFleet >> alliedClusters [
 
-^self clusters reject:[:c|  self hostileClusters includes:c]
+"non aligned clusters ?"
+^self clusters select: [:c| c isHostile = false]
 ]
 
 { #category : 'execution' }
@@ -176,13 +185,8 @@ DroneFleet >> hostileCenter [
 { #category : 'accessing' }
 DroneFleet >> hostileClusters [
 
-	^ hostileClusters
-]
-
-{ #category : 'accessing' }
-DroneFleet >> hostileClusters: anObject [
-
-	hostileClusters := anObject
+"non aligned clusters ?"
+^self clusters select: [:c| c isHostile = true]
 ]
 
 { #category : 'initialization' }

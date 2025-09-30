@@ -37,6 +37,7 @@ ScenarioSimulator class >> exampleSurveillance [
         (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100) beHostile; yourself.   "Paris"
         (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120)beHostile; yourself.   "Bordeaux"
         (Drone new moveToLatitude: 45.7640 longitude: 4.8357 altitude: 100)beHostile; yourself. "Lyon"
+    (Drone new moveToLatitude: 40.7640 longitude: 2 altitude: 100)beHostile; yourself. "?"
     } asOrderedCollection.
 
   

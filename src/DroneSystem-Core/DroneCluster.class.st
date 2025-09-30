@@ -52,6 +52,29 @@ DroneCluster >> assignMission: aMission [
     aMission assignToCluster: self.
 ]
 
+{ #category : 'initialization' }
+DroneCluster >> beAllied [
+hostile := false
+]
+
+{ #category : 'initialization' }
+DroneCluster >> beHostile [ 
+hostile := true
+]
+
+{ #category : 'detection ' }
+DroneCluster >> canDetectCluster: aCluster [
+
+aCluster drones detect: [:a| self canDetectDrone: a] ifNone:[^false].
+^true.
+]
+
+{ #category : 'detection ' }
+DroneCluster >> canDetectDrone: aDrone [
+
+^( self howManyTimesDetectDrone: aDrone) >0
+]
+
 { #category : 'accessing' }
 DroneCluster >> capabilities [
 
@@ -158,6 +181,20 @@ DroneCluster >> describe [
 
 ]
 
+{ #category : 'initialization' }
+DroneCluster >> destroy [
+    drones := drones do: [:d | d destroy].
+	 self removeDestroyedDrones 
+
+
+]
+
+{ #category : 'detection ' }
+DroneCluster >> detectedDronesFromCluster:aCluster [
+
+^aCluster drones select:[:aDrone| self canDetectDrone:aDrone]
+]
+
 { #category : 'accessing' }
 DroneCluster >> drones [
 
@@ -191,6 +228,18 @@ DroneCluster >> hostile: anObject [
 	hostile := anObject
 ]
 
+{ #category : 'detection ' }
+DroneCluster >> howManyTimesDetectCluster: aCluster [
+
+^aCluster drones inject:0 into:[:sum :aDrone|  sum + self howManyTimesDetectDrone: aDrone]
+]
+
+{ #category : 'detection ' }
+DroneCluster >> howManyTimesDetectDrone: aDrone [
+
+^self drones count: [ :a| (a position distanceTo: aDrone position  )<= a perceptionRange] 
+]
+
 { #category : 'initialization' }
 DroneCluster >> initializeWithDrones: droneList clusterId: anId [
     drones := droneList.
@@ -213,6 +262,17 @@ self hostile: whoKnows.
  
 ]
 
+{ #category : 'accessing' }
+DroneCluster >> isAllied [
+	^ hostile = false
+]
+
+{ #category : 'accessing' }
+DroneCluster >> isHostile [
+
+	^ hostile = true
+]
+
 { #category : 'initialization' }
 DroneCluster >> isOperational [
     ^ drones anySatisfy: [:d | d isDestroyed not].
@@ -228,6 +288,18 @@ DroneCluster >> name [
 DroneCluster >> name: anObject [
 
 	name := anObject
+]
+
+{ #category : 'converting' }
+DroneCluster >> polygon [
+
+^Polygon vertices:(ConvexHullCalculator new convexHullGeoVerbose: self drones) "collect:[:a| a longitude@a latitude])"
+]
+
+{ #category : 'detection ' }
+DroneCluster >> ratioOfdetectedDronesFromCluster:aCluster [
+
+^(self detectedDronesFromCluster:aCluster) size / aCluster drones size 
 ]
 
 { #category : 'initialization' }
