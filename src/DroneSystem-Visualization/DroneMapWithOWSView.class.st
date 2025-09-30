@@ -1,11 +1,11 @@
+"
+This class is the GUI of SimulationState
+"
 Class {
 	#name : 'DroneMapWithOWSView',
 	#superclass : 'SpPresenter',
 	#instVars : [
 		'simulation',
-		'centerLat',
-		'centerLon',
-		'zoom',
 		'owsMap',
 		'rsCanvas',
 		'timeSlider',
@@ -18,7 +18,9 @@ Class {
 		'bitMap',
 		'clusterList',
 		'dronesList',
-		'mapCanvas'
+		'mapCanvas',
+		'toolBar',
+		'menuBar'
 	],
 	#category : 'DroneSystem-Visualization-visualization',
 	#package : 'DroneSystem-Visualization',
@@ -162,14 +164,14 @@ bitMap ifNil:[self computeBoundingBox.
  ^bitMap
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> boundingBox [
 
 	boundingBox ifNil:[self computeBoundingBox].
 	^ boundingBox
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> boundingBox: anObject [
 
 	boundingBox := anObject
@@ -189,13 +191,13 @@ self rsCanvas add: self bitMap.
 ^self rsCanvas 
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> clusterList [
 
 	^ clusterList
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> clusterList: anObject [
 
 	clusterList := anObject
@@ -350,25 +352,25 @@ rsCanvas when: RSSelectionChangedEvent do: [:evt |
 	"rsCanvas render."
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> dronesList [
 
 	^ dronesList
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> dronesList: anObject [
 
 	dronesList := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> fleetSelector [
 fleetSelector ifNil:[fleetSelector := 'All Fleets'].
 	^ fleetSelector
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> fleetSelector: anObject [
 
 	fleetSelector := anObject.
@@ -395,6 +397,17 @@ infoBox add: (RSLabel new text: 'Sélection vide').
 
 ]
 
+{ #category : 'convertion' }
+DroneMapWithOWSView >> graphicalPositionOf: obj [
+
+(self class
+			 pixelForLat: obj latitude
+			 lon: obj longitude
+			 inBbox: self boundingBox
+			 width: imageSize x
+			 height: imageSize y) + bitMap encompassingRectangle origin.
+]
+
 { #category : 'rendering' }
 DroneMapWithOWSView >> heightFor: aBbox width: widthPx [
     "Calcule la hauteur en pixels qui garde les proportions de la zone (BBOX)."
@@ -413,14 +426,14 @@ DroneMapWithOWSView >> heightFor: aBbox width: widthPx [
     ^ (widthPx * ratio) rounded
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> imageSize [
 
 	imageSize ifNil:[self computeImageSize].
 	^ imageSize
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> imageSize: anObject [
 
 	imageSize := anObject
@@ -433,31 +446,31 @@ DroneMapWithOWSView >> imageWidth [
 	^imageWidth
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> imageWidth: anObject [
 
 	imageWidth := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> infoBox [
 
 	^ infoBox
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> infoBox: anObject [
 
 	infoBox := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> infoText [
 
 	^ infoText
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> infoText: anObject [
 
 	infoText := anObject
@@ -476,6 +489,14 @@ dronesList := (SpListPresenter new headerTitle:'Drones'; yourself).
 dronesList display:[:d| d uniqueId printString].
 dronesList whenSelectionChangedDo:[dronesList selectedItem inspect].
  
+]
+
+{ #category : 'initialization' }
+DroneMapWithOWSView >> initializeWindow: aWindowPresenter [
+  aWindowPresenter
+    title: 'Simulator';
+    initialExtent: 3000@2000;
+    menu: menuBar
 ]
 
 { #category : 'initialization' }
@@ -516,6 +537,12 @@ DroneMapWithOWSView >> inspectOn: aRSShape [
 	aRSShape model inspect
 ]
 
+{ #category : 'actions' }
+DroneMapWithOWSView >> loadSimulation [
+
+Transcript show: 'Load Simulation';cr
+]
+
 { #category : 'system changes' }
 DroneMapWithOWSView >> mapCanvas [
 
@@ -538,6 +565,18 @@ DroneMapWithOWSView >> owsMap [
 DroneMapWithOWSView >> owsMap: anObject [
 
 	owsMap := anObject
+]
+
+{ #category : 'convertion' }
+DroneMapWithOWSView >> physicalPositionOf: position [
+
+	^ self class
+		  latLonForPixel:
+		  (position    "* rsCanvas extent x / bitMap encompassingRectangle origin x negated " )  - bitMap encompassingRectangle origin
+		  inBbox: self boundingBox
+		  width: imageSize x
+		  height: imageSize y
+	 
 ]
 
 { #category : 'rendering' }
@@ -673,13 +712,55 @@ DroneMapWithOWSView >> simulation: anObject [
 	simulation := anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'initialization' }
+DroneMapWithOWSView >> simulationMenu [
+         "Empty placeholder Not defined in this chapter"
+         ^ self newMenu
+addGroup:[:group | group 
+	      addItem: [ :item | item name: 'Start'; shortcut: $s meta;
+            action: [ self startSimulation ] ];
+             addItem: [ :item | item name: 'Step' ; shortcut: $n meta;
+            action: [ self stepSimulation ]];
+             addItem: [ :item | item name: 'Stop' ; shortcut: $h meta;
+            action: [ self stopSimulation ]]];
+ addGroup:[:group | group            addItem: [ :item | item name: 'Save' ; shortcut: $wn meta;
+            action: [ self storeSimulation ] ];
+             addItem: [ :item | item name: 'Load'; shortcut: $r meta;
+            action: [ self loadSimulation ] ]];
+             yourself
+]
+
+{ #category : 'actions' }
+DroneMapWithOWSView >> startSimulation [
+
+Transcript show: 'Start Simulation';cr
+]
+
+{ #category : 'actions' }
+DroneMapWithOWSView >> stepSimulation [
+
+Transcript show: 'Step Simulation';cr
+]
+
+{ #category : 'actions' }
+DroneMapWithOWSView >> stopSimulation [
+
+Transcript show: 'Stop Simulation';cr
+]
+
+{ #category : 'actions' }
+DroneMapWithOWSView >> storeSimulation [
+
+Transcript show: 'Store Simulation';cr
+]
+
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> timeSlider [
 
 	^ timeSlider
 ]
 
-{ #category : 'accessing' }
+{ #category : 'accessing - widgets' }
 DroneMapWithOWSView >> timeSlider: anObject [
 
 	timeSlider := anObject
@@ -711,6 +792,26 @@ DroneMapWithOWSView >> updateFleetFilter: choice [
     choice = 'Hostiles' ifTrue: [
         self renderDronesWith: simulation allHostileDrones ].
 
+]
+
+{ #category : 'visiting' }
+DroneMapWithOWSView >> updateModelPositionOf: evt [
+
+" Update latitude and longitude of model, keeping constant the altitude.
+eg. After a drag/drop operation"
+
+|p|
+
+	p := self physicalPositionOf:   evt  positionFromCamera  .
+	(self class
+			 pixelForLat: evt shape model latitude
+			 lon: evt shape model  longitude
+			 inBbox: self boundingBox
+			 width: imageSize x
+			 height: imageSize y) + bitMap encompassingRectangle origin.
+	evt shape  model longitude: p x. evt shape   model latitude: p y.
+	"evt shape size: 40@40; translateTo: evt position.
+	rsCanvas invalidate."
 ]
 
 { #category : 'visiting' }
@@ -759,7 +860,8 @@ points := ConvexHullCalculator new  convexHullGeoVerbose: aValue  polygon.
  pointShapes:= points collect:[:a| |dot| 
 	dot := RSBox new
 		       size: 40;
-		       color:   Color  red;
+		       color:   Color  brown;
+				 rotateByDegrees: 45;
 		       model: a ;
 		       yourself.
 

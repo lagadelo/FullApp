@@ -151,9 +151,10 @@ Drone >> currentMission: anObject [
 Drone >> deepCopy [
     | d |
     d := self class new initialize.
-    d latitude: latitude . "for slot setter compatibility"
+    
     "If direct slot assignment available, use it; otherwise use moveToLatitude:..."
-    d moveToLatitude: latitude longitude: longitude altitude: altitude.
+    "d moveToLatitude: latitude longitude: longitude altitude: altitude."
+d geoPoint: d geoPoint copy.
     d fuel: fuel.
     d consumables: consumables copy.
     d speed: speed.
