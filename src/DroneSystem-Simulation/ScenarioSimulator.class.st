@@ -69,8 +69,8 @@ cluster1 drones do: [:drone |
         wayPoint: workPoint;
         speed: (drone speed ifNil: [ 5.0 ]);
         yourself.
-
-    simulator scheduleEvent: ev after: (Set with: mission).
+self halt.
+    simulator scheduleEvent: ev after: (Set with: nil "mission"). "Ici il faudra mettre des vrais evenements, avec une mission ou les drones patrouillent donc changent de waypoints en cours de route"
 ].
 
 "--- 5. Insérer un drone ennemi (hostile) qui traverse la zone ---"

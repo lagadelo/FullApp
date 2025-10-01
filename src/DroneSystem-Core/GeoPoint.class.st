@@ -11,14 +11,26 @@ Class {
 }
 
 { #category : 'instance creation' }
-GeoPoint class >> with: anArray [
-
+GeoPoint class >> latitude: lat longitude: lon altitude: alt [
+  
 	| tmp |
 	tmp := self new.
-	tmp latitude: anArray first.
-	tmp longitude: (anArray at: 2).
-	tmp altitude: anArray last.
+	tmp latitude: lat.
+	tmp longitude: lon.
+	tmp altitude: alt.
 	^ tmp
+]
+
+{ #category : 'instance creation' }
+GeoPoint class >> with: anArray [
+
+	^self latitude: anArray first longitude: (anArray at:2) altitude: anArray last
+]
+
+{ #category : 'arithmetic' }
+GeoPoint >> - aPoint [
+
+^self class with: (Array with:  self latitude - aPoint latitude with:  self longitude - aPoint longitude with: self altitude - aPoint altitude )
 ]
 
 { #category : 'visiting' }
@@ -75,7 +87,24 @@ GeoPoint >> longitude: anObject [
 	longitude := anObject
 ]
 
+{ #category : 'arithmetic' }
+GeoPoint >> normalize [
+
+| r |
+r := self radius.
+latitude := latitude / r.
+longitude := longitude /r.
+altitude := altitude /r
+
+]
+
 { #category : 'printing' }
 GeoPoint >> printOn: aStream [
 aStream nextPut:$(;nextPutAll: self longitude printString;nextPut:$,;nextPutAll: self latitude printString; nextPut:$,; nextPutAll: self altitude printString;nextPut:$)
+]
+
+{ #category : 'accessing' }
+GeoPoint >> radius [ 
+^(latitude squared + longitude squared + altitude squared) sqrt
+
 ]

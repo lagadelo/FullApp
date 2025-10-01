@@ -10,7 +10,7 @@ Class {
 	#package : 'DroneSystem-Simulation'
 }
 
-{ #category : 'adding' }
+{ #category : 'add-remove' }
 EventDependencyGraph >> addEvent: anEvent withDependencies: dependencies [
     nodes add: anEvent.
     dependencies do: [:dep |
@@ -19,7 +19,7 @@ EventDependencyGraph >> addEvent: anEvent withDependencies: dependencies [
     ].
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'add-remove' }
 EventDependencyGraph >> allDescendantsOf: anEvent [
     | result queue current |
     result := Set new.
@@ -53,6 +53,12 @@ EventDependencyGraph >> asDotString [
 ]
 
 { #category : 'accessing' }
+EventDependencyGraph >> dependenciesOf: anEvent [
+
+^self edges at:anEvent ifAbsent:[Set new]
+]
+
+{ #category : 'accessing' }
 EventDependencyGraph >> edges [
 
 	^ edges
@@ -64,7 +70,7 @@ EventDependencyGraph >> edges: anObject [
 	edges := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'initialization' }
 EventDependencyGraph >> initialize [
 
 nodes := OrderedCollection new.
@@ -72,7 +78,7 @@ edges := Dictionary new.
 
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'add-remove' }
 EventDependencyGraph >> invalidateCascadeFrom: rootEvent [
     | toRemove |
     toRemove := self allDescendantsOf: rootEvent.

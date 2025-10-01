@@ -66,6 +66,12 @@ DroneSimulator >> eventGraph: anObject [
 	eventGraph := anObject
 ]
 
+{ #category : 'scheduling' }
+DroneSimulator >> execute: anEvent [
+"Visitor DP"
+^anEvent executeOn: self 
+]
+
 { #category : 'events' }
 DroneSimulator >> handleClusterAlert: event [
     | strategy orders |
@@ -365,7 +371,7 @@ DroneSimulator >> step [
         event simulationState: self.
 
         "Exécute l'événement et le marque comme terminé"
-        event execute.
+        event executeOn:self .
         event markAsExecuted.
 
         "Log optionnel"

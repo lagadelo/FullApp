@@ -28,7 +28,7 @@ MoveStepEvent >> executeOn: simulator [
 
     distanceRemaining := drone position distanceTo: wayPoint .
     direction := (wayPoint - drone position) normalize.
-    distanceToMove := (speed or: [ drone speed ]) * simulator timeStep.
+    distanceToMove := (speed  ) * simulator timeStep.
 
     "Calcul de nouvelle position"
     newPos := drone position + (direction * (distanceToMove min: distanceRemaining)).
