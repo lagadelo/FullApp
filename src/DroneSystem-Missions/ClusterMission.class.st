@@ -219,6 +219,14 @@ copy status: self status.
 ^copy 
 ]
 
+{ #category : 'strategy' }
+ClusterMission >> generateOrdersFor: aCluster threatAt: aPoint timestamp: aTimestamp [
+    ^ self responseStrategy
+        generateResponseEventsFor: self
+        threatAt: aPoint
+        timestamp: aTimestamp
+]
+
 { #category : 'private - utility' }
 ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoints [ 
     | nWaypoints segments neededWaypoints result newPoint fraction   |

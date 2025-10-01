@@ -5,7 +5,8 @@ Class {
 		'timestamp',
 		'simulationState',
 		'id',
-		'duration'
+		'duration',
+		'executed'
 	],
 	#category : 'DroneSystem-Simulation Events',
 	#package : 'DroneSystem-Simulation Events'
@@ -61,6 +62,12 @@ ScheduledEvent >> hasDuration [
     ^ self duration > 0.
 ]
 
+{ #category : 'testing' }
+ScheduledEvent >> hasExecuted [
+    ^ executed = true.
+
+]
+
 { #category : 'accessing' }
 ScheduledEvent >> id [
 
@@ -71,6 +78,16 @@ ScheduledEvent >> id [
 ScheduledEvent >> id: anObject [
 
 	id := anObject
+]
+
+{ #category : 'initialization' }
+ScheduledEvent >> initialize [ 
+executed  := false
+]
+
+{ #category : 'executing' }
+ScheduledEvent >> markAsExecuted [
+    executed := true
 ]
 
 { #category : 'accessing' }

@@ -2,11 +2,36 @@ Class {
 	#name : 'DiscreteEventScheduler',
 	#superclass : 'Object',
 	#instVars : [
-		'eventQueue'
+		'eventQueue',
+		'eventGraph'
 	],
 	#category : 'DroneSystem-Simulation',
 	#package : 'DroneSystem-Simulation'
 }
+
+{ #category : 'accessing' }
+DiscreteEventScheduler >> eventGraph [
+
+	^ eventGraph
+]
+
+{ #category : 'accessing' }
+DiscreteEventScheduler >> eventGraph: anObject [
+
+	eventGraph := anObject
+]
+
+{ #category : 'accessing' }
+DiscreteEventScheduler >> eventQueue [
+
+	^ eventQueue
+]
+
+{ #category : 'accessing' }
+DiscreteEventScheduler >> eventQueue: anObject [
+
+	eventQueue := anObject
+]
 
 { #category : 'initialization' }
 DiscreteEventScheduler >> hasEvents [
@@ -17,7 +42,7 @@ DiscreteEventScheduler >> hasEvents [
 { #category : 'initialization' }
 DiscreteEventScheduler >> initialize [
     eventQueue := SortedCollection sortBlock: [:e1 :e2 | e1 timestamp < e2 timestamp].
-
+	 eventGraph := EventDependencyGraph new.
 ]
 
 { #category : 'initialization' }

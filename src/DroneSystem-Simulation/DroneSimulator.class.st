@@ -5,6 +5,7 @@ Class {
 		'model',
 		'scheduler',
 		'currentTime',
+		'timeStep',
 		'entityEventMap',
 		'eventGraph',
 		'electionSessions'
@@ -14,11 +15,58 @@ Class {
 }
 
 { #category : 'accessing' }
+DroneSimulator >> currentTime [
+
+	^ currentTime
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> currentTime: anObject [
+
+	currentTime := anObject
+]
+
+{ #category : 'accessing' }
 DroneSimulator >> electionSessions [
     ^ electionSessions ifNil: [ electionSessions := Dictionary new ].
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
+DroneSimulator >> electionSessions: anObject [
+
+	electionSessions := anObject
+]
+
+{ #category : 'facilities' }
+DroneSimulator >> entitiesInPerceptionRangeOf: aDrone [
+    ^ self entitiesInPerceptionRangeOf: aDrone
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> entityEventMap [
+
+	^ entityEventMap
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> entityEventMap: anObject [
+
+	entityEventMap := anObject
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> eventGraph [
+
+	^ eventGraph
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> eventGraph: anObject [
+
+	eventGraph := anObject
+]
+
+{ #category : 'events' }
 DroneSimulator >> handleClusterAlert: event [
     | strategy orders |
 
@@ -69,28 +117,6 @@ DroneSimulator >> handleEnemyDetection: event [
 { #category : 'events' }
 DroneSimulator >> handleEvent: aSimulationEvent [
     aSimulationEvent executeOn: self.
-]
-
-{ #category : 'events' }
-DroneSimulator >> handleEventOld: anEvent [
-    | drone updatedPos nextEvents simulationState |
-
-    drone := anEvent drone.
-
-    "1. Met à jour la position ou l’état dans SimulationState"
-    updatedPos := anEvent reachedWaypoint ifNotNil: [ anEvent reachedWaypoint ] ifNil: [ drone position ].
-    simulationState updateDrone: drone withPosition: updatedPos.
-
-    "2. Recalcule la suite des événements pour ce drone"
-    nextEvents := self recalculateEventsFor: drone fromTime: anEvent timestamp.
-    scheduler updateEventsForDrone: drone with: nextEvents.
-
-    "3. Notifie la mission / cluster"
-    drone mission notifyDroneUpdate: drone.
-
-    "4. Log"
-    Transcript show: 'Event handled for drone ', drone id printString, ' at ', anEvent timestamp printString; cr.
-
 ]
 
 { #category : 'events' }
@@ -195,13 +221,24 @@ DroneSimulator >> handleWaypointReached: anEvent [
 
 ]
 
+{ #category : 'scheduling' }
+DroneSimulator >> hasEvents [ 
+^self scheduler hasEvents 
+]
+
 { #category : 'initialization' }
 DroneSimulator >> initialize [
      
 	 scheduler := DiscreteEventScheduler new.
-	 entityEventMap := Dictionary new. "Drone → Set of events"
+	entityEventMap := EventDependencyGraph new.
 
     currentTime := 0.
+]
+
+{ #category : 'initialization' }
+DroneSimulator >> initializeWithState: aSimulationStep [
+
+self model: aSimulationStep
 ]
 
 { #category : 'scheduling' }
@@ -215,6 +252,18 @@ self removeEvents: eventsToRemove fromEntity: anEntity
  
 ]
 
+{ #category : 'accessing' }
+DroneSimulator >> model [
+
+	^ model
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> model: anObject [
+
+	model := anObject
+]
+
 { #category : 'removing' }
 DroneSimulator >> removeEvents: events fromEntity: entity [
     | set |
@@ -223,15 +272,12 @@ DroneSimulator >> removeEvents: events fromEntity: entity [
     entityEventMap at: entity put: set.
 ]
 
-{ #category : 'scheduling' }
-DroneSimulator >> rescheduleDrone: aDrone from: timestamp [
-    | newEvents |
-    self invalidateEventsForEntity: aDrone after: timestamp.
-
-
-    newEvents := self recalculateEventsFor: aDrone fromTime: timestamp.
-    newEvents do: [:e | self scheduleEvent: e ].
-
+{ #category : 'events' }
+DroneSimulator >> requeueEvent: anEvent delay: aDelay [
+    | delayedEvent |
+    delayedEvent := anEvent copy.
+    delayedEvent timestamp: anEvent timestamp + aDelay.
+    self addEvent: delayedEvent.
 ]
 
 { #category : 'instance creation' }
@@ -239,12 +285,17 @@ DroneSimulator >> runSimulation [
     [ scheduler hasEvents ] whileTrue: [
         | event |
         event := scheduler nextEvent.
-        currentTime := event timestamp.
-        event simulationState: self.
-        event execute.
-        "self updateGUI."
-    ].
 
+        (eventGraph isReady: event) ifTrue: [
+            currentTime := event timestamp.
+            event simulationState: self.
+            event execute.
+            "self updateGUI."
+        ] ifFalse: [
+            "⚠️ L'événement n'est pas prêt : on le replanifie temporairement à +ε"
+            scheduler requeueEvent: event delay: 0.1.
+        ].
+    ].
 ]
 
 { #category : 'instance creation' }
@@ -277,21 +328,64 @@ simulationStartTime := Time millisecondClockValue.
 
 ]
 
-{ #category : 'scheduling' }
-DroneSimulator >> scheduleEvent: anEvent [
-    | entityEventMap |
-scheduler addEvent: anEvent.
+{ #category : 'dependencies' }
+DroneSimulator >> scheduleEvent: anEvent after: dependencyEvents [
+    scheduler scheduleEvent: anEvent.
 
-    anEvent affectedEntities do: [:entity |
-        (entityEventMap at: entity ifAbsentPut: [Set new]) add: anEvent.
+"A verifier"
+"    anEvent affectedEntities do: [:entity |
+        (entityEventMap at: entity ifAbsentPut: [ Set new ]) add: anEvent.
+    ]."
+    scheduler eventGraph addEvent: anEvent withDependencies: dependencyEvents.
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> scheduler [
+
+	^ scheduler
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> scheduler: anObject [
+
+	scheduler := anObject
+]
+
+{ #category : 'scheduling' }
+DroneSimulator >> step [
+    | event |
+    
+    self hasEvents ifFalse: [ ^self ].
+
+    event := scheduler nextEvent.
+
+    (entityEventMap isReady: event) ifTrue: [
+        "Met à jour le temps courant de la simulation"
+        currentTime := event timestamp.
+        event simulationState: self.
+
+        "Exécute l'événement et le marque comme terminé"
+        event execute.
+        event markAsExecuted.
+
+        "Log optionnel"
+        Transcript show: '[', currentTime printString, '] Executed: ', event class name;
+                  space; show: event printString; cr.
+
+    ] ifFalse: [
+        "Dépendances non satisfaites : on remet l'événement en file, légèrement décalé"
+        scheduler requeueEvent: event delay: 0.1.
     ].
 ]
 
-{ #category : 'dependencies' }
-DroneSimulator >> scheduleEvent: anEvent after: dependencyEvents [
-    scheduler addEvent: anEvent.
-    anEvent affectedEntities do: [:entity |
-        (entityEventMap at: entity ifAbsentPut: [ Set new ]) add: anEvent.
-    ].
-    eventGraph addEvent: anEvent withDependencies: dependencyEvents.
+{ #category : 'accessing' }
+DroneSimulator >> timeStep [
+
+	^ timeStep
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> timeStep: anObject [
+
+	timeStep := anObject
 ]

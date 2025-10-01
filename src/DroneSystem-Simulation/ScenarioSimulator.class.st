@@ -10,6 +10,110 @@ Class {
 }
 
 { #category : 'examples' }
+ScenarioSimulator class >> example10 [ 
+
+| simState simulator mission polygon fleet drones cluster1 cluster2
+  workPoint tStep enemy enemyPath initialTime   |
+
+"--- 1.  initialisation existant   ---"
+simState := SimulationState new.
+
+drones := {
+    (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100) beAlly ; yourself.   "Paris"
+    (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120) beAlly ; yourself. "Bordeaux"
+    (Drone new moveToLatitude: 45.7640 longitude: 4.8357 altitude: 100) beAlly; yourself. "Lyon"
+    (Drone new moveToLatitude: 40.7640 longitude: 2 altitude: 100) beHostile; yourself. "?"
+} asOrderedCollection.
+
+cluster1 := DroneCluster new initializeWithDrones: drones clusterId: 1.
+cluster2 := DroneCluster example: 20.
+
+fleet := DroneFleet new.
+fleet addCluster: cluster1.
+fleet addCluster: cluster2.
+simState addFleet: fleet.
+
+polygon := {
+    {50.6292 . 3.0573  . 100}. "Lille"
+    {48.3904 . -4.4947 . 100}. "Brest"
+    {43.2965 . 5.3698 . 100}. "Marseille"
+    {51.5074 . -0.1276   . 100}. "Londres"
+} collect: [:a | GeoPoint with: a ].
+
+mission := (SecurizationMission new polygon: polygon) assignToCluster: cluster1.
+"mission connaît les waypoints, cluster1 mission: mission"
+
+"--- 2. Créer le simulateur et configurer la granularité temporelle ---"
+"J'utilise ici DroneSimulator qui manipule la file d'événements et un timeStep."
+simulator := DroneSimulator new initializeWithState: simState.
+simulator timeStep: 1. "1 unité de temps par step (ajuste si besoin)"
+
+"--- 3. Choisir le point de travail : centroïde du polygone (workPoint) ---"
+workPoint := "(mission waypoints inject: (0@0) into: [:acc :pt |
+    acc + (pt asPoint)]) / (mission waypoints size)." mission polygon first.
+"Si tes waypoints sont GeoPoint, adapte: workPoint := mission waypoints collect: [ :wp | wp asPoint ] etc."
+
+"--- 4. Planifier pour chaque drone un MoveStepEvent vers workPoint ---"
+initialTime := "simulator now"0. "probablement 0"
+
+cluster1 drones do: [:drone |
+    | ev |
+   
+     
+    "Optionnel : définir perceptionRange si non défini"
+    drone perceptionRange: (drone perceptionRange ifNil: [ 5.0 ]).
+
+    ev := MoveStepEvent new
+        timestamp: initialTime;
+        drone: drone;
+        wayPoint: workPoint;
+        speed: (drone speed ifNil: [ 5.0 ]);
+        yourself.
+
+    simulator scheduleEvent: ev after: (Set with: mission).
+].
+
+"--- 5. Insérer un drone ennemi (hostile) qui traverse la zone ---"
+"On crée un ennemi (hostile) et on lui donne une trajectoire qui croisera le polygone"
+enemy := (Drone new moveToLatitude: 49.0 longitude: 0.0 altitude: 100) beHostile; yourself.
+"ne pas l'ajouter au cluster allié ; il est 'intruder' dans le modèle"
+ 
+
+fleet addCluster: (DroneCluster new initializeWithDrones: {enemy} clusterId: #Intruder).
+
+"Définir un chemin de traversée (quelques points) — traversée en 1..n steps"
+enemyPath := OrderedCollection with: (GeoPoint with: {52.0 . -1.0 . 100})
+                              with: (GeoPoint with: {50.0 . 1.0 . 100})
+                              with: (GeoPoint with: {48.0 . 2.5 . 100})
+                              with: (GeoPoint with: {46.0 . 4.0 . 100}).
+
+"Planifier un MoveStepEvent pour chaque segment de l'ennemi, en commençant à t = 2"
+tStep := 2.
+enemyPath withIndexDo: [:pt :i |
+    | mev |
+    mev := MoveStepEvent new
+        timestamp: (initialTime + (i * tStep));
+        drone: enemy;
+        wayPoint: pt  ; "ou pt si GeoPoint compatible"
+        speed: 6; "speed de l'ennemi"
+        yourself.
+    simulator scheduleEvent: mev after: (Set with: nil). "pas de dépendance explicitée"
+].
+
+"--- 6. Exécuter la simulation pas à pas et afficher les événements ---"
+"On exécute jusqu'à un temps max (ici t = 40) ou jusqu'à vidage de la queue"
+[ simulator hasEvents and: [ simulator currentTime <= 40 ] ] whileTrue: [
+    simulator step.
+    (Delay forMilliseconds: 10) wait. "optionnel, si tu veux voir le Transcript défiler"
+].
+
+"--- 7. Après exécution : affichage sommaire ---"
+Transcript show: 'Simulation finished at t=', simulator currentTime printString; cr.
+simState drones do: [:d | Transcript show: d id printString, ' pos: ', d position printString; cr ].
+
+]
+
+{ #category : 'examples' }
 ScenarioSimulator class >> exampleClasses [ 
 | simulator polygon target ratios outcome |
 simulator := ScenarioSimulator new.

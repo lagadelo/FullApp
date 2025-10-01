@@ -160,6 +160,14 @@ SimulationState >> engagementMode: anObject [
 	engagementMode := anObject
 ]
 
+{ #category : 'facilities' }
+SimulationState >> entitiesInPerceptionRangeOf: aDrone [
+    ^ self allDrones select: [:e |
+        (e position distanceTo: aDrone position) <= aDrone perceptionRange
+    ].
+
+]
+
 { #category : 'accessing' }
 SimulationState >> eventLog [
 

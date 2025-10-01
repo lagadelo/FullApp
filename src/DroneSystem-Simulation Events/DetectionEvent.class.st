@@ -46,7 +46,7 @@ DetectionEvent >> executeOn: simulator [
     
     cluster := self drone cluster.
     
-    responseEvents := cluster mission generateOrdersFor: cluster threatAt: self intruderPosition.
+    responseEvents := cluster currentMission generateOrdersFor: cluster threatAt: self intruderPosition.
     
     responseEvents do: [:e |
         simulator scheduleEvent: e after: (Set with: self)
