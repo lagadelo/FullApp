@@ -1,6 +1,6 @@
 Class {
 	#name : 'Drone',
-	#superclass : 'Object',
+	#superclass : 'AbstractDrone',
 	#instVars : [
 		'geoPoint',
 		'fuel',
@@ -8,7 +8,6 @@ Class {
 		'speed',
 		'perceptionRange',
 		'behavior',
-		'uniqueId',
 		'type',
 		'currentMission',
 		'needsHelp',

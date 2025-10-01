@@ -8,7 +8,8 @@ Class {
 		'capabilities',
 		'currentMission',
 		'name',
-		'hostile'
+		'hostile',
+		'droneRoles'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -50,6 +51,11 @@ DroneCluster >> allOperational [
 DroneCluster >> assignMission: aMission [
     currentMission := aMission.
     aMission assignToCluster: self.
+]
+
+{ #category : 'updating status' }
+DroneCluster >> assignRole: aRole toDrone: aDrone [
+    droneRoles at: aDrone put: aRole.
 ]
 
 { #category : 'initialization' }
@@ -195,6 +201,13 @@ DroneCluster >> detectedDronesFromCluster:aCluster [
 ^aCluster drones select:[:aDrone| self canDetectDrone:aDrone]
 ]
 
+{ #category : 'updating status' }
+DroneCluster >> droneRoles [
+
+droneRoles ifNil:[droneRoles := Dictionary new].
+^droneRoles
+]
+
 { #category : 'accessing' }
 DroneCluster >> drones [
 
@@ -205,6 +218,18 @@ DroneCluster >> drones [
 DroneCluster >> drones: anObject [
 
 	drones := anObject
+]
+
+{ #category : 'updating status' }
+DroneCluster >> dronesWithRole: aRole [
+   ^ self drones  select: [:d | (droneRoles at: d) = aRole]
+]
+
+{ #category : 'strategy' }
+DroneCluster >> electionStrategy [
+    self currentMission type = #surveillance ifTrue: [ ^ BestPerceptionStrategy new ].
+      self currentMission type = #strike ifTrue: [ ^ ClosestToTargetStrategy new ].
+    ^ MaxFuelStrategy new.
 ]
 
 { #category : 'updating status' }

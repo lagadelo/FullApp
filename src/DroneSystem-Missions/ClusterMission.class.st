@@ -11,8 +11,8 @@ Class {
 		'assignedCluster',
 		'status'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
 
 { #category : 'visiting' }
@@ -303,6 +303,11 @@ ClusterMission >> isZoneBasedMission [
 ClusterMission >> missionType [
 
 	^ self className
+]
+
+{ #category : 'strategy' }
+ClusterMission >> responseStrategy [
+   ^self subclassResponsibility 
 ]
 
 { #category : 'accessing' }

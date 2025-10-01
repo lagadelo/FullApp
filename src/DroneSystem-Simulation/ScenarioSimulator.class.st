@@ -72,6 +72,12 @@ sim addFleet: fleet.
 
 ]
 
+{ #category : 'executing' }
+ScenarioSimulator >> execute [
+    self subclassResponsibility.
+
+]
+
 { #category : 'initialization' }
 ScenarioSimulator >> exportResults: results toCSVFile: filePath [
     "results is a collection of Dictionaries with keys #ratio #alliesRemaining #hostilesRemaining #coverageSize"

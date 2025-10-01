@@ -1,8 +1,8 @@
 Class {
 	#name : 'SecurizationMission',
 	#superclass : 'ZoneBasedMission',
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
 
 { #category : 'visiting' }
@@ -15,4 +15,9 @@ SecurizationMission >> accept: aVisitor [
 SecurizationMission >> isSecurizationMission [ 
 
 ^true
+]
+
+{ #category : 'strategy' }
+SecurizationMission >> responseStrategy [
+    ^ HybridStrategy new.
 ]

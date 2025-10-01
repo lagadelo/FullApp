@@ -5,8 +5,8 @@ Class {
 		'waypoints',
 		'polygon'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
 
 { #category : 'visiting' }
