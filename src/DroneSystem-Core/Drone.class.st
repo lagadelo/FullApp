@@ -443,7 +443,7 @@ Drone >> speed: anObject [
 Drone >> statusMessage [
     ^ Dictionary new
         at: #id put: uniqueId;
-        at: #position put: { latitude. longitude. altitude };
+        at: #position put: self position;
         at: #fuel put: fuel;
         at: #isDestroyed put: self isDestroyed;
         at: #needsHelp put: needsHelp;
@@ -456,11 +456,7 @@ Drone >> statusMessage [
 Drone >> statusString [
     "Retourne une chaîne lisible pour monitoring"
     ^ String streamContents: [:s |
-        s nextPutAll: 'Drone '; nextPutAll: uniqueId;
-        nextPutAll: ' fuel='; nextPutAll: fuel asString;
-        nextPutAll: '% pos=('; 
-        nextPutAll: latitude asString; nextPutAll: ','; nextPutAll: longitude asString;
-        nextPutAll: ') alt='; nextPutAll: altitude asString
+        s nextPutAll: 'Drone ', uniqueId printString, ' fuel=' fuel asString ,' % pos=', self position printString;cr
     ].
 ]
 

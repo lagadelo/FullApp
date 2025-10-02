@@ -8,7 +8,8 @@ Class {
 		'capabilities',
 		'currentMission',
 		'name',
-		'hostile'
+		'hostile',
+		'droneRoles'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -50,6 +51,34 @@ DroneCluster >> allOperational [
 DroneCluster >> assignMission: aMission [
     currentMission := aMission.
     aMission assignToCluster: self.
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> assignRole: aRole toDrone: aDrone [
+    droneRoles at: aDrone put: aRole.
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> beAllied [
+hostile := false
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> beHostile [ 
+hostile := true
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> canDetectCluster: aCluster [
+
+aCluster drones detect: [:a| self canDetectDrone: a] ifNone:[^false].
+^true.
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> canDetectDrone: aDrone [
+
+^( self howManyTimesDetectDrone: aDrone) >0
 ]
 
 { #category : 'accessing' }
@@ -158,6 +187,27 @@ DroneCluster >> describe [
 
 ]
 
+{ #category : 'as yet unclassified' }
+DroneCluster >> destroy [
+    drones := drones do: [:d | d destroy].
+	 self removeDestroyedDrones 
+
+
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> detectedDronesFromCluster:aCluster [
+
+^aCluster drones select:[:aDrone| self canDetectDrone:aDrone]
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> droneRoles [
+
+droneRoles ifNil:[droneRoles := Dictionary new].
+^droneRoles
+]
+
 { #category : 'accessing' }
 DroneCluster >> drones [
 
@@ -168,6 +218,18 @@ DroneCluster >> drones [
 DroneCluster >> drones: anObject [
 
 	drones := anObject
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> dronesWithRole: aRole [
+   ^ self drones  select: [:d | (droneRoles at: d) = aRole]
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> electionStrategy [
+    self currentMission type = #surveillance ifTrue: [ ^ BestPerceptionStrategy new ].
+      self currentMission type = #strike ifTrue: [ ^ ClosestToTargetStrategy new ].
+    ^ MaxFuelStrategy new.
 ]
 
 { #category : 'updating status' }
@@ -189,6 +251,12 @@ DroneCluster >> hostile [
 DroneCluster >> hostile: anObject [
 
 	hostile := anObject
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> howManyTimesDetectDrone: aDrone [
+
+^self drones count: [ :a| (a position distanceTo: aDrone position  )<= a perceptionRange] 
 ]
 
 { #category : 'initialization' }
@@ -213,6 +281,17 @@ self hostile: whoKnows.
  
 ]
 
+{ #category : 'as yet unclassified' }
+DroneCluster >> isAllied [
+	^ hostile = false
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> isHostile [
+
+	^ hostile = true
+]
+
 { #category : 'initialization' }
 DroneCluster >> isOperational [
     ^ drones anySatisfy: [:d | d isDestroyed not].
@@ -228,6 +307,18 @@ DroneCluster >> name [
 DroneCluster >> name: anObject [
 
 	name := anObject
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> polygon [
+
+^Polygon vertices:(ConvexHullCalculator new convexHullGeoVerbose: self drones) "collect:[:a| a longitude@a latitude])"
+]
+
+{ #category : 'as yet unclassified' }
+DroneCluster >> ratioOfdetectedDronesFromCluster:aCluster [
+
+^(self detectedDronesFromCluster:aCluster) size / aCluster drones size 
 ]
 
 { #category : 'initialization' }

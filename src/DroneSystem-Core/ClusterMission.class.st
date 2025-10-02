@@ -15,12 +15,6 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
-{ #category : 'visiting' }
-ClusterMission class >> accept: aVisitor [
-
-^aVisitor visitCluster: self 
-]
-
 { #category : 'examples' }
 ClusterMission class >> exampleSecurisation [
 | cluster |
