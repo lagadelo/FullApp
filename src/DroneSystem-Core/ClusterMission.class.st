@@ -18,7 +18,7 @@ Class {
 { #category : 'visiting' }
 ClusterMission class >> accept: aVisitor [
 
-^aVisitor visitClusterMission: self 
+^aVisitor visitCluster: self 
 ]
 
 { #category : 'examples' }
