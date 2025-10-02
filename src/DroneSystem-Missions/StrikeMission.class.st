@@ -4,8 +4,8 @@ Class {
 	#instVars : [
 		'target'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
 
 { #category : 'visiting' }
@@ -44,6 +44,11 @@ StrikeMission >> battleZone [
 StrikeMission >> isStrikemission [
 
 ^true
+]
+
+{ #category : 'strategy' }
+StrikeMission >> responseStrategy [
+    ^ AllInterceptStrategy new.
 ]
 
 { #category : 'accessing' }

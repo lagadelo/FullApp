@@ -1,6 +1,6 @@
 Class {
 	#name : 'Drone',
-	#superclass : 'Object',
+	#superclass : 'AbstractDrone',
 	#instVars : [
 		'geoPoint',
 		'fuel',
@@ -8,7 +8,6 @@ Class {
 		'speed',
 		'perceptionRange',
 		'behavior',
-		'uniqueId',
 		'type',
 		'currentMission',
 		'needsHelp',
@@ -104,9 +103,10 @@ Drone >> behavior: anObject [
 
 { #category : 'testing' }
 Drone >> canPerceiveDrone: otherDrone [
-    ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
+   " ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
+"
 
-
+ ^(self  position distanceTo:    otherDrone position  )  <= perceptionRange.
 ]
 
 { #category : 'action' }
@@ -167,6 +167,13 @@ d geoPoint: d geoPoint copy.
     d detectedEnemy: detectedEnemy.
     ^ d.
 
+]
+
+{ #category : 'testing' }
+Drone >> destroy [ 
+"Refactor with a capacilities classd" 
+   fuel := 0. 
+	speed := 0
 ]
 
 { #category : 'accessing' }

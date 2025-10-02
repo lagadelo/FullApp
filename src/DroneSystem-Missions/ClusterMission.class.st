@@ -11,9 +11,15 @@ Class {
 		'assignedCluster',
 		'status'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
+
+{ #category : 'visiting' }
+ClusterMission class >> accept: aVisitor [
+
+^aVisitor visitClusterMission: self 
+]
 
 { #category : 'examples' }
 ClusterMission class >> exampleSecurisation [
@@ -213,6 +219,14 @@ copy status: self status.
 ^copy 
 ]
 
+{ #category : 'strategy' }
+ClusterMission >> generateOrdersFor: aCluster threatAt: aPoint timestamp: aTimestamp [
+    ^ self responseStrategy
+        generateResponseEventsFor: self
+        threatAt: aPoint
+        timestamp: aTimestamp
+]
+
 { #category : 'private - utility' }
 ClusterMission >> generateWaypointsForDrones: nDrones existingWaypoints: waypoints [ 
     | nWaypoints segments neededWaypoints result newPoint fraction   |
@@ -297,6 +311,11 @@ ClusterMission >> isZoneBasedMission [
 ClusterMission >> missionType [
 
 	^ self className
+]
+
+{ #category : 'strategy' }
+ClusterMission >> responseStrategy [
+   ^self subclassResponsibility 
 ]
 
 { #category : 'accessing' }

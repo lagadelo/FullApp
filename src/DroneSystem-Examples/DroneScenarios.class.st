@@ -12,6 +12,52 @@ Class {
 }
 
 { #category : 'as yet unclassified' }
+DroneScenarios class >> example10 [ 
+
+"1. Drones"
+| drones waypoints mission cluster simulator |
+drones := (1 to: 10) collect: [:i |
+    Drone new
+        initializeId: i
+        position: 0@0;
+        yourself
+].
+
+"2. Waypoints (6 sommets d’un hexagone)"
+waypoints := {
+    0@0.  10@0.  15@8.  10@16.  0@16.  -5@8
+} asOrderedCollection.
+
+"3. Mission et Cluster"
+mission := SurveillanceMission new initializeWithWaypoints: waypoints cluster: nil.
+cluster := Cluster new initializeWithDrones: drones mission: mission.
+mission cluster: cluster.
+
+"4. Simulateur"
+simulator := DroneSimulator new initializeWithMission: mission.
+
+"5. Planifier le début de patrouille pour chaque drone"
+drones do: [:drone |
+    mission planNextPatrolFor: drone at: 0 in: simulator
+].
+
+"6. Simuler une détection d’intrus par le drone 1 à t = 5"
+simulator scheduleEvent: (
+    IntrusionDetectedEvent new
+        timestamp: 5;
+        drone: drones first;
+        intruderPosition: 7@7;
+        yourself
+) after: (Set with: cluster).
+
+"7. Lancer la simulation pas à pas (Transcript doit être ouvert)"
+1 to: 15 do: [:t |
+    simulator runStep.
+].
+
+]
+
+{ #category : 'as yet unclassified' }
 DroneScenarios class >> exampleSecuring [
   
      | sim drones cluster mission polygon     |

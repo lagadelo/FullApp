@@ -5,8 +5,8 @@ Class {
 		'subMissions',
 		'totalWeight'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Missions',
+	#package : 'DroneSystem-Missions'
 }
 
 { #category : 'visiting' }
@@ -80,6 +80,11 @@ totalWeight := self subMissions values inject:0 into:[:a :b| a +b]
 MixedMission >> removeSubMission: aMission [
 
 self subMissions removeKey: aMission
+]
+
+{ #category : 'stategy' }
+MixedMission >> responseStrategy [
+    ^ HybridStrategy new.
 ]
 
 { #category : 'accessing' }
