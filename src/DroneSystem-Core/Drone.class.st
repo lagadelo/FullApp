@@ -463,7 +463,10 @@ Drone >> statusMessage [
 Drone >> statusString [
     "Retourne une chaîne lisible pour monitoring"
     ^ String streamContents: [:s |
-        s nextPutAll: 'Drone ', uniqueId printString, ' fuel=' fuel asString ,' % pos=', self position printString;cr
+        s nextPutAll: 'Drone '; nextPutAll: uniqueId;
+        nextPutAll: ' fuel='; nextPutAll: fuel asString;
+        nextPutAll: '% pos=('; 
+        nextPutAll: self position printString;nextPut:$).
     ].
 ]
 

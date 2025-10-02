@@ -1,6 +1,6 @@
 Class {
 	#name : 'SecurizationMission',
-	#superclass : 'ZoneBasedMission',
+	#superclass : 'AnObsoleteZoneBasedMission',
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
 }
