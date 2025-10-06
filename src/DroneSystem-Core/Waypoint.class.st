@@ -1,6 +1,6 @@
 Class {
 	#name : 'Waypoint',
-	#superclass : 'Point',
+	#superclass : 'GeoPoint',
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
 }

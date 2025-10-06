@@ -2,24 +2,11 @@ Class {
 	#name : 'DiscreteEventScheduler',
 	#superclass : 'Object',
 	#instVars : [
-		'eventQueue',
-		'eventGraph'
+		'eventQueue'
 	],
 	#category : 'DroneSystem-Simulation',
 	#package : 'DroneSystem-Simulation'
 }
-
-{ #category : 'accessing' }
-DiscreteEventScheduler >> eventGraph [
-
-	^ eventGraph
-]
-
-{ #category : 'accessing' }
-DiscreteEventScheduler >> eventGraph: anObject [
-
-	eventGraph := anObject
-]
 
 { #category : 'accessing' }
 DiscreteEventScheduler >> eventQueue [

@@ -37,11 +37,6 @@ DroneSimulator >> electionSessions: anObject [
 	electionSessions := anObject
 ]
 
-{ #category : 'facilities' }
-DroneSimulator >> entitiesInPerceptionRangeOf: aDrone [
-    ^ self entitiesInPerceptionRangeOf: aDrone
-]
-
 { #category : 'accessing' }
 DroneSimulator >> entityEventMap [
 
@@ -335,14 +330,24 @@ simulationStartTime := Time millisecondClockValue.
 ]
 
 { #category : 'dependencies' }
-DroneSimulator >> scheduleEvent: anEvent after: dependencyEvents [
+DroneSimulator >> scheduleEvent: anEvent [  
     scheduler scheduleEvent: anEvent.
 
-"A verifier"
-"    anEvent affectedEntities do: [:entity |
-        (entityEventMap at: entity ifAbsentPut: [ Set new ]) add: anEvent.
-    ]."
+
+]
+
+{ #category : 'dependencies' }
+DroneSimulator >> scheduleEvent: anEvent after: dependencyEvents [
+    self scheduleEvent: anEvent.
+ 
     scheduler eventGraph addEvent: anEvent withDependencies: dependencyEvents.
+]
+
+{ #category : 'dependencies' }
+DroneSimulator >> scheduleEvent: evt at: aDate [
+
+	evt timeStampAt: aDate.
+	^self scheduleEvent: evt.
 ]
 
 { #category : 'accessing' }

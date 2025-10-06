@@ -58,6 +58,155 @@ simulator scheduleEvent: (
 ]
 
 { #category : 'as yet unclassified' }
+DroneScenarios class >> exampleRealisticFranceEngagement [ [
+    "Realistic scenario:
+    - 12 allied drones patrol a surveillance zone over France (Paris region).
+    - Each drone has limited ammunition and energy.
+    - 4 hostile drones enter from the north-east.
+    - Hostiles attempt to cross the zone; allies must intercept.
+    - Each engagement consumes ammunition.
+    - Metrics: number of hostiles intercepted, ammunition spent, drones lost, zone breach events."
+
+    | alliedDrones hostiles surveillanceWaypoints mission cluster hostileCluster simulator
+      engagementEvents metrics step maxSteps zoneBreaches interceptedHostiles dronesLost ammoSpent |
+
+    "Define Paris region surveillance waypoints (approximate lat/lon)"
+    surveillanceWaypoints := {
+        Waypoint latitude: 48.8566 longitude: 2.3522 altitude: 1200.  "Paris center"
+        Waypoint latitude: 48.90 longitude: 2.30 altitude: 1200.
+        Waypoint latitude: 48.90 longitude: 2.40 altitude: 1200.
+        Waypoint latitude: 48.83 longitude: 2.30 altitude: 1200.
+        Waypoint latitude: 48.83 longitude: 2.40 altitude: 1200.
+        Waypoint latitude: 48.87 longitude: 2.37 altitude: 1200.
+        Waypoint latitude: 48.85 longitude: 2.36 altitude: 1200.
+    }.
+
+    "Create 12 allied drones with ammo and energy"
+    alliedDrones := (1 to: 12) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * (i \\ 4)) longitude: 2.35 + (0.01 * (i // 4)) altitude: 1200);
+            ammunition: 4;
+            energy: 1000;
+            status: #active;
+            yourself
+    ].
+
+    "Allied surveillance mission"
+    mission := SurveillanceMission new
+        waypoints: surveillanceWaypoints;
+        yourself.
+
+    cluster := DroneCluster new
+        drones: alliedDrones.
+    mission assignToCluster: cluster.
+
+    "Create 4 hostile drones entering from NE"
+    hostiles := (1 to: 4) collect: [:i |
+        Drone new
+            id: (100 + i);
+            position: (GeoPoint latitude: 48.92 longitude: 2.45 + (0.01 * i) altitude: 1200);
+            ammunition: 2;
+            energy: 800;
+            status: #hostile;
+            yourself
+    ].
+    hostileCluster := DroneCluster new
+        drones: hostiles.
+
+    "Simulator with both clusters"
+    simulator := DroneSimulator new
+        clusters: { cluster. hostileCluster };
+        yourself.
+
+    "Metrics initialization"
+    metrics := Dictionary new.
+    metrics at: #interceptedHostiles put: 0.
+    metrics at: #ammoSpent put: 0.
+    metrics at: #dronesLost put: 0.
+    metrics at: #zoneBreaches put: 0.
+
+    maxSteps := 100.
+    engagementEvents := OrderedCollection new.
+    zoneBreaches := 0.
+    interceptedHostiles := 0.
+    dronesLost := 0.
+    ammoSpent := 0.
+
+    "Schedule hostiles to move through the zone"
+    hostiles do: [:h |
+        | path |
+        path := {
+            Waypoint latitude: 48.92 longitude: 2.45 altitude: 1200.
+            Waypoint latitude: 48.85 longitude: 2.36 altitude: 1200.
+            Waypoint latitude: 48.80 longitude: 2.30 altitude: 1200.
+        }.
+        1 to: path size - 1 do: [:i |
+            simulator scheduleEvent: (MoveToWaypointEvent new
+                drone: h;
+                waypoint: (path at: i + 1);
+                yourself) at: (i * 10).
+        ].
+    ].
+
+    "Main simulation loop"
+    1 to: maxSteps do: [:step |
+        "Check for possible engagements"
+        alliedDrones do: [:ad |
+            (ad status = #active and: [ad ammunition > 0]) ifTrue: [
+                hostiles do: [:hd |
+                    (hd status = #hostile and: [
+                        ad position distanceTo: hd position < 0.02
+                    ]) ifTrue: [
+                        "Engagement: intercept"
+                        ad ammunition: ad ammunition - 1.
+                        ammoSpent := ammoSpent + 1.
+                        hd status: #intercepted.
+                        interceptedHostiles := interceptedHostiles + 1.
+                        engagementEvents add: {step. ad id. hd id}.
+                    ].
+                ].
+            ].
+        ].
+
+        "Check for hostiles breaching the zone"
+        hostiles do: [:hd |
+            (hd status = #hostile and: [
+                hd position latitude < 48.83
+            ]) ifTrue: [
+                zoneBreaches := zoneBreaches + 1.
+                hd status: #breached.
+            ].
+        ].
+
+        "Check for drones lost (energy depleted)"
+        alliedDrones do: [:ad |
+            (ad status = #active and: [ad energy <= 0]) ifTrue: [
+                ad status: #lost.
+                dronesLost := dronesLost + 1.
+            ].
+        ].
+
+        "Simulate energy consumption"
+        alliedDrones do: [:ad | ad energy: ad energy - 2 ].
+        hostiles do: [:hd | hd energy: hd energy - 3 ].
+
+        simulator step.
+    ].
+
+    "Store metrics"
+    metrics at: #interceptedHostiles put: interceptedHostiles.
+    metrics at: #ammoSpent put: ammoSpent.
+    metrics at: #dronesLost put: dronesLost.
+    metrics at: #zoneBreaches put: zoneBreaches.
+
+    "Print metrics"
+    Transcript show: 'Simulation complete. Metrics:'; cr.
+    metrics keysAndValuesDo: [:k :v | Transcript show: k asString, ': ', v asString; cr ].
+]
+]
+
+{ #category : 'as yet unclassified' }
 DroneScenarios class >> exampleSecuring [
   
      | sim drones cluster mission polygon     |

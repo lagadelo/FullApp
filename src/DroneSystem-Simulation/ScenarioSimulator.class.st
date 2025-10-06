@@ -10,6 +10,15 @@ Class {
 }
 
 { #category : 'examples' }
+ScenarioSimulator class >> exameple2 [
+
+^DroneSimulator new
+    addDrones: (1 to: 20 collect: [:i | Drone new id: i; position: (GeoPoint x: (10 atRandom) y: (10 atRandom)); yourself]);
+    setMission: (SurveillanceMission new area: (GeoPoint x: 0 y: 0) extent: 10);
+    runFor: 1000.
+]
+
+{ #category : 'examples' }
 ScenarioSimulator class >> example10 [ 
 
 | simState simulator mission polygon fleet drones cluster1 cluster2
@@ -114,6 +123,98 @@ simState drones do: [:d | Transcript show: d id printString, ' pos: ', d positio
 ]
 
 { #category : 'examples' }
+ScenarioSimulator class >> exampleAttackAndRescue [ 
+    "Scenario:
+    - 10 allied drones on a surveillance mission.
+    - 3 hostile drones.
+    - One hostile attacks an allied drone.
+    - The attacked drone calls for help.
+    - The other allied drones dispatch: some strike back, others hold position."
+
+    | alliedDrones hostiles surveillanceMission cluster simulator attackedDrone attackEvent helpEvent strikeMission holdMission strikeDrones holdDrones rescueCluster |
+
+    "Create 10 allied drones"
+    alliedDrones := (1 to: 10) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.005 * i) longitude: 2.35 altitude: 1000);
+            yourself
+    ].
+
+    "Surveillance mission for all allied drones"
+    surveillanceMission := SurveillanceMission new
+        waypoints: {
+            Waypoint latitude: 48.85 longitude: 2.35 altitude: 1000.
+            Waypoint latitude: 48.86 longitude: 2.36 altitude: 1000.
+            Waypoint latitude: 48.87 longitude: 2.35 altitude: 1000.
+        };
+        yourself.
+
+    cluster := DroneCluster new
+        drones: alliedDrones.
+    surveillanceMission assignToCluster: cluster.
+
+    "Create 3 hostile drones"
+    hostiles := (1 to: 3) collect: [:i |
+        Drone new
+            id: (100 + i);
+            position: (GeoPoint latitude: 48.88 + (0.002 * i) longitude: 2.38 altitude: 1000);
+            yourself
+    ].
+    "Hostile cluster (for completeness, not used in mission assignment here)"
+    rescueCluster := DroneCluster new
+        drones: hostiles.
+
+    "Initialize simulator with both clusters"
+    simulator := DroneSimulator new
+        clusters: { cluster. rescueCluster };
+        yourself.
+
+    "Choose one allied drone to be attacked"
+    attackedDrone := alliedDrones anyOne.
+
+    "Schedule an attack event at step 10"
+    attackEvent := AttackBehavior new
+        attacker: hostiles first;
+        target: attackedDrone;
+        yourself.
+    simulator scheduleEvent: attackEvent at: 10.
+
+    "Schedule a help request event from the attacked drone at step 11"
+    helpEvent := ClusterAlertEvent new
+        drone: attackedDrone;
+        type: #helpRequest;
+        yourself.
+    simulator scheduleEvent: helpEvent at: 11.
+
+    "At step 12, split the remaining drones: half strike back, half hold position"
+    strikeDrones := (alliedDrones select: [:d | d ~= attackedDrone]) first: 4.
+    holdDrones := (alliedDrones select: [:d | d ~= attackedDrone]) allButFirst: 4.
+
+    strikeMission := StrikeMission new
+        targets: (hostiles collect: [:h | h position]);
+        yourself.
+    holdMission := StaticPositionBehavior new
+        positions: (holdDrones collect: [:d | d position]);
+        yourself.
+
+    "Assign new missions at step 12"
+    simulator scheduleEvent: (MissionChangeEvent new
+        drones: strikeDrones;
+        mission: strikeMission;
+        yourself) at: 12.
+
+    simulator scheduleEvent: (MissionChangeEvent new
+        drones: holdDrones;
+        mission: holdMission;
+        yourself) at: 12.
+
+    "Run the simulation for 50 steps"
+    1 to: 50 do: [:step | simulator step ].
+
+]
+
+{ #category : 'examples' }
 ScenarioSimulator class >> exampleClasses [ 
 | simulator polygon target ratios outcome |
 simulator := ScenarioSimulator new.
@@ -129,6 +230,807 @@ ratios := #(0.2 0.5 0.8).
 outcome := simulator runMixedMissionWithRatios: ratios polygon: polygon target: target.
 
 Transcript show: outcome; cr.
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleEnergyDepletion [ [
+    | drones mission cluster simulator |
+    drones := (1 to: 6) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * i) longitude: 2.35 altitude: 1000);
+            energy: 100;
+            yourself
+    ].
+
+    mission := PatrolMission new
+        waypoints: {
+            Waypoint latitude: 48.85 longitude: 2.35 altitude: 1000.
+            Waypoint latitude: 48.86 longitude: 2.36 altitude: 1000.
+        };
+        yourself.
+
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    simulator := DroneSimulator new
+        clusters: { cluster };
+        yourself.
+
+    1 to: 200 do: [:step | simulator step ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleGlobalConflict [ [
+    "Global scenario:
+    - Large-scale drone conflict over France.
+    - Attackers from Denmark and Poland coordinate a multi-vector assault on Brest.
+    - French defenders dynamically intercept, regroup, and manage resources.
+    - Both sides use adaptive strategies.
+    - Metrics: bombs delivered, attackers lost, defenders lost, breaches, successful interceptions."
+
+    | brestTarget danmarkStart polandStart
+      attackerDrones defenderDrones attackerCluster defenderCluster
+      simulator maxSteps step
+      mainForce decoys mainForcePath decoyPath
+      metrics bombsDelivered attackersLost defendersLost breaches interceptions |
+
+    "Define Brest target"
+    brestTarget := GeoPoint latitude: 48.3904 longitude: -4.4861 altitude: 1200.
+
+    "Attacker starting points"
+    danmarkStart := GeoPoint latitude: 55.6761 longitude: 12.5683 altitude: 1200.
+    polandStart := GeoPoint latitude: 52.2297 longitude: 21.0122 altitude: 1200.
+
+    "Create 30 attacker drones (15 from each country)"
+    attackerDrones := ((1 to: 15) collect: [:i |
+        Drone new
+            id: (1000 + i);
+            position: danmarkStart;
+            ammunition: 1;
+            energy: 2000;
+            status: #attacker;
+            yourself
+    ]) , ((1 to: 15) collect: [:i |
+        Drone new
+            id: (2000 + i);
+            position: polandStart;
+            ammunition: 1;
+            energy: 2000;
+            status: #attacker;
+            yourself
+    ]).
+
+    attackerCluster := DroneCluster new
+        drones: attackerDrones;
+        responseStrategy: (HybridStrategy new
+            strategies: { AllInterceptStrategy new. MaxFuelStrategy new });
+        yourself.
+
+    "Create 20 defender drones scattered over France"
+    defenderDrones := (1 to: 20) collect: [:i |
+        Drone new
+            id: (3000 + i);
+            position: (GeoPoint latitude: 48.0 + (0.8 atRandom) longitude: 2.0 + (5.0 atRandom) altitude: 1200);
+            ammunition: 3;
+            energy: 1500;
+            status: #defender;
+            yourself
+    ].
+    defenderCluster := DroneCluster new
+        drones: defenderDrones;
+        responseStrategy: (HybridStrategy new
+            strategies: { ClosestDroneInterceptStrategy new. ReinforceWeakestClusterStrategy new });
+        yourself.
+
+    "Simulator with both clusters"
+    simulator := DroneSimulator new
+        clusters: { attackerCluster. defenderCluster };
+        yourself.
+
+    "Attackers: coordinated assault (main force and decoys)"
+    mainForce := attackerDrones first: 20.
+    decoys := attackerDrones allButFirst: 20.
+
+    mainForcePath := {
+        GeoPoint latitude: 50.0 longitude: 5.0 altitude: 1200.
+        GeoPoint latitude: 48.8 longitude: -1.0 altitude: 1200.
+        brestTarget
+    }.
+    decoyPath := {
+        GeoPoint latitude: 48.5 longitude: 7.0 altitude: 1200.
+        GeoPoint latitude: 47.5 longitude: 2.0 altitude: 1200.
+        GeoPoint latitude: 48.4 longitude: -2.0 altitude: 1200.
+        brestTarget
+    }.
+
+    mainForce do: [:drone |
+        1 to: mainForcePath size - 1 do: [:i |
+            simulator scheduleEvent: (MoveToWaypointEvent new
+                drone: drone;
+                waypoint: (mainForcePath at: i + 1);
+                yourself) at: (i * 15).
+        ].
+    ].
+    decoys do: [:drone |
+        1 to: decoyPath size - 1 do: [:i |
+            simulator scheduleEvent: (MoveToWaypointEvent new
+                drone: drone;
+                waypoint: (decoyPath at: i + 1);
+                yourself) at: (i * 15).
+        ].
+    ].
+
+    "Metrics initialization"
+    metrics := Dictionary new.
+    metrics at: #bombsDelivered put: 0.
+    metrics at: #attackersLost put: 0.
+    metrics at: #defendersLost put: 0.
+    metrics at: #breaches put: 0.
+    metrics at: #interceptions put: 0.
+
+    maxSteps := 120.
+    bombsDelivered := 0.
+    attackersLost := 0.
+    defendersLost := 0.
+    breaches := 0.
+    interceptions := 0.
+
+    "Main simulation loop"
+    1 to: maxSteps do: [:step |
+        "Defenders dynamically intercept closest attackers"
+        defenderDrones do: [:def |
+            (def status = #defender and: [def ammunition > 0]) ifTrue: [
+                | closestAtk |
+                closestAtk := attackerDrones
+                    select: [:atk | atk status = #attacker ]
+                    sort: [:a1 :a2 | (def position distanceTo: a1 position) < (def position distanceTo: a2 position) ].
+                closestAtk first ifNotNil: [:atk |
+                    (def position distanceTo: atk position < 0.03) ifTrue: [
+                        def ammunition: def ammunition - 1.
+                        atk status: #lost.
+                        attackersLost := attackersLost + 1.
+                        interceptions := interceptions + 1.
+                    ].
+                ].
+            ].
+        ].
+
+        "Defenders with low resources regroup at Paris"
+        defenderDrones do: [:def |
+            (def ammunition < 1 or: [def energy < 200]) ifTrue: [
+                simulator scheduleEvent: (MoveToWaypointEvent new
+                    drone: def;
+                    waypoint: (GeoPoint latitude: 48.8566 longitude: 2.3522 altitude: 1200);
+                    yourself) at: step + 1.
+            ].
+        ].
+
+        "Attackers adaptively reroute if defenders are concentrated ahead"
+        attackerDrones do: [:atk |
+            | nearbyDefenders |
+            (atk status = #attacker) ifTrue: [
+                nearbyDefenders := defenderDrones select: [:def |
+                    def status = #defender and: [
+                        atk position distanceTo: def position < 0.05
+                    ]
+                ].
+                (nearbyDefenders notEmpty) ifTrue: [
+                    simulator scheduleEvent: (MoveToWaypointEvent new
+                        drone: atk;
+                        waypoint: (GeoPoint latitude: 48.7 longitude: -2.0 altitude: 1200);
+                        yourself) at: step + 1.
+                ].
+            ].
+        ].
+
+        "Bombers reaching Brest"
+        attackerDrones do: [:atk |
+            (atk status = #attacker and: [
+                atk position distanceTo: brestTarget < 0.02
+            ]) ifTrue: [
+                atk status: #bombed.
+                bombsDelivered := bombsDelivered + atk ammunition.
+                atk ammunition: 0.
+            ].
+        ].
+
+        "Simulate energy consumption and losses"
+        attackerDrones do: [:atk |
+            atk energy: atk energy - 3.
+            (atk energy <= 0 and: [atk status = #attacker]) ifTrue: [
+                atk status: #lost.
+                attackersLost := attackersLost + 1.
+            ].
+        ].
+        defenderDrones do: [:def |
+            def energy: def energy - 2.
+            (def energy <= 0 and: [def status = #defender]) ifTrue: [
+                def status: #lost.
+                defendersLost := defendersLost + 1.
+            ].
+        ].
+
+        "Count breaches (attackers that pass Brest)"
+        attackerDrones do: [:atk |
+            (atk status = #attacker and: [
+                atk position longitude < -4.5
+            ]) ifTrue: [
+                breaches := breaches + 1.
+                atk status: #breached.
+            ].
+        ].
+
+        simulator step.
+    ].
+
+    "Store metrics"
+    metrics at: #bombsDelivered put: bombsDelivered.
+    metrics at: #attackersLost put: attackersLost.
+    metrics at: #defendersLost put: defendersLost.
+    metrics at: #breaches put: breaches.
+    metrics at: #interceptions put: interceptions.
+
+    "Print metrics"
+    Transcript show: 'Global conflict scenario complete. Metrics:'; cr.
+    metrics keysAndValuesDo: [:k :v | Transcript show: k asString, ': ', v asString; cr ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleMassiveIntercept [ [
+    | drones hostiles mission cluster simulator |
+    drones := (1 to: 10) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * i) longitude: 2.35 altitude: 1000);
+            yourself
+    ].
+
+    hostiles := (1 to: 5) collect: [:i |
+        GeoPoint latitude: 48.90 + (0.01 * i) longitude: 2.40 + (0.01 * i) altitude: 1000
+    ].
+
+    mission := InterceptHostilesStrategy new
+        hostiles: hostiles;
+        yourself.
+
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    simulator := DroneSimulator new
+        clusters: { cluster };
+        yourself.
+
+    1 to: 100 do: [:step | simulator step ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleMultiCluster [ [
+    | clusters simulator drones mission cluster hostiles randomWaypoints |
+
+    "Cluster 1: Surveillance"
+    drones := (1 to: 3) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * i) longitude: 2.35 altitude: 1000);
+            yourself
+    ].
+    mission := SurveillanceMission new
+        waypoints: {
+            Waypoint latitude: 48.85 longitude: 2.35 altitude: 1000.
+            Waypoint latitude: 48.86 longitude: 2.36 altitude: 1000.
+            Waypoint latitude: 48.87 longitude: 2.35 altitude: 1000.
+        };
+        yourself.
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    clusters := { cluster }.
+
+    "Cluster 2: Strike"
+    drones := (1 to: 3) collect: [:i |
+        Drone new
+            id: (10 + i);
+            position: (GeoPoint latitude: 48.80 + (0.01 * i) longitude: 2.40 altitude: 1000);
+            yourself
+    ].
+    mission := StrikeMission new
+        targets: {
+            GeoPoint latitude: 48.90 longitude: 2.45 altitude: 1000.
+            GeoPoint latitude: 48.91 longitude: 2.46 altitude: 1000.
+        };
+        yourself.
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    clusters := clusters , { cluster }.
+
+    "Cluster 3: Mixed Securization and Strike"
+    drones := (1 to: 3) collect: [:i |
+        Drone new
+            id: (20 + i);
+            position: (GeoPoint latitude: 48.82 + (0.01 * i) longitude: 2.38 altitude: 1000);
+            yourself
+    ].
+    mission := MixedMission new
+        missions: {
+            SecurizationMission new
+                waypoints: {
+                    Waypoint latitude: 48.83 longitude: 2.39 altitude: 1000.
+                    Waypoint latitude: 48.84 longitude: 2.40 altitude: 1000.
+                    Waypoint latitude: 48.85 longitude: 2.41 altitude: 1000.
+                };
+                yourself.
+            StrikeMission new
+                targets: {
+                    GeoPoint latitude: 48.92 longitude: 2.48 altitude: 1000.
+                };
+                yourself.
+        };
+        yourself.
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    clusters := clusters , { cluster }.
+
+    "Cluster 4: Securization (with 4 points)"
+    drones := (1 to: 3) collect: [:i |
+        Drone new
+            id: (30 + i);
+            position: (GeoPoint latitude: 48.81 + (0.01 * i) longitude: 2.37 altitude: 1000);
+            yourself
+    ].
+    mission := SecurizationMission new
+        waypoints: {
+            Waypoint latitude: 48.82 longitude: 2.38 altitude: 1000.
+            Waypoint latitude: 48.83 longitude: 2.39 altitude: 1000.
+            Waypoint latitude: 48.84 longitude: 2.40 altitude: 1000.
+            Waypoint latitude: 48.85 longitude: 2.41 altitude: 1000.
+        };
+        yourself.
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    clusters := clusters , { cluster }.
+
+    "Cluster 5: Hostile with pseudo-random moves"
+    randomWaypoints := (1 to: 6) collect: [:i |
+        Waypoint latitude: (48.80 + (0.05 atRandom)) longitude: (2.30 + (0.1 atRandom)) altitude: 1000
+    ].
+    drones := (1 to: 3) collect: [:i |
+        Drone new
+            id: (40 + i);
+            position: (GeoPoint latitude: 48.80 + (0.01 * i) longitude: 2.30 altitude: 1000);
+            yourself
+    ].
+    mission := SurveillanceMission new
+        waypoints: randomWaypoints;
+        yourself.
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    clusters := clusters , { cluster }.
+
+    "Run the simulation"
+    simulator := DroneSimulator new
+        clusters: clusters;
+        yourself.
+
+    1 to: 200 do: [:step | simulator step ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleOffensiveStrikeOnBrest [ [
+    "Scenario:
+    - Attacker's point of view: large hostile drone fleet from Denmark and Poland.
+    - Objective: bomb Brest (major military port in western France).
+    - France is protected by a defensive drone fleet.
+    - Hostile drones must cross France, avoid/intercept defenders, and reach Brest.
+    - Metrics: number of bombers reaching Brest, bombs delivered, losses en route."
+
+    | attackerDrones defenderDrones attackerCluster defenderCluster simulator
+      brestTarget danmarkStart polandStart attackPaths maxSteps
+      bombersAtTarget bombsDelivered attackersLost defendersIntercepted step metrics |
+
+    "Define Brest target (approximate coordinates)"
+    brestTarget := GeoPoint latitude: 48.3904 longitude: -4.4861 altitude: 1200.
+
+    "Define starting points for attackers"
+    danmarkStart := GeoPoint latitude: 55.6761 longitude: 12.5683 altitude: 1200.  "Copenhagen"
+    polandStart := GeoPoint latitude: 52.2297 longitude: 21.0122 altitude: 1200.   "Warsaw"
+
+    "Create 20 attacker drones from Denmark"
+    attackerDrones := (1 to: 20) collect: [:i |
+        Drone new
+            id: (1000 + i);
+            position: danmarkStart;
+            ammunition: 1;  "One bomb each"
+            energy: 2000;
+            status: #attacker;
+            yourself
+    ].
+
+    "Create 20 attacker drones from Poland"
+    attackerDrones := attackerDrones , ((1 to: 20) collect: [:i |
+        Drone new
+            id: (2000 + i);
+            position: polandStart;
+            ammunition: 1;
+            energy: 2000;
+            status: #attacker;
+            yourself
+    ]).
+
+    attackerCluster := DroneCluster new
+        drones: attackerDrones.
+
+    "Create 15 defender drones scattered over France"
+    defenderDrones := (1 to: 15) collect: [:i |
+        Drone new
+            id: (3000 + i);
+            position: (GeoPoint latitude: 48.0 + (0.8 atRandom) longitude: 2.0 + (5.0 atRandom) altitude: 1200);
+            ammunition: 3;
+            energy: 1500;
+            status: #defender;
+            yourself
+    ].
+    defenderCluster := DroneCluster new
+        drones: defenderDrones.
+
+    "Simulator with both clusters"
+    simulator := DroneSimulator new
+        clusters: { attackerCluster. defenderCluster };
+        yourself.
+
+    "Define attack paths: straight lines to Brest"
+    attackPaths := attackerDrones collect: [:drone |
+        {
+            drone position.
+            GeoPoint latitude: 50.0 longitude: 5.0 altitude: 1200.  "Belgium/NE France"
+            GeoPoint latitude: 48.8 longitude: -1.0 altitude: 1200. "Brittany approach"
+            brestTarget
+        }
+    ].
+
+    "Schedule attacker moves along their paths"
+    attackerDrones withIndexDo: [:drone :idx |
+        | path |
+        path := attackPaths at: idx.
+        1 to: path size - 1 do: [:i |
+            simulator scheduleEvent: (MoveToWaypointEvent new
+                drone: drone;
+                waypoint: (path at: i + 1);
+                yourself) at: (i * 15).
+        ].
+    ].
+
+    "Metrics initialization"
+    metrics := Dictionary new.
+    metrics at: #bombersAtTarget put: 0.
+    metrics at: #bombsDelivered put: 0.
+    metrics at: #attackersLost put: 0.
+    metrics at: #defendersIntercepted put: 0.
+
+    maxSteps := 120.
+    bombersAtTarget := 0.
+    bombsDelivered := 0.
+    attackersLost := 0.
+    defendersIntercepted := 0.
+
+    "Main simulation loop"
+    1 to: maxSteps do: [:step |
+        "Check for engagements: defenders intercept attackers"
+        defenderDrones do: [:def |
+            (def status = #defender and: [def ammunition > 0]) ifTrue: [
+                attackerDrones do: [:atk |
+                    (atk status = #attacker and: [
+                        def position distanceTo: atk position < 0.03
+                    ]) ifTrue: [
+                        def ammunition: def ammunition - 1.
+                        atk status: #lost.
+                        attackersLost := attackersLost + 1.
+                        defendersIntercepted := defendersIntercepted + 1.
+                    ].
+                ].
+            ].
+        ].
+
+        "Check for bombers reaching Brest"
+        attackerDrones do: [:atk |
+            (atk status = #attacker and: [
+                atk position distanceTo: brestTarget < 0.02
+            ]) ifTrue: [
+                atk status: #bombed.
+                bombersAtTarget := bombersAtTarget + 1.
+                bombsDelivered := bombsDelivered + atk ammunition.
+                atk ammunition: 0.
+            ].
+        ].
+
+        "Simulate energy consumption"
+        attackerDrones do: [:atk | atk energy: atk energy - 3 ].
+        defenderDrones do: [:def | def energy: def energy - 2 ].
+
+        simulator step.
+    ].
+
+    "Store metrics"
+    metrics at: #bombersAtTarget put: bombersAtTarget.
+    metrics at: #bombsDelivered put: bombsDelivered.
+    metrics at: #attackersLost put: attackersLost.
+    metrics at: #defendersIntercepted put: defendersIntercepted.
+
+    "Print metrics"
+    Transcript show: 'Offensive scenario complete. Metrics:'; cr.
+    metrics keysAndValuesDo: [:k :v | Transcript show: k asString, ': ', v asString; cr ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleRealisticFranceEngagement [ [
+    "Realistic scenario:
+    - 12 allied drones patrol a surveillance zone over France (Paris region).
+    - Each drone has limited ammunition and energy.
+    - 4 hostile drones enter from the north-east.
+    - Hostiles attempt to cross the zone; allies must intercept.
+    - Each engagement consumes ammunition.
+    - Metrics: number of hostiles intercepted, ammunition spent, drones lost, zone breach events."
+
+    | alliedDrones hostiles surveillanceWaypoints mission cluster hostileCluster simulator
+      engagementEvents metrics step maxSteps zoneBreaches interceptedHostiles dronesLost ammoSpent |
+
+    "Define Paris region surveillance waypoints (approximate lat/lon)"
+    surveillanceWaypoints := {
+        Waypoint latitude: 48.8566 longitude: 2.3522 altitude: 1200.  "Paris center"
+        Waypoint latitude: 48.90 longitude: 2.30 altitude: 1200.
+        Waypoint latitude: 48.90 longitude: 2.40 altitude: 1200.
+        Waypoint latitude: 48.83 longitude: 2.30 altitude: 1200.
+        Waypoint latitude: 48.83 longitude: 2.40 altitude: 1200.
+        Waypoint latitude: 48.87 longitude: 2.37 altitude: 1200.
+        Waypoint latitude: 48.85 longitude: 2.36 altitude: 1200.
+    }.
+
+    "Create 12 allied drones with ammo and energy"
+    alliedDrones := (1 to: 12) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * (i \\ 4)) longitude: 2.35 + (0.01 * (i // 4)) altitude: 1200);
+            ammunition: 4;
+            energy: 1000;
+            status: #active;
+            yourself
+    ].
+
+    "Allied surveillance mission"
+    mission := SurveillanceMission new
+        waypoints: surveillanceWaypoints;
+        yourself.
+
+    cluster := DroneCluster new
+        drones: alliedDrones.
+    mission assignToCluster: cluster.
+
+    "Create 4 hostile drones entering from NE"
+    hostiles := (1 to: 4) collect: [:i |
+        Drone new
+            id: (100 + i);
+            position: (GeoPoint latitude: 48.92 longitude: 2.45 + (0.01 * i) altitude: 1200);
+            ammunition: 2;
+            energy: 800;
+            status: #hostile;
+            yourself
+    ].
+    hostileCluster := DroneCluster new
+        drones: hostiles.
+
+    "Simulator with both clusters"
+    simulator := DroneSimulator new
+        clusters: { cluster. hostileCluster };
+        yourself.
+
+    "Metrics initialization"
+    metrics := Dictionary new.
+    metrics at: #interceptedHostiles put: 0.
+    metrics at: #ammoSpent put: 0.
+    metrics at: #dronesLost put: 0.
+    metrics at: #zoneBreaches put: 0.
+
+    maxSteps := 100.
+    engagementEvents := OrderedCollection new.
+    zoneBreaches := 0.
+    interceptedHostiles := 0.
+    dronesLost := 0.
+    ammoSpent := 0.
+
+    "Schedule hostiles to move through the zone"
+    hostiles do: [:h |
+        | path |
+        path := {
+            Waypoint latitude: 48.92 longitude: 2.45 altitude: 1200.
+            Waypoint latitude: 48.85 longitude: 2.36 altitude: 1200.
+            Waypoint latitude: 48.80 longitude: 2.30 altitude: 1200.
+        }.
+        1 to: path size - 1 do: [:i |
+            simulator scheduleEvent: (MoveToWaypointEvent new
+                drone: h;
+                waypoint: (path at: i + 1);
+                yourself) at: (i * 10).
+        ].
+    ].
+
+    "Main simulation loop"
+    1 to: maxSteps do: [:step |
+        "Check for possible engagements"
+        alliedDrones do: [:ad |
+            (ad status = #active and: [ad ammunition > 0]) ifTrue: [
+                hostiles do: [:hd |
+                    (hd status = #hostile and: [
+                        ad position distanceTo: hd position < 0.02
+                    ]) ifTrue: [
+                        "Engagement: intercept"
+                        ad ammunition: ad ammunition - 1.
+                        ammoSpent := ammoSpent + 1.
+                        hd status: #intercepted.
+                        interceptedHostiles := interceptedHostiles + 1.
+                        engagementEvents add: {step. ad id. hd id}.
+                    ].
+                ].
+            ].
+        ].
+
+        "Check for hostiles breaching the zone"
+        hostiles do: [:hd |
+            (hd status = #hostile and: [
+                hd position latitude < 48.83
+            ]) ifTrue: [
+                zoneBreaches := zoneBreaches + 1.
+                hd status: #breached.
+            ].
+        ].
+
+        "Check for drones lost (energy depleted)"
+        alliedDrones do: [:ad |
+            (ad status = #active and: [ad energy <= 0]) ifTrue: [
+                ad status: #lost.
+                dronesLost := dronesLost + 1.
+            ].
+        ].
+
+        "Simulate energy consumption"
+        alliedDrones do: [:ad | ad energy: ad energy - 2 ].
+        hostiles do: [:hd | hd energy: hd energy - 3 ].
+
+        simulator step.
+    ].
+
+    "Store metrics"
+    metrics at: #interceptedHostiles put: interceptedHostiles.
+    metrics at: #ammoSpent put: ammoSpent.
+    metrics at: #dronesLost put: dronesLost.
+    metrics at: #zoneBreaches put: zoneBreaches.
+
+    "Print metrics"
+    Transcript show: 'Simulation complete. Metrics:'; cr.
+    metrics keysAndValuesDo: [:k :v | Transcript show: k asString, ': ', v asString; cr ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleResilienceStrategies [ [
+    "Scenario:
+    - 20 drones surveil a zone defined by 14 waypoints.
+    - If sensing is insufficient, drones can:
+      1. Raise detection range (uses more power)
+      2. Increase patrol speed to reduce coverage gaps
+      3. Regroup at a central or key zone for focused protection
+    - Demonstrates resilience strategies in response to mission risk."
+
+    | drones waypoints mission cluster simulator insufficientCoverageEvent regroupEvent alphaTime centralPoint |
+
+    "Create 20 drones with default sensing and energy"
+    drones := (1 to: 20) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.80 + (0.01 * (i \\ 7)) longitude: 2.30 + (0.01 * (i // 7)) altitude: 1000);
+            detectionRange: 100; "default"
+            energy: 1000;
+            yourself
+    ].
+
+    "Define 14 waypoints forming the surveillance zone"
+    waypoints := #(
+        (48.80 2.30) (48.81 2.31) (48.82 2.32) (48.83 2.33)
+        (48.84 2.34) (48.85 2.35) (48.86 2.36) (48.87 2.37)
+        (48.88 2.38) (48.89 2.39) (48.88 2.40) (48.87 2.41)
+        (48.86 2.42) (48.85 2.43)
+    ) collect: [:pair | Waypoint latitude: pair first longitude: pair second altitude: 1000 ].
+
+    "Surveillance mission"
+    mission := SurveillanceMission new
+        waypoints: waypoints;
+        yourself.
+
+    cluster := DroneCluster new
+        drones: drones.
+    mission assignToCluster: cluster.
+
+    simulator := DroneSimulator new
+        clusters: { cluster };
+        yourself.
+
+    "Alpha parameter: max allowed time for a gap in coverage"
+    alphaTime := 10.
+
+    "Schedule an event at step 15 to simulate insufficient coverage detection"
+    insufficientCoverageEvent := DetectionEvent new
+        cluster: cluster;
+        type: #insufficientCoverage;
+        yourself.
+    simulator scheduleEvent: insufficientCoverageEvent at: 15.
+
+    "Strategy 1: At step 16, raise detection range (consumes more power)"
+    simulator scheduleEvent: (ScheduledEvent new
+        action: [ drones do: [:d | d detectionRange: 200. d energy: d energy - 50 ] ];
+        yourself) at: 16.
+
+    "Strategy 2: At step 17, increase patrol speed to reduce gap time"
+    simulator scheduleEvent: (ScheduledEvent new
+        action: [ drones do: [:d | d patrolSpeed: (d patrolSpeed * 1.5) ] ];
+        yourself) at: 17.
+
+    "Strategy 3: At step 18, regroup at central point or key zone"
+    centralPoint := GeoPoint latitude: 48.85 longitude: 2.36 altitude: 1000.
+    regroupEvent := MissionChangeEvent new
+        drones: drones;
+        mission: (StaticPositionBehavior new positions: { centralPoint }; yourself);
+        yourself.
+    simulator scheduleEvent: regroupEvent at: 18.
+
+    "Run the simulation for 40 steps"
+    1 to: 40 do: [:step | simulator step ].
+]
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleStrikeMission [ [
+    | clusters simulator |
+    clusters := (1 to: 2) collect: [:c |
+        | drones mission cluster |
+        drones := (1 to: 3) collect: [:i |
+            Drone new
+                id: (c*10 + i);
+                position: (GeoPoint latitude: 48.85 + (0.01 * i) longitude: 2.35 + (0.01 * c) altitude: 1000);
+                yourself
+        ].
+        mission := StrikeMission new
+            target: {
+                GeoPoint latitude: 48.90 + (0.01 * c) longitude: 2.40 + (0.01 * c) altitude: 1000
+            };
+            yourself.
+        cluster := DroneCluster new
+            drones: drones.
+        mission assignToCluster: cluster.
+        cluster
+    ].
+
+    simulator := DroneSimulator new
+        clusters: clusters;
+        yourself.
+
+    1 to: 150 do: [:step | simulator step ].
+]
+
 ]
 
 { #category : 'examples' }
@@ -174,6 +1076,36 @@ sim addFleet: fleet.
 
     view open."
 
+]
+
+{ #category : 'examples' }
+ScenarioSimulator class >> exampleSurveillancePatrol [ [
+    | drones mission cluster simulator |
+    drones := (1 to: 5) collect: [:i |
+        Drone new
+            id: i;
+            position: (GeoPoint latitude: 48.85 + (0.01 * i) longitude: 2.35 altitude: 1000);
+            yourself
+    ].
+
+    mission := SurveillanceMission new
+        waypoints: {
+            Waypoint latitude: 48.85 longitude: 2.35 altitude: 1000.
+            Waypoint latitude: 48.86 longitude: 2.36 altitude: 1000.
+            Waypoint latitude: 48.87 longitude: 2.35 altitude: 1000.
+        };
+        yourself.
+
+    cluster := DroneCluster new
+        drones: drones.
+mission assignToCluster: cluster.
+
+    simulator := DroneSimulator new
+        clusters: { cluster };
+        yourself.
+
+    1 to: 100 do: [:step | simulator step ].
+]
 ]
 
 { #category : 'executing' }
