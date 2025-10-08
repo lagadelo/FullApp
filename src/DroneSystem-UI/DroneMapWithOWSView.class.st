@@ -25,7 +25,19 @@ Class {
 		'onWaypointsCommittedBlock',
 		'waypointInputMode',
 		'pendingWaypoints',
-		'baseMapDirty'
+		'baseMapDirty',
+		'centerLat',
+		'centerLon',
+		'zoom',
+		'overlayPanel',
+		'waypointStartBtn',
+		'waypointCommitBtn',
+		'waypointClearBtn',
+		'overlayPerceptionCB',
+		'overlayMissionCB',
+		'overlayEnergyCB',
+		'overlayAmmoCB',
+		'overlayHullCB'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -288,6 +300,18 @@ DroneMapWithOWSView >> addWaypointMarkerFor: aWaypoint [
     shape translateTo: p
 ]
 
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> applyLayout [
+    "Applique un layout: carte large à gauche, panneau (overlayPanel) étroit à droite."
+    mapCanvas ifNil: [ self error: 'mapCanvas non initialisé' ].
+    overlayPanel ifNil: [ self error: 'overlayPanel non initialisé' ].
+    self layout: (SpBoxLayout newLeftToRight
+        spacing: 10;
+        add: mapCanvas expand: true;
+        add: overlayPanel expand: false;
+        yourself)
+]
+
 { #category : 'rendered elements' }
 DroneMapWithOWSView >> bitMap [
 
@@ -337,6 +361,114 @@ self rsCanvas add: self bitMap.
  
  
 ^self rsCanvas 
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> buildClusterAndDroneLists [
+    clusterList := SpListPresenter new
+        headerTitle: 'Clusters';
+        items: self initialClusterItems;
+        yourself.
+    clusterList display: [ :c | c ifNil: [ '' ] ifNotNil: [ c clusterId printString ] ].
+    clusterList whenSelectionChangedDo: [ self onClusterSelectionChanged ].
+
+    dronesList := SpListPresenter new
+        headerTitle: 'Drones';
+        yourself.
+    dronesList display: [ :d | d uniqueId printString ].
+    dronesList whenSelectionChangedDo: [ dronesList selectedItem ifNotNil: [:dr | dr inspect ] ]
+
+]
+
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> buildOverlayPanel [
+    | overlaysBox waypointBox listsBox rightStack |
+    self initializeOverlayModelIfNeeded.
+    self buildToolBar.
+
+    overlaysBox := self newPresenter.
+    overlaysBox layout: (SpBoxLayout newTopToBottom
+        spacing: 2;
+        add: (SpLabelPresenter new label: 'Overlays');
+        add: (self overlayCheckBox: #overlayPerceptionCB label: 'Perception'    getter: #showPerceptionRadius setter: #showPerceptionRadius:);
+        add: (self overlayCheckBox: #overlayMissionCB    label: 'Missions'      getter: #showMissionPaths       setter: #showMissionPaths:);
+        add: (self overlayCheckBox: #overlayEnergyCB     label: 'Fuel'          getter: #showEnergyBars         setter: #showEnergyBars:);
+        add: (self overlayCheckBox: #overlayAmmoCB       label: 'Ammo'          getter: #showAmmoBars           setter: #showAmmoBars:);
+        add: (self overlayCheckBox: #overlayHullCB       label: 'Cluster Hull'  getter: #showClusterHull        setter: #showClusterHull:);
+        yourself).
+
+    waypointBox := self newPresenter.
+    waypointBox layout: (SpBoxLayout newTopToBottom
+        spacing: 2;
+        add: (SpLabelPresenter new label: 'Waypoints');
+        add: (waypointStartBtn ifNotNil:[waypointStartBtn] ifNil: [
+            waypointStartBtn := SpButtonPresenter new label: 'Capture'; action: [ self startWaypointCapture ] ]);
+        add: (waypointCommitBtn ifNotNil:[waypointCommitBtn]  ifNil: [
+	waypointCommitBtn := SpButtonPresenter new label: 'Commit'; action: [ self commitPendingWaypoints ] ]);
+        add: (waypointClearBtn ifNotNil:[waypointClearBtn]  ifNil: [
+            waypointClearBtn := SpButtonPresenter new label: 'Clear'; action: [ self clearPendingWaypoints ] ]);
+        yourself).
+
+    listsBox := self newPresenter.
+    listsBox layout: (SpBoxLayout newTopToBottom
+        spacing: 4;
+        add: (SpLabelPresenter new label: 'Entities');
+        add: clusterList;
+        add: dronesList;
+        yourself).
+
+    rightStack := self newPresenter.
+    rightStack layout: (SpBoxLayout newTopToBottom
+        spacing: 6;
+        add: toolBar expand: false;
+        add: overlaysBox;
+        add: waypointBox;
+        add: listsBox;
+        yourself).
+
+    overlayPanel := rightStack
+ 
+ 
+]
+
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> buildToolBar [
+    toolBar ifNotNil: [ ^ toolBar ].
+    toolBar := SpBoxLayout newLeftToRight
+        spacing: 4;
+        add: (SpButtonPresenter new
+            label: 'Reload';
+            action: [ self markBaseMapDirty. self refreshAll ]);
+        add: (SpButtonPresenter new
+            label: 'Overlays ON';
+            action: [
+                overlayModel
+                    showPerceptionRadius: true;
+                    showMissionPaths: true;
+                    showEnergyBars: true;
+                    showAmmoBars: true;
+                    showClusterHull: true.
+                self refreshOverlays ]);
+        add: (SpButtonPresenter new
+            label: 'Overlays OFF';
+            action: [
+                overlayModel
+                    showPerceptionRadius: false;
+                    showMissionPaths: false;
+                    showEnergyBars: false;
+                    showAmmoBars: false;
+                    showClusterHull: false.
+                self refreshOverlays ]);
+        add: (SpButtonPresenter new
+            label: 'Capture WP';
+            action: [ self startWaypointCapture ]);
+        add: (SpButtonPresenter new
+            label: 'Commit WP';
+            action: [ self commitPendingWaypoints ]);
+        add: (SpButtonPresenter new
+            label: 'Clear WP';
+            action: [ self clearPendingWaypoints ]);
+        yourself
 ]
 
 { #category : 'accessing' }
@@ -405,27 +537,30 @@ DroneMapWithOWSView >> defaultImageWidth [
 ^1600
 ]
 
-{ #category : 'initialization' }
-DroneMapWithOWSView >> defaultLayout [ 
-|   sp2 |
- 
- 
-sp2 := self newPresenter.
- 
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> defaultLayout [
+    "Spec va appeler ceci. Pas de bloc; juste un SpBoxLayout.
+    Si ta version exige un bloc → dé-commente defaultLayoutBlock ci-dessous."
+    mapCanvas ifNil: [ self error: 'mapCanvas non initialisé (initializePresenters non appelé)' ].
+    overlayPanel ifNil: [ self error: 'overlayPanel non initialisé (initializePresenters non appelé)' ].
+    ^ SpBoxLayout newLeftToRight
+        spacing: 10;
+        add: mapCanvas;
+        add: overlayPanel;
+        yourself
+]
 
-sp2 layout: (SpBoxLayout newTopToBottom beHomogeneous;
-
-           add: self clusterList  ;
-           add: self dronesList  ;
- 
- 
-           spacing: 1;
-           yourself).
- 
-
- 
-^SpBoxLayout newLeftToRight beHomogeneous; add: self mapCanvas   ; add: sp2  ; spacing:10; yourself 
-  
+{ #category : 'reseting' }
+DroneMapWithOWSView >> defaultLayoutBlock [
+    "Retourne le bloc que Spec évaluera (et non un layout direct)."
+    ^ [ :p |
+        mapCanvas ifNil: [ self error: 'mapCanvas nil au moment du layout' ].
+        overlayPanel ifNil: [ self error: 'overlayPanel nil au moment du layout' ].
+        SpBoxLayout newLeftToRight
+            spacing: 10;
+            add: mapCanvas;
+            add: overlayPanel;
+            yourself ]
 ]
 
 { #category : 'reseting' }
@@ -668,37 +803,34 @@ DroneMapWithOWSView >> initialClusterItems [
 
 { #category : 'rendering' }
 DroneMapWithOWSView >> initialize [
-    super initialize.
-    baseMapDirty := true.
+  "  super initialize."
+   " baseMapDirty := true.
     pendingWaypoints := OrderedCollection new.
-    waypointInputMode := false
+    waypointInputMode := false"
 ]
 
-{ #category : 'initialization' }
+{ #category : 'reseting' }
+DroneMapWithOWSView >> initializeOverlayModelIfNeeded [
+    overlayModel ifNil: [
+        overlayModel := DroneOverlayModel new
+            showPerceptionRadius: true;
+            showMissionPaths: true;
+            showEnergyBars: true;
+            showAmmoBars: false;
+            showClusterHull: true;
+            yourself ]
+]
+
+{ #category : 'as yet unclassified' }
 DroneMapWithOWSView >> initializePresenters [
-    "Initialise les presenters (version nettoyée)."
-    mapCanvas := self newRoassal
-        canvas: self buildCanvas;
-        yourself.
-
-    clusterList := SpListPresenter new
-        headerTitle: 'Clusters';
-        items: self initialClusterItems;
-        yourself.
-    clusterList display: [ :c |
-        c
-            ifNil: [ '' ]
-            ifNotNil: [ c clusterId printString ] ].
-    clusterList whenSelectionChangedDo: [ self onClusterSelectionChanged ].
-
-    dronesList := SpListPresenter new
-        headerTitle: 'Drones';
-        yourself.
-    dronesList display: [ :d | d uniqueId printString ].
-    dronesList whenSelectionChangedDo: [
-        dronesList selectedItem ifNotNil: [ :dr | dr inspect ] ].
-
-    ^ self
+    "Construit seulement les presenters; ne touche pas au layout."
+     self initializeOverlayModelIfNeeded.
+    mapCanvas ifNil: [
+        mapCanvas := self newRoassal
+            canvas: self buildCanvas;
+            yourself ].
+    self buildClusterAndDroneLists.
+    self buildOverlayPanel
 ]
 
 { #category : 'initialization' }
@@ -707,6 +839,34 @@ DroneMapWithOWSView >> initializeWindow: aWindowPresenter [
     title: 'Simulator';
     initialExtent: 3000@2000;
     menu: menuBar
+]
+
+{ #category : 'initialization' }
+DroneMapWithOWSView >> initializeWithSimulation: aSimulation centerLat: lat centerLon: lon zoom: z [
+    "Initialisation sans gestion de centrage OWS (pas de OWSServiceWMS).
+    lat / lon / z sont acceptés mais non utilisés pour configurer une carte serveur."
+    simulation := aSimulation.
+    "Les paramètres reçus ne sont pas exploités (pas de moteur de centrage)."
+    centerLat := lat.
+    centerLon := lon.
+    zoom := z.
+
+    "Prépare la zone et la taille d’image à partir du modèle (battleZone)."
+    self computeBoundingBox.
+    self computeImageSize.
+
+    "Canvas Roassal."
+    rsCanvas := RSCanvas new.
+    rsCanvas extent: self imageSize.
+    self setUpCanvas.
+
+    "Fond (WMS local ou déjà implémenté dans #drawBaseMap / #bitMap)."
+    self drawBaseMap.
+
+    "Présenters (listes clusters / drones)."
+    self initializePresenters.
+
+    ^ self
 ]
 
 { #category : 'system changes' }
@@ -726,6 +886,12 @@ DroneMapWithOWSView >> installWaypointCaptureHandler [
     (waypointInputMode and: [ rsCanvas notNil ]) ifFalse: [ ^ self ].
     self uninstallWaypointCaptureHandler.
     rsCanvas when: RSMouseClick do: [ :evt | self waypointCanvasClick: evt ] for: self
+]
+
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> layout: application [ 
+self halt.
+^super layout: application 
 ]
 
 { #category : 'actions' }
@@ -749,16 +915,6 @@ DroneMapWithOWSView >> mapCanvas: aCanvas [
 { #category : 'reseting' }
 DroneMapWithOWSView >> markBaseMapDirty [
     baseMapDirty := true
-]
-
-{ #category : 'reseting' }
-DroneMapWithOWSView >> mouseDown: evt [
- | geo |    super mouseDown: evt.
-    waypointInputMode ifFalse: [ ^ self ].
-   
-    geo := self geoFromScreen: evt position.
-    pendingWaypoints add: ((Smalltalk at: #Waypoint) latitude: geo latitude longitude: geo longitude altitude: 1000).
-    self redraw
 ]
 
 { #category : 'reseting' }
@@ -786,9 +942,81 @@ DroneMapWithOWSView >> onWaypointsCommitted: aBlock [
 onWaypointsCommittedBlock := aBlock
 ]
 
+{ #category : 'as yet unclassified' }
+DroneMapWithOWSView >> open [
+    "Assure l'initialisation avant ouverture; pas de layout: manuel ici."
+    simulation ifNil: [ self error: 'Appeler initializeWithSimulation:centerLat:centerLon:zoom: avant #open' ].
+    mapCanvas ifNil: [ self initializePresenters ].
+    ^ super open
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayAmmoCB [
+^ overlayAmmoCB   
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayAmmoCB: aValue [ 
+overlayAmmoCB  := aValue 
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayCheckBox: ivarSymbol label: aString getter: getSel setter: setSel [
+    | cb |
+    cb := SpCheckBoxPresenter new.
+    cb
+        label: aString;
+        state: (overlayModel perform: getSel);
+        whenChangedDo: [ :newState |
+            overlayModel perform: setSel with: newState.
+            self refreshOverlays ].
+    self instVarNamed: ivarSymbol put: cb.
+    ^ cb
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayEnergyCB [ 
+^overlayEnergyCB  
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayEnergyCB: aValue [
+overlayEnergyCB := aValue
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayHullCB [ 
+^overlayHullCB  
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayHullCB: aValue [ 
+overlayHullCB  := aValue 
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayMissionCB [
+^overlayMissionCB
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayMissionCB: aValue [
+overlayMissionCB := aValue
+]
+
 { #category : 'reseting' }
 DroneMapWithOWSView >> overlayModel: aModel [
     overlayModel := aModel
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayPerceptionCB [
+^overlayPerceptionCB
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayPerceptionCB:aValue [
+overlayPerceptionCB := aValue
 ]
 
 { #category : 'accessing' }
@@ -1000,7 +1228,7 @@ DroneMapWithOWSView >> simulation [
 { #category : 'reseting' }
 DroneMapWithOWSView >> simulation: aSimulation [
     simulation := aSimulation.
-    self redraw
+  "  self redraw"
 ]
 
 { #category : 'initialization' }
@@ -1261,4 +1489,20 @@ DroneMapWithOWSView >> waypointCanvasClick: evt [
         pendingWaypoints add: wp.
         self addWaypointMarkerFor: wp.
         self refreshOverlays ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> waypointClearBtn [
+    ^ waypointClearBtn
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> waypointCommitBtn [
+    ^ waypointCommitBtn
+
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> waypointStartBtn [
+    ^ waypointStartBtn
 ]

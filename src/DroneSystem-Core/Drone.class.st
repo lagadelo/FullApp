@@ -188,6 +188,22 @@ Drone >> detectedEnemy: anObject [
 	detectedEnemy := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+Drone >> detectionRange [ 
+
+"UI compatibility - should refactor"
+^self perceptionRange 
+
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> detectionRange: a [
+
+"UI compatibility - should refactor"
+^self perceptionRange: a
+
+]
+
 { #category : 'computing' }
 Drone >> distanceToLatitude: lat longitude: lon altitude: alt [
     "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
@@ -199,6 +215,21 @@ Drone >> distanceToLatitude: lat longitude: lon altitude: alt [
     horizDist := earthRadius * ((dLat squared + ((dLon * meanLat cos) squared)) sqrt).
     altDiff := (alt - altitude) / 1000.0. "convertir mètres → km"
     ^ (horizDist squared + altDiff squared) sqrt.
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> energy [ 
+
+"UI compatibility - should refactor"
+^self fuel 
+]
+
+{ #category : 'as yet unclassified' }
+Drone >> energy: a [
+
+"UI compatibility - should refactor"
+^self fuel: a
+
 ]
 
 { #category : 'accessing' }
