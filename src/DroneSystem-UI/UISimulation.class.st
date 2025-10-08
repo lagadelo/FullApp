@@ -312,21 +312,24 @@ UISimulation >> buildToolBar [
     toolBarPresenter := self newPresenter.
     toolBarPresenter layout: (SpBoxLayout newLeftToRight
         spacing: 4;
-        add: (self newButtonLabel: '' icon: 'play'   action: [ self startSimulationLoop ]);
-        add: (self newButtonLabel: '' icon: 'pause'  action: [ self pauseSimulationLoop ]);
-        add: (self newButtonLabel: '' icon: 'save'   action: [ self saveSimulationDialog ]);
-        add: (self newButtonLabel: '' icon: 'open'   action: [ self loadSimulationDialog ]);
-        add: (self newButtonLabel: '' icon: 'inspect' action: [ simulation inspect ]);
-        add: (self newButtonLabel: '' icon: 'refresh' action: [ self markBaseMapDirty; refreshAll ]);
-        add: (self newButtonLabel: '' icon: 'refresh' action: [ self refreshDrones ]);
-        add: (self newButtonLabel: '' icon: 'zoomIn'  action: [ self zoomIn ]);
-        add: (self newButtonLabel: '' icon: 'zoomOut' action: [ self zoomOut ]);
-        add: (self newButtonLabel: 'R' icon: 'reset'  action: [ self resetZoom ]);
-        add: (self newButtonLabel: 'WP' icon: 'flag'  action: [ self startWaypointCapture ]);
+        add: (self newButton: 'Play'    icon: 'play'    action: [ self startSimulationLoop ]);
+        add: (self newButton: 'Pause'   icon: 'pause'   action: [ self pauseSimulationLoop ]);
+        add: (self newButton: 'Save'    icon: 'save'    action: [ self saveSimulationDialog ]);
+        add: (self newButton: 'Load'    icon: 'open'    action: [ self loadSimulationDialog ]);
+        add: (self newButton: 'Inspect' icon: 'inspect' action: [ simulation inspect ]);
+        add: (self newButton: 'Reload'  icon: 'refresh' action: [ self markBaseMapDirty; refreshAll ]);
+        add: (self newButton: 'All ON'  icon: 'flag'    action: [ self setAllOverlays: true ]);
+        add: (self newButton: 'All OFF' icon: 'flag'    action: [ self setAllOverlays: false ]);
+        add: (self newButton: 'Cap WP'  icon: 'flag'    action: [ self startWaypointCapture ]);
+        add: (self newButton: 'Commit'  icon: 'commit'  action: [ self commitPendingWaypoints ]);
+        add: (self newButton: 'Clear'   icon: 'clear'   action: [ self clearPendingWaypoints ]);
+        add: (self newButton: 'Refresh D' icon: 'refresh' action: [ self refreshDrones ]);
+        add: (self newButton: 'Zoom +'  icon: 'zoomIn'  action: [ self zoomIn ]);
+        add: (self newButton: 'Zoom -'  icon: 'zoomOut' action: [ self zoomOut ]);
+        add: (self newButton: 'Reset'   icon: 'reset'   action: [ self resetZoom ]);
         addLast: timeLabelPresenter;
         yourself).
     ^ toolBarPresenter
-
 ]
 
 { #category : 'presenters' }
@@ -693,7 +696,7 @@ UISimulation >> drawMissionOverlay [
 
 	| pts poly m |
 	self selectedClusters do:[:c| 	m := c currentMission . 
-				
+				m ifNotNil:[
 					pts := m "waypoints" polygon
 						       collect: [ :wp | self pixelForWaypoint: wp ]
 						       thenSelect: #notNil.
@@ -701,11 +704,11 @@ UISimulation >> drawMissionOverlay [
 							poly := RSPolygon new
 								        points: pts;
 								        color: (Color yellow alpha: 0.7);
-								        width: 1;
+								        width: 10;
 								        yourself.
 							"   poly attributeAt: #overlay put: true."
 							self markOverlayShape: poly.
-							rsCanvas add: poly ] ]
+							rsCanvas add: poly ] ]]
 ]
 
 { #category : 'overlays' }
@@ -1044,6 +1047,21 @@ UISimulation >> migrateMarkExistingBase [
 	guess do: [ :s |
 			(self shape: s hasAttribute: #base equals: true) ifTrue: [
 				baseShapes addIfAbsent: s ] ]
+]
+
+{ #category : 'presenters' }
+UISimulation >> newButton: labelString icon: iconName action: aBlock [
+
+	| b ic |
+	b := SpButtonPresenter new.
+	labelString isEmpty ifFalse: [ b label: labelString ].
+	(Smalltalk respondsTo: #at:) ifTrue: [ "just to silence" ].
+	ic := (self respondsTo: #iconNamed:)
+		      ifTrue: [ self iconNamed: iconName ]
+		      ifFalse: [ nil ].
+	ic ifNotNil: [ b icon: ic ].
+	b action: aBlock.
+	^ b
 ]
 
 { #category : 'presenters' }
