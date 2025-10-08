@@ -8,11 +8,28 @@ Trait {
 		'centerLon',
 		'timeSlider',
 		'fleetSelector',
-		'infoText'
+		'infoText',
+		'overlayModel'
 	],
 	#category : 'DroneSystem-Visualization',
 	#package : 'DroneSystem-Visualization'
 }
+
+{ #category : 'reseting' }
+TDroneVisualizationWithOWS >> drawPerceptionRadiiOn: aCanvas [
+         | gp r |
+   (simulation respondsTo: #drones) ifFalse: [ ^ self ].
+    simulation drones do: [ :d |
+        (d respondsTo: #position) ifFalse: [ ^ self ].
+
+        gp := self graphicalPositionOf: d position.
+        r := (d respondsTo: #detectionRange) ifTrue: [ d detectionRange ] ifFalse: [ 0 ].
+        (r isNil or: [ r <= 0 ]) ifFalse: [
+            aCanvas
+                ellipseCenter: gp
+                radius: r * (self respondsTo: #scaleFactor ifTrue: [ self scaleFactor ] ifFalse: [ 1 ])
+                color: (Color lightBlue alpha: 0.2) ] ]
+]
 
 { #category : 'initialization' }
 TDroneVisualizationWithOWS >> initializeWithSimulation: aSimulation centerLat: lat centerLon: lon zoom: z [
@@ -37,6 +54,34 @@ TDroneVisualizationWithOWS >> initializeWithSimulation: aSimulation centerLat: l
 
     ^ self
 
+]
+
+{ #category : 'reseting' }
+TDroneVisualizationWithOWS >> rebuildOverlayShapes [
+    | c |
+    c := self canvas ifNil: [ ^ self ].
+    self removeExistingOverlayShapesFrom: c.
+    overlayModel ifNil: [ ^ self ].
+    overlayModel showPerceptionRadius ifTrue: [ self addPerceptionRadiusShapesTo: c ].
+    overlayModel showMissionPaths ifTrue: [ self addMissionPathShapesTo: c ].
+    overlayModel showEnergyBars ifTrue: [ self addEnergyBarShapesTo: c ].
+    overlayModel showAmmoBars ifTrue: [ self addAmmoBarShapesTo: c ].
+    overlayModel showClusterHull ifTrue: [ self addClusterHullShapesTo: c ].
+    c signalUpdate  "Redessine"
+]
+
+{ #category : 'reseting' }
+TDroneVisualizationWithOWS >> refreshOverlay [
+    self rebuildOverlayShapes
+]
+
+{ #category : 'reseting' }
+TDroneVisualizationWithOWS >> removeExistingOverlayShapesFrom: aCanvas [
+    "Suppression des anciennes formes marquées overlay"
+    (aCanvas shapes copy) do: [ :s |
+        ((s respondsTo: #attributeAt:ifAbsent:) and: [
+            (s attributeAt: #overlay ifAbsent: [ false ]) = true ])
+            ifTrue: [ aCanvas remove: s ] ]
 ]
 
 { #category : 'initialization' }

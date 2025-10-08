@@ -20,50 +20,30 @@ Class {
 		'dronesList',
 		'mapCanvas',
 		'toolBar',
-		'menuBar'
+		'menuBar',
+		'overlayModel',
+		'onWaypointsCommittedBlock',
+		'waypointInputMode',
+		'pendingWaypoints',
+		'baseMapDirty'
 	],
-	#category : 'DroneSystem-Visualization-visualization',
-	#package : 'DroneSystem-Visualization',
-	#tag : 'visualization'
+	#category : 'DroneSystem-UI',
+	#package : 'DroneSystem-UI'
 }
 
-{ #category : 'converting' }
-DroneMapWithOWSView class >> latLonForPixel: aPoint inBbox: aBbox width: widthPx height: heightPx [
-    "Retourne une coordonnée lon@lat pour un point pixel donné dans l’image."
-    | xPx yPx xMin yMin xMax yMax xNorm yNorm xGeo yGeo coord   |
+{ #category : 'convertion' }
+DroneMapWithOWSView class >> lonLatToWebMercator: latlon [
+    | lon lat x y   |
 
-    xPx := aPoint x asFloat.
-    yPx := aPoint y asFloat.
+    lon := latlon x.
+    lat := latlon y.
 
-    "1) Extraire le bounding box (en WebMercator)"
-    xMin := aBbox origin x.
-    yMin := aBbox origin y.
-    xMax := aBbox corner x.
-    yMax := aBbox corner y.
+    x := lon * 20037508.34 / 180.
 
-    "2) Convertir les pixels en coordonnées normalisées"
-    xNorm := xPx / widthPx.
-    yNorm := yPx / heightPx.
-
-    "3) Calculer les coordonnées WebMercator"
-    xGeo := xNorm * (xMax - xMin) + xMin.
-    yGeo := yMax - (yNorm * (yMax - yMin)). "Inversion Y"
-
-    "4) Convertir WebMercator vers lon/lat"
-    coord := self webMercatorToLonLat: (xGeo @ yGeo).
-    ^ coord  "lon @ lat"
-]
-
-{ #category : 'converting' }
-DroneMapWithOWSView class >> lonLatToWebMercator: aCoord [
-    | lon lat radius x y latRad |
  
-    radius := 6378137.0.
-    lon := aCoord x.
-    lat := aCoord y.
-    latRad := lat * Float pi / 180.0.
-    x := lon * Float pi / 180.0 * radius.
-    y := radius * ((Float pi / 4.0 + (latRad / 2.0)) tan ln).
+
+   y := (lat /360+0.25*Float pi ) tan ln * 6378137.
+
     ^ x @ y
 ]
 
@@ -73,7 +53,7 @@ DroneMapWithOWSView class >> openOnSimulation: sim [
 ^(self  simulation: sim) open; yourself
 ]
 
-{ #category : 'converting' }
+{ #category : 'as yet unclassified' }
 DroneMapWithOWSView class >> pixelForLat: lat lon: lon inBbox: aBbox width: widthPx height: heightPx [
     "Retourne un Point x@y en pixels dans l'image."
     |  coord xMin yMin xMax yMax xGeo yGeo xNorm yNorm xPx yPx |
@@ -105,7 +85,7 @@ DroneMapWithOWSView class >> pixelForLat: lat lon: lon inBbox: aBbox width: widt
 
 ]
 
-{ #category : 'baselines - legacy' }
+{ #category : 'as yet unclassified' }
 DroneMapWithOWSView class >> referenceCodeFromThales [
  | wms operations getmap layers size map |
 
@@ -164,15 +144,148 @@ tmp initialize.
 ^tmp 
 ]
 
-{ #category : 'converting' }
-DroneMapWithOWSView class >> webMercatorToLonLat: aPoint [
-    | x y lon lat radius |
-    radius := 6378137.0.
-    x := aPoint 	x.
-    y := aPoint y.
-    lon := (x / radius) * 180.0 / Float pi.
-    lat := ((2.0 * (y / radius)  exp  arcTan) - (Float pi / 2.0)) * 180.0 / Float pi.
-    ^ lon @ lat
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addAmmoBarShapesTo: aCanvas [
+    (simulation respondsTo: #drones) ifFalse: [ ^ self ].
+    simulation drones do: [ :d |
+        (d respondsTo: #ammunition) ifTrue: [
+            | p ratio barW cap filled rect frame |
+            p := self graphicalPositionOf: d position.
+            p ifNil: [ ^ self ].
+            barW := 34.
+            cap := 10.
+            ratio := ((d ammunition min: cap) / cap) max: 0.0.
+            filled := (barW * ratio) max: 1.
+            rect := RSBox new
+                width: filled;
+                height: 5;
+                position: (p x - (barW / 2) @ (p y + 18));
+                color: (Color orange alpha: 0.75);
+                yourself.
+            rect attributeAt: #overlay put: true.
+            frame := RSBox new
+                width: barW;
+                height: 5;
+                position: (p x - (barW / 2) @ (p y + 18));
+                noFill;
+                color: Color black;
+                yourself.
+            frame attributeAt: #overlay put: true.
+            aCanvas add: rect; add: frame ] ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addClusterHullShapesTo: aCanvas [
+         | hullCalc geoPoints hull pts poly |
+   (simulation respondsTo: #clusters) ifFalse: [ ^ self ].
+  
+    hullCalc := ConvexHullCalculator new.
+    simulation clusters do: [ :cluster |
+        (cluster respondsTo: #drones) ifFalse: [ ^ self ].
+   
+        geoPoints := cluster drones
+            collect: [ :d | (d respondsTo: #position) ifTrue: [ d position ] ifFalse: [ nil ] ]
+            thenSelect: [ :gp | gp notNil ].
+        geoPoints size > 2 ifTrue: [
+            hull := hullCalc hullForGeoPoints: geoPoints.
+            hull size > 2 ifTrue: [
+                pts := hull
+                    collect: [ :g | self graphicalPositionOf: g ]
+                    thenSelect: [ :p | p notNil ].
+                pts size > 2 ifTrue: [
+                    poly := RSPolygon new
+                        points: pts;
+                        color: (Color red alpha: 0.08);
+                        borderColor: (Color red alpha: 0.4);
+                        borderWidth: 1;
+                        yourself.
+                    poly attributeAt: #overlay put: true.
+                    aCanvas add: poly ] ] ] ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addEnergyBarShapesTo: aCanvas [
+    (simulation respondsTo: #drones) ifFalse: [ ^ self ].
+    simulation drones do: [ :d |
+        (d respondsTo: #energy) ifTrue: [
+            | p ratio barW filled rect frame |
+            p := self graphicalPositionOf: d position.
+            p ifNil: [ ^ self ].
+            barW := 34.
+            ratio := ((d energy max: 0) / 1000.0) min: 1.0.
+            filled := (barW * ratio) max: 1.
+            rect := RSBox new
+                width: filled;
+                height: 5;
+                position: (p x - (barW / 2) @ (p y + 10));
+                color: (Color green alpha: 0.75);
+                yourself.
+            rect attributeAt: #overlay put: true.
+            frame := RSBox new
+                width: barW;
+                height: 5;
+                position: (p x - (barW / 2) @ (p y + 10));
+                noFill;
+                color: Color black;
+                yourself.
+            frame attributeAt: #overlay put: true.
+            aCanvas add: rect; add: frame ] ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addMissionPathShapesTo: aCanvas [
+    (simulation respondsTo: #missions) ifFalse: [ ^ self ].
+    simulation missions do: [ :m |
+        (m respondsTo: #waypoints) ifTrue: [
+            | pts path lineColor |
+            pts := m waypoints
+                collect: [ :wp | self graphicalPositionOf: wp ]
+                thenSelect: [ :p | p notNil ].
+            pts size > 1 ifTrue: [
+                lineColor := Color yellow alpha: 0.7.
+                path := RSPolyline new
+                    points: pts;
+                    color: lineColor;
+                    width: 1;
+                    yourself.
+                path attributeAt: #overlay put: true.
+                aCanvas add: path ] ] ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addPerceptionRadiusShapesTo: aCanvas [
+    (simulation respondsTo: #drones) ifFalse: [ ^ self ].
+    simulation drones do: [ :d |
+        | range center circle pxRadius |
+        (d respondsTo: #detectionRange) ifFalse: [ ^ self ].
+        range := d detectionRange.
+        (range isNil or: [ range <= 0 ]) ifTrue: [ ^ self ].
+        center := self graphicalPositionOf: d position.
+        center ifNil: [ ^ self ].
+        pxRadius := range * ((self respondsTo: #scaleFactor) ifTrue: [ self scaleFactor ] ifFalse: [ 1 ]).
+        circle := RSCircle new
+            radius: pxRadius;
+            position: center;
+            color: (Color lightBlue alpha: 0.12);
+            borderColor: (Color lightBlue alpha: 0.35);
+            yourself.
+        circle attributeAt: #overlay put: true.
+        aCanvas add: circle ]
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> addWaypointMarkerFor: aWaypoint [
+    | p shape |
+    p := self graphicalPositionOf: aWaypoint.
+    p ifNil: [ ^ self ].
+    shape := RSCircle new
+        radius: 5;
+        color: Color red;
+        model: aWaypoint;
+        yourself.
+    shape attributeAt: #overlay put: true.
+    rsCanvas add: shape.
+    shape translateTo: p
 ]
 
 { #category : 'rendered elements' }
@@ -212,7 +325,7 @@ DroneMapWithOWSView >> boundingBox: anObject [
 	boundingBox := anObject
 ]
 
-{ #category : 'accessing - widgets' }
+{ #category : 'as yet unclassified' }
 DroneMapWithOWSView >> buildCanvas [
 
 self setUpCanvas. 
@@ -224,6 +337,18 @@ self rsCanvas add: self bitMap.
  
  
 ^self rsCanvas 
+]
+
+{ #category : 'accessing' }
+DroneMapWithOWSView >> canvas [
+"Legacy - Should refactor"
+	^ rsCanvas
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> clearPendingWaypoints [
+    pendingWaypoints ifNotNil: [ pendingWaypoints removeAll ].
+    self refreshOverlays
 ]
 
 { #category : 'accessing - widgets' }
@@ -238,28 +363,33 @@ DroneMapWithOWSView >> clusterList: anObject [
 	clusterList := anObject
 ]
 
+{ #category : 'reseting' }
+DroneMapWithOWSView >> commitPendingWaypoints [
+    (pendingWaypoints isNil or: [ pendingWaypoints isEmpty ]) ifTrue: [ ^ self ].
+    onWaypointsCommittedBlock ifNotNil: [ onWaypointsCommittedBlock value: pendingWaypoints copy ].
+    self disableWaypointInput
+]
+
 { #category : 'rendering' }
 DroneMapWithOWSView >> computeBoundingBox [
-
-	| convertedBorderA convertedBorderB latitudeMax latitudeMin longitudeMax longitudeMin tmp |
-	tmp := simulation battleZone.
-	latitudeMax := tmp first latitude.
-	latitudeMin := tmp first latitude.
-	longitudeMax := tmp first longitude.
-	longitudeMin := tmp first longitude.
-	tmp do: [ :a |
-		latitudeMax := latitudeMax max: a latitude.
-		latitudeMin := latitudeMin min: a latitude.
-		longitudeMax := longitudeMax max: a longitude.
-		longitudeMin := longitudeMin min: a longitude ].
-
-	convertedBorderA := self class lonLatToWebMercator:
-		                    longitudeMin - 2 @ (latitudeMax + 2).
-	convertedBorderB := self class lonLatToWebMercator:
-		                    longitudeMax + 2 @ (latitudeMin - 2).
-	boundingBox := (convertedBorderA corner: convertedBorderB) expandBy:
-		               2.
-	^ boundingBox
+  | borderA borderB convertedBorderA convertedBorderB latitudeMax latitudeMin longitudeMax longitudeMin tmp |
+" borderA :=simulation  allFleets first allDrones first  .
+ borderB := simulation  allFleets first allDrones last  ."
+tmp := simulation battleZone.
+latitudeMax := tmp first latitude.
+latitudeMin := tmp first latitude.
+longitudeMax := tmp first longitude.
+longitudeMin := tmp first longitude.
+tmp do:[:a|
+	latitudeMax := latitudeMax max: a latitude.
+	latitudeMin := latitudeMin min: a latitude.
+	longitudeMax := longitudeMax max: a longitude.
+	longitudeMin := longitudeMin min: a longitude.].
+	
+ convertedBorderA := self class lonLatToWebMercator:longitudeMin -2 @ (latitudeMax+2) .
+ convertedBorderB := self class lonLatToWebMercator:longitudeMax +2 @ (latitudeMin -2) .
+boundingBox := (convertedBorderA   corner: convertedBorderB) expandBy: 2.
+^ boundingBox
 ]
 
 { #category : 'rendering' }
@@ -275,33 +405,33 @@ DroneMapWithOWSView >> defaultImageWidth [
 ^1600
 ]
 
-{ #category : 'layout' }
-DroneMapWithOWSView >> defaultLayout [
+{ #category : 'initialization' }
+DroneMapWithOWSView >> defaultLayout [ 
+|   sp2 |
+ 
+ 
+sp2 := self newPresenter.
+ 
 
-	| sp2   |
-"	sp2 := self newPresenter."
-"
+sp2 layout: (SpBoxLayout newTopToBottom beHomogeneous;
 
-	sp2 layout: "
-	
-	sp2 :=  
-	(SpBoxLayout newTopToBottom
-			" beHomogeneous;"
- add:   toolBar expand:false;
-			 add: self clusterList;
-			 add: self dronesList;
-			 spacing: 1;
-			 yourself).
-	"sp1 := SpBoxLayout newTopToBottom spacing: 5; add:   toolBar expand:false; add: sp2."
-	
+           add: self clusterList  ;
+           add: self dronesList  ;
+ 
+ 
+           spacing: 1;
+           yourself).
+ 
 
+ 
+^SpBoxLayout newLeftToRight beHomogeneous; add: self mapCanvas   ; add: sp2  ; spacing:10; yourself 
+  
+]
 
-	^ SpBoxLayout newLeftToRight
-		  beHomogeneous;
-		  add: self mapCanvas;
-		  add: sp2;
-		  spacing: 10;
-		  yourself
+{ #category : 'reseting' }
+DroneMapWithOWSView >> disableWaypointInput [
+    waypointInputMode := false.
+    self redraw
 ]
 
 { #category : 'configuring' }
@@ -405,6 +535,13 @@ DroneMapWithOWSView >> dronesList [
 DroneMapWithOWSView >> dronesList: anObject [
 
 	dronesList := anObject
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> enableWaypointInput [
+    waypointInputMode := true.
+    pendingWaypoints ifNil: [ pendingWaypoints := OrderedCollection new ].
+    self redraw
 ]
 
 { #category : 'accessing - widgets' }
@@ -520,102 +657,48 @@ DroneMapWithOWSView >> infoText: anObject [
 ]
 
 { #category : 'initialization' }
-DroneMapWithOWSView >> initializeCanvas [
-
-	mapCanvas := self newRoassal
-		             canvas: self buildCanvas;
-		             yourself
+DroneMapWithOWSView >> initialClusterItems [
+    | fleets |
+    simulation ifNil: [ ^ #() ].
+    (simulation respondsTo: #allFleets) ifFalse: [ ^ #() ].
+    fleets := simulation allFleets.
+    fleets isEmpty ifTrue: [ ^ #() ].
+    ^ ((fleets first clusters copy) add: nil; yourself)
 ]
 
-{ #category : 'initialization' }
-DroneMapWithOWSView >> initializeClusterList [
-
-	clusterList := SpListPresenter new
-		               items:
-			               (self simulation allFleets first clusters copy
-				                add: nil;
-				                yourself);
-		               headerTitle: 'Clusters';
-		               yourself.
-	clusterList display: [ :c |
-		c ifNil: [ '' ] ifNotNil: [ c clusterId printString ] ].
-	clusterList whenSelectionChangedDo: [
-		dronesList items: (clusterList selectedItem
-				 ifNil: [ OrderedCollection new ]
-				 ifNotNil: [ clusterList selectedItem drones ]).
-		self refresh.
-		self visitCluster: clusterList selectedItem.
-		mapCanvas canvas invalidate ]
-]
-
-{ #category : 'initialization' }
-DroneMapWithOWSView >> initializeDronesList [
-
-	dronesList := SpListPresenter new
-		              headerTitle: 'Drones';
-		              yourself.
-	dronesList display: [ :d | d uniqueId printString ].
-	dronesList whenSelectionChangedDo: [ dronesList selectedItem inspect ]
-]
-
-{ #category : 'initialization' }
-DroneMapWithOWSView >> initializeMenuBar [
-  menuBar := self newMenuBar
-    addItem: [ :item |
-      item
-        name: 'Simulation';
-		  subMenu: self simulationMenu;
-               yourself ];
-           addItem: [ :item |
-             item
-               name: 'View'";
-               subMenu: self viewMenu";
-               yourself ];
-           addItem: [ :item |
-             item
-               name: 'Inspect'";
-               subMenu: self inspectMenu";
-               yourself ];
-yourself
+{ #category : 'rendering' }
+DroneMapWithOWSView >> initialize [
+    super initialize.
+    baseMapDirty := true.
+    pendingWaypoints := OrderedCollection new.
+    waypointInputMode := false
 ]
 
 { #category : 'initialization' }
 DroneMapWithOWSView >> initializePresenters [
- 
+    "Initialise les presenters (version nettoyée)."
+    mapCanvas := self newRoassal
+        canvas: self buildCanvas;
+        yourself.
 
-	self initializeCanvas.
-	self initializeDronesList.
-	self initializeClusterList.
-	self initializeToolbar
-]
+    clusterList := SpListPresenter new
+        headerTitle: 'Clusters';
+        items: self initialClusterItems;
+        yourself.
+    clusterList display: [ :c |
+        c
+            ifNil: [ '' ]
+            ifNotNil: [ c clusterId printString ] ].
+    clusterList whenSelectionChangedDo: [ self onClusterSelectionChanged ].
 
-{ #category : 'initialization' }
-DroneMapWithOWSView >> initializeToolbar [
+    dronesList := SpListPresenter new
+        headerTitle: 'Drones';
+        yourself.
+    dronesList display: [ :d | d uniqueId printString ].
+    dronesList whenSelectionChangedDo: [
+        dronesList selectedItem ifNotNil: [ :dr | dr inspect ] ].
 
-	toolBar := self newToolbar
-		           addItem: (SpToolbarButtonPresenter new
-				            label: 'Ok';
-				            icon: (self iconNamed: #glamorousGo);
-				            help: 'Ok';
-				            action: [ toolBar inform: 'Start' ];
-				            yourself);
-		           addItem: (SpToolbarButtonPresenter new
-				            label: 'Pause';
-				            icon: (self iconNamed: #pause);
-				            help: 'Step by step';
-				            action: [ simulation step ];
-				            addItem: (SpToolbarButtonPresenter new
-						             label: 'Step';
-						             icon: (self iconNamed: #play);
-						             help: 'Step by step';
-						             action: [ toolBar inform: 'stop' ];
-						             yourself);
-				            addItem: (SpToolbarButtonPresenter new
-						             label: 'Cancel';
-						             icon: (self iconNamed: #stop);
-						             help: 'stop';
-						             action: [ toolBar inform: 'stop' ];
-						             yourself))
+    ^ self
 ]
 
 { #category : 'initialization' }
@@ -638,6 +721,13 @@ DroneMapWithOWSView >> inspectOn: aRSShape [
 	aRSShape model inspect
 ]
 
+{ #category : 'reseting' }
+DroneMapWithOWSView >> installWaypointCaptureHandler [
+    (waypointInputMode and: [ rsCanvas notNil ]) ifFalse: [ ^ self ].
+    self uninstallWaypointCaptureHandler.
+    rsCanvas when: RSMouseClick do: [ :evt | self waypointCanvasClick: evt ] for: self
+]
+
 { #category : 'actions' }
 DroneMapWithOWSView >> loadSimulation [
 
@@ -654,6 +744,51 @@ DroneMapWithOWSView >> mapCanvas [
 DroneMapWithOWSView >> mapCanvas: aCanvas [
 
  mapCanvas := aCanvas
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> markBaseMapDirty [
+    baseMapDirty := true
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> mouseDown: evt [
+ | geo |    super mouseDown: evt.
+    waypointInputMode ifFalse: [ ^ self ].
+   
+    geo := self geoFromScreen: evt position.
+    pendingWaypoints add: ((Smalltalk at: #Waypoint) latitude: geo latitude longitude: geo longitude altitude: 1000).
+    self redraw
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> ommitPendingWaypoints [
+    (pendingWaypoints isNil or: [ pendingWaypoints isEmpty ]) ifTrue: [ ^ self ].
+    onWaypointsCommittedBlock ifNotNil: [ onWaypointsCommittedBlock value: pendingWaypoints copy ].
+    self stopWaypointCapture
+]
+
+{ #category : 'initialization' }
+DroneMapWithOWSView >> onClusterSelectionChanged [
+    | cluster |
+    cluster := clusterList selectedItem.
+    dronesList items: (cluster
+        ifNil: [ #() ]
+        ifNotNil: [ cluster drones ]).
+    cluster ifNotNil: [ self visitCluster: cluster ].
+    self refreshOverlays.
+    mapCanvas canvas invalidate
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> onWaypointsCommitted: aBlock [
+   
+onWaypointsCommittedBlock := aBlock
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> overlayModel: aModel [
+    overlayModel := aModel
 ]
 
 { #category : 'accessing' }
@@ -680,6 +815,20 @@ DroneMapWithOWSView >> physicalPositionOf: position [
 	 
 ]
 
+{ #category : 'reseting' }
+DroneMapWithOWSView >> rebuildOverlayShapes [
+    | c |
+    c := self canvas ifNil: [ ^ self ].
+    self removeExistingOverlayShapesFrom: c.
+    overlayModel ifNil: [ ^ self ].
+    overlayModel showPerceptionRadius ifTrue: [ self addPerceptionRadiusShapesTo: c ].
+    overlayModel showMissionPaths ifTrue: [ self addMissionPathShapesTo: c ].
+    overlayModel showEnergyBars ifTrue: [ self addEnergyBarShapesTo: c ].
+    overlayModel showAmmoBars ifTrue: [ self addAmmoBarShapesTo: c ].
+    overlayModel showClusterHull ifTrue: [ self addClusterHullShapesTo: c ].
+    c signalUpdate
+]
+
 { #category : 'rendering' }
 DroneMapWithOWSView >> refresh [
 	"Affiche une collection de drones sur la carte et le canvas."
@@ -688,6 +837,47 @@ DroneMapWithOWSView >> refresh [
 		"(s model isKindOf: Drone)| (s model isKindOf: DroneCluster )|(s model isKindOf: ClusterMission ) ifTrue:" s model ifNotNil:[ rsCanvas removeShape: s ] ].
  
 	 
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> refreshAll [
+    baseMapDirty
+        ifTrue: [ self refreshBaseMap ].
+    self refreshOverlays
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> refreshBaseMap [
+    | bmpShape |
+    baseMapDirty ifFalse: [ ^ self ].
+    self resetBitMap.
+    self computeBoundingBox.
+
+    bmpShape := self bitMap.
+    rsCanvas shapes
+        select: [ :s | s isKindOf: RSBitmap ]
+        thenDo: [ :old | rsCanvas removeShape: old ].
+    rsCanvas add: bmpShape.
+    baseMapDirty := false.
+    rsCanvas signalUpdate
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> refreshOverlay [
+    self rebuildOverlayShapes
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> refreshOverlays [
+    self rebuildOverlayShapes
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> removeExistingOverlayShapesFrom: aCanvas [
+    (aCanvas shapes copy) do: [ :s |
+        ((s respondsTo: #attributeAt:ifAbsent:) and: [
+            (s attributeAt: #overlay ifAbsent: [ false ]) = true ])
+            ifTrue: [ aCanvas remove: s ] ]
 ]
 
 { #category : 'rendering' }
@@ -740,7 +930,7 @@ DroneMapWithOWSView >> renderDronesWith: droneCollection [
 		dot when: RSMouseClick do: [ :evt | self inspectOn: dot ] for: self ]
 ]
 
-{ #category : 'accessing - widgets' }
+{ #category : 'as yet unclassified' }
 DroneMapWithOWSView >> reset [
 
 self rsCanvas shapes do:[:a| self rsCanvas removeShape:a]
@@ -780,8 +970,6 @@ DroneMapWithOWSView >> setUpCanvas [
 				do: [ :evt | rsCanvas camera zoomToFit ]
 				for: self ].
 			
- 
- 
 			"referme l'infobox"
 			rsCanvas
 				when: RSMouseClick
@@ -796,7 +984,7 @@ DroneMapWithOWSView >> setUpCanvas [
 			  do: [:evt | | sel |
 					
     				sel := rsCanvas selectedShapes.
-    				Transcript show: 'Sélection : '; show: sel size asString; cr.
+    				Transcript show: 'Sélection : ', sel size asString; cr.
    	 				"feedback visuel : colorer sélection"
    					 rsCanvas shapes do: [:s | s color: (s color alpha: 1) ]. "reset"
     					sel do: [:s | s color: Color green ].] 
@@ -809,10 +997,10 @@ DroneMapWithOWSView >> simulation [
 	^ simulation
 ]
 
-{ #category : 'accessing' }
-DroneMapWithOWSView >> simulation: anObject [
-
-	simulation := anObject
+{ #category : 'reseting' }
+DroneMapWithOWSView >> simulation: aSimulation [
+    simulation := aSimulation.
+    self redraw
 ]
 
 { #category : 'initialization' }
@@ -839,6 +1027,13 @@ DroneMapWithOWSView >> startSimulation [
 Transcript show: 'Start Simulation';cr
 ]
 
+{ #category : 'reseting' }
+DroneMapWithOWSView >> startWaypointCapture [
+    waypointInputMode := true.
+    pendingWaypoints ifNil: [ pendingWaypoints := OrderedCollection new ].
+    self installWaypointCaptureHandler
+]
+
 { #category : 'actions' }
 DroneMapWithOWSView >> stepSimulation [
 
@@ -849,6 +1044,12 @@ Transcript show: 'Step Simulation';cr
 DroneMapWithOWSView >> stopSimulation [
 
 Transcript show: 'Stop Simulation';cr
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> stopWaypointCapture [
+    waypointInputMode := false.
+    self uninstallWaypointCaptureHandler
 ]
 
 { #category : 'actions' }
@@ -867,6 +1068,12 @@ DroneMapWithOWSView >> timeSlider [
 DroneMapWithOWSView >> timeSlider: anObject [
 
 	timeSlider := anObject
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> uninstallWaypointCaptureHandler [
+    rsCanvas ifNil: [ ^ self ].
+    rsCanvas removeInteractionsFor: self
 ]
 
 { #category : 'system changes' }
@@ -919,21 +1126,17 @@ eg. After a drag/drop operation"
 
 { #category : 'visiting' }
 DroneMapWithOWSView >> visitCluster: obj [
-              | dronesShape poly   dronesOnConvexHull internalDrones  |
+              | dronesShape poly   |
  
 
-dronesOnConvexHull := obj updateCoverageGeo.
-internalDrones := obj drones reject:[:d| dronesOnConvexHull includes: d].
 
-dronesShape := dronesOnConvexHull collect:[:a | |shape|  shape := (self visitDrone:a). shape  color:Color blue; size:30@30;@ RSHighlightable red.
-shape when: RSMouseDragEnd do:[:evt| "self halt. "self updateModelPositionOf: evt.  rsCanvas   invalidate.  ] for: self. shape].
-						"referme l'infobox"
-		internalDrones do:[:a |(self visitDrone:a) ]. 
+dronesShape := obj updateCoverageGeo collect:[:a |(self visitDrone:a) color:Color blue].	
+obj drones do:[:a |(self visitDrone:a) ]. 
  poly := (RSPolygon new points: (dronesShape collect:[:shape| shape position])
 		 ) color: (Color blue setAlpha:0.5; yourself);   model: obj; yourself.
 		
 rsCanvas add:   poly.
-"obj updateCoverageGeo do:[:a |(self visitDrone:a) color:Color black;   @ RSHighlightable red.]."
+obj updateCoverageGeo do:[:a |(self visitDrone:a) color:Color black;   @ RSHighlightable red.].
 obj currentMission ifNotNil:[  obj currentMission accept: self]
 ]
 
@@ -1043,4 +1246,19 @@ DroneMapWithOWSView >> visitZoneBasedMission: obj [
                 waypoints := obj waypoints.
                 poly := (RSPolygon new points: waypoints) color: Color lightBlue.
                 ^ poly  
+]
+
+{ #category : 'reseting' }
+DroneMapWithOWSView >> waypointCanvasClick: evt [
+    | geoPoint wp |
+   waypointInputMode ifFalse: [ ^ self ].
+ 
+    geoPoint := self physicalPositionOf: evt positionFromCamera.
+    geoPoint ifNil: [ ^ self ].
+    wp := (Smalltalk at: #Waypoint ifAbsent: [ nil ])
+        ifNotNil: [ (Smalltalk at: #Waypoint) latitude: geoPoint y longitude: geoPoint x altitude: 1000 ].
+    wp ifNotNil: [
+        pendingWaypoints add: wp.
+        self addWaypointMarkerFor: wp.
+        self refreshOverlays ]
 ]
