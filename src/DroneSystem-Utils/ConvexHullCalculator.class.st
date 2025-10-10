@@ -70,6 +70,39 @@ ConvexHullCalculator >> convexHullVerbose: points [
 ]
 
 { #category : 'as yet unclassified' }
+ConvexHullCalculator >> hullForGeoPoints: points [
+    
+    | sorted lower upper epsilon |
+
+    epsilon := 0.0.
+    sorted := points sort: [:a :b | (a longitude) <= (b longitude)].
+ 
+    lower := OrderedCollection new.
+     sorted do: [:p | 
+        [ lower size >= 2 and: [
+            (self turnGeo: (lower at: lower size - 1) to: (lower last) to: p) <  epsilon 
+        ]] whileTrue: [ lower removeLast ].
+        lower add: p.
+    ].
+ 
+     
+    upper := OrderedCollection new.
+      sorted reversed  do: [:p |
+        [ upper size >= 2 and: [  
+            (self turnGeo: (upper at: upper size - 1) to: (upper last) to: p)  < epsilon  
+        ]] whileTrue: [   upper removeLast    ].
+         upper add: p.
+    ].
+ 
+
+    "Concatène lower et upper sans répéter les extrémités"
+   lower removeLast.
+    upper removeLast.
+
+    ^ (lower , upper) asArray
+]
+
+{ #category : 'as yet unclassified' }
 ConvexHullCalculator >> turn: a to: b to: c [
   "Le signe du résultat indique l’orientation du triplet (a, b, c) :
 Résultat	Signification

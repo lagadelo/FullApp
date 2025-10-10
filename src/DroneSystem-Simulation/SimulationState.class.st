@@ -110,6 +110,12 @@ tmp addAll:(self allMissions collectMany:[:m| m battleZone ]).
  ^ tmp 
 ]
 
+{ #category : 'accessing' }
+SimulationState >> battleZone: anObject [
+
+	battleZone := anObject
+]
+
 { #category : 'api - selection' }
 SimulationState >> countAlliedAlive [
     "Retourne le nombre de drones alliés encore actifs (non détruits)."
@@ -218,6 +224,12 @@ SimulationState >> missions [
 
 missions ifNil:[missions := OrderedCollection new].
 ^missions
+]
+
+{ #category : 'accessing' }
+SimulationState >> missions: anObject [
+
+	missions := anObject
 ]
 
 { #category : 'accessing' }

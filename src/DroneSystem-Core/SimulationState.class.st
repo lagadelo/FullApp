@@ -11,11 +11,10 @@ Class {
 		'engagementMode',
 		'steps',
 		'verificationFunctions',
-		'observers',
-		'battleZone'
+		'observers'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Simulation',
+	#package : 'DroneSystem-Simulation'
 }
 
 { #category : 'visiting' }
@@ -104,16 +103,11 @@ SimulationState >> areInProximity: clusterA and: clusterB [
 { #category : 'resolution' }
 SimulationState >> battleZone [
 
-"^battleZone ifNil:[| tmp |
+| tmp |
 tmp := OrderedCollection new.
 tmp addAll: (self allDrones collect:[:d| d position]).
 tmp addAll:(self allMissions collectMany:[:m| m battleZone ]).
-tmp] ifNotNil:[battleZone]"
-^ {
-    GeoPoint latitude: 51.2  longitude: -5    altitude: 0.
-    GeoPoint latitude: 51.2  longitude:  9    altitude: 0.
-    GeoPoint latitude: 41.0  longitude:  9    altitude: 0.
-    GeoPoint latitude: 41.0  longitude: -5    altitude: 0 }.
+ ^ tmp 
 ]
 
 { #category : 'accessing' }

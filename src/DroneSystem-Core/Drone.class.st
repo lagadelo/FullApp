@@ -51,6 +51,12 @@ Drone >> altitude: anObject [
 	self geoPoint altitude: anObject
 ]
 
+{ #category : 'accessing' }
+Drone >> ammunition [
+
+^self consumables at:#munitions
+]
+
 { #category : 'damages' }
 Drone >> applyDamage: damage [
     fuel := (fuel - damage) max: 0.

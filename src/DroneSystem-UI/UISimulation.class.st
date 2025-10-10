@@ -34,7 +34,7 @@ Class {
 { #category : 'examples' }
 UISimulation class >> exampleClasses [ 
 
-| polygon drones sim cluster1 cluster2 d1 d2 mission fleet view intervalMs running   |
+| polygon drones sim cluster1 cluster2  mission fleet view intervalMs running   |
 
 intervalMs := 300.  "ms entre steps"
 running := true.
@@ -191,7 +191,7 @@ UISimulation >> buildCanvasPresenter [
     canvasPresenter := self newPresenter.
     canvasPresenter layout: (SpBoxLayout newTopToBottom
         spacing: 4;
-        add: toolBarPresenter;          "<<< Toolbar au dessus de la carte"
+        add: toolBarPresenter height:20;          "<<< Toolbar au dessus de la carte"
         add: (self buildCanvasWidget);
         yourself).
     ^ canvasPresenter
@@ -312,21 +312,21 @@ UISimulation >> buildToolBar [
     toolBarPresenter := self newPresenter.
     toolBarPresenter layout: (SpBoxLayout newLeftToRight
         spacing: 4;
-        add: (self newButton: 'Play'    icon: 'play'    action: [ self startSimulationLoop ]);
+    "    add: (self newButton: 'Play'    icon: 'play'    action: [ self startSimulationLoop ]);
         add: (self newButton: 'Pause'   icon: 'pause'   action: [ self pauseSimulationLoop ]);
         add: (self newButton: 'Save'    icon: 'save'    action: [ self saveSimulationDialog ]);
         add: (self newButton: 'Load'    icon: 'open'    action: [ self loadSimulationDialog ]);
-        add: (self newButton: 'Inspect' icon: 'inspect' action: [ simulation inspect ]);
+"        add: (self newButton: 'Inspect' icon: 'inspect' action: [ simulation inspect ]);
         add: (self newButton: 'Reload'  icon: 'refresh' action: [ self markBaseMapDirty; refreshAll ]);
-        add: (self newButton: 'All ON'  icon: 'flag'    action: [ self setAllOverlays: true ]);
-        add: (self newButton: 'All OFF' icon: 'flag'    action: [ self setAllOverlays: false ]);
+        add: (self newButton: 'ON'  icon: 'flag'    action: [ self setAllOverlays: true ]);
+        add: (self newButton: 'AOFF' icon: 'flag'    action: [ self setAllOverlays: false ]);
         add: (self newButton: 'Cap WP'  icon: 'flag'    action: [ self startWaypointCapture ]);
         add: (self newButton: 'Commit'  icon: 'commit'  action: [ self commitPendingWaypoints ]);
         add: (self newButton: 'Clear'   icon: 'clear'   action: [ self clearPendingWaypoints ]);
-        add: (self newButton: 'Refresh D' icon: 'refresh' action: [ self refreshDrones ]);
-        add: (self newButton: 'Zoom +'  icon: 'zoomIn'  action: [ self zoomIn ]);
-        add: (self newButton: 'Zoom -'  icon: 'zoomOut' action: [ self zoomOut ]);
-        add: (self newButton: 'Reset'   icon: 'reset'   action: [ self resetZoom ]);
+        add: (self newButton: 'Refresh' icon: 'refresh' action: [ self refreshDrones ]);
+        add: (self newButton: '+'  icon: 'zoomIn'  action: [ self zoomIn ]);
+        add: (self newButton: '-'  icon: 'zoomOut' action: [ self zoomOut ]);
+        add: (self newButton: 'Rst'   icon: 'reset'   action: [ self resetZoom ]);
         addLast: timeLabelPresenter;
         yourself).
     ^ toolBarPresenter
@@ -568,39 +568,45 @@ UISimulation >> defaultLayout [
 
 { #category : 'overlays' }
 UISimulation >> drawAmmoOverlay [
-    ((overlayModel respondsTo: #showAmmoBars)
+    | pie |
+((overlayModel respondsTo: #showAmmoBars)
         and: [ overlayModel showAmmoBars ]) ifFalse: [ ^ self ].
-    (simulation respondsTo: #drones) ifFalse: [ ^ self ].
-    simulation drones do: [ :d |
+    (simulation respondsTo: #allDrones ) ifFalse: [ ^ self ].
+    simulation allDrones do: [ :d |
         (d respondsTo: #ammunition) ifTrue: [
             | pos barW cap ratio filled fill frame |
             pos := self pixelForDrone: d.
             pos ifNil: [ ^ self ].
-            barW := 34. cap := 10.
-            ratio := ((d ammunition min: cap) / cap) max: 0.
-            filled := (barW * ratio) max: 1.
-            fill := RSBox new
-                width: filled; height: 5;
-                color: (Color orange alpha: 0.75);
-                yourself.
-            frame := RSBox new
-                width: barW; height: 5;
-                noFill; color: Color black; yourself.
-            fill attributeAt: #overlay put: true.
-            frame attributeAt: #overlay put: true.
-            fill translateTo: (pos x - (barW / 2) @ (pos y + 18)).
-            frame translateTo: (pos x - (barW / 2) @ (pos y + 18)).
-            rsCanvas add: fill; add: frame ] ]
+            
+            ratio := (d ammunition  / 1000) max: 0 .
+            
+            
+            pie := RSPieSlice new
+		model: d ammunition ;
+		alphaAngle: 0;
+		color: Color blue;
+		borderColor: Color black;
+		betaAngle: 360* ratio;
+		innerRadius: 5;
+		cornerRadii: 0;
+		externalRadius: 10;
+		position: 50@ -50;
+		yourself.
+ 
+            
+            pie translateTo: (pos x - pie externalRadius ) @ (pos y - pie externalRadius ).
+     self markOverlayShape: pie.
+            rsCanvas add: pie  ] ]
 ]
 
 { #category : 'overlays' }
 UISimulation >> drawClusterHullOverlay [
-
+|visibleClusters|
 	((overlayModel respondsTo: #showClusterHull) and: [
 		 overlayModel showClusterHull ]) ifFalse: [ ^ self ].
-	((Smalltalk includesKey: #ConvexHullCalculator) and: [
-		 simulation respondsTo: #clusters ]) ifFalse: [ ^ self ].
-	simulation clusters do: [ :cluster |
+ 
+visibleClusters := self clusterListPresenter selectedItems ifNotEmpty: [self clusterListPresenter selectedItems] ifEmpty: 
+[self simulation allFleets first clusters]. visibleClusters  do: [ :cluster |
 			(cluster respondsTo: #drones) ifTrue: [
 					| points hull pts poly |
 					points := cluster drones
@@ -621,7 +627,7 @@ UISimulation >> drawClusterHullOverlay [
 										        borderColor: (Color red alpha: 0.4);
 										        borderWidth: 1;
 										        yourself.
-									poly attributeAt: #overlay put: true.
+									 
 									self markOverlayShape: poly.
 									rsCanvas add: poly ] ] ] ]
 ]
@@ -660,6 +666,13 @@ rsCanvas signalUpdate.
 { #category : 'overlays' }
 UISimulation >> drawEnergyOverlay [
 
+|colorsMeaning|
+colorsMeaning :=[:a|
+	a < 0.4 ifTrue:[Color red]
+	 ifFalse:[a < 0.7 
+			ifTrue:[(Color purple alpha: 0.3)] 
+			ifFalse:[(Color purple alpha: 0.3)]
+				]].
 	((overlayModel respondsTo: #showEnergyBars) and: [
 		 overlayModel showEnergyBars ]) ifFalse: [ ^ self ].
 	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
@@ -674,16 +687,16 @@ UISimulation >> drawEnergyOverlay [
 					fill := RSBox new
 						        width: filled;
 						        height: 5;
-						        color: (Color purple alpha: 0.3);
+						        color: (colorsMeaning value: ratio);
 						        yourself.
 					frame := RSBox new
 						         width: barW;
-						         height: 5; fill: (Color purple alpha: 1);
+						         height: 5; fill: (Color gray "alpha: 0.5");
 						      	  borderColor: #black;
 						         yourself.
 
-					fill translateTo: pos x - (barW / 2) @ (pos y + 10).
-					frame translateTo: pos x - (barW / 2) @ (pos y + 10).
+					fill translateTo: pos x - (barW *(1-ratio)/2) @ (pos y + 10).
+					frame translateTo: pos x  @ (pos y + 10).
 					self markOverlayShape: frame.
 					self markOverlayShape: fill.
 					rsCanvas
@@ -724,7 +737,7 @@ UISimulation >> drawPerceptionOverlay [
 					pos := self pixelForDrone: d.
 					(pos isNil or: [ range isNil ]) ifFalse: [
 							circle := RSCircle new
-								          radius: (range / 5  );
+								          radius: (range / 2  );
 								          color: (Color lightBlue alpha: 0.15);
 								          borderColor: (Color lightBlue alpha: 0.4);
 								          yourself.
@@ -800,12 +813,13 @@ UISimulation >> ensureCanvas [
 
 	rsCanvas ifNotNil: [ ^ rsCanvas ].
 
-	rsCanvas := RSCanvas new.
+self halt. 	rsCanvas := RSCanvas new.
 	self ensureBattleZoneFromDrones.
 	self computeBoundingBox.
 	self computeImageSize.
-	self ensureBaseShapes.
-	self buildBaseMap.
+	
+		self ensureBaseShapes.
+self buildBaseMap.
 	self connectCanvasEvents.
 	^ rsCanvas
 ]
