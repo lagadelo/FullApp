@@ -38,7 +38,7 @@ UISimulation class >> exampleClasses [
 
 intervalMs := 300.  "ms entre steps"
 running := true.
-sim := SimulationState new.
+sim := SimulationState  new.
 drones := {
     (Drone new moveToLatitude: 48.8566 longitude: 2.3522 altitude: 100) beAlly ; yourself.   "Paris"
     (Drone new moveToLatitude: 44.8378 longitude: -0.5792 altitude: 120) beAlly ; yourself. "Bordeaux"
