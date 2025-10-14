@@ -14,6 +14,6 @@ Class {
 		'observers',
 		'battleZone'
 	],
-	#category : 'DroneSystem-Core',
-	#package : 'DroneSystem-Core'
+	#category : 'DroneSystem-Simulation',
+	#package : 'DroneSystem-Simulation'
 }
