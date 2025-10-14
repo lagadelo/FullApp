@@ -18,9 +18,9 @@ BaselineOfDrone >> baseline: spec [
 		repository: 'github://ThalesGroup/PharoOWS:main';
 		load.
 	spec
-		baseline: 'CSV';
-		repository: 'github://pharo-contributions/CSV:main/src';
-		load.
+    baseline: 'NeoCSV';
+    repository: 'github://svenvc/NeoCSV/src';
+    load.
 
 	spec
 		repository: 'git@github.com:lagadelo/FullApp.git/src';

@@ -25,7 +25,10 @@ Class {
 		'overlayShapes',
 		'simRunning',
 		'simLoopProcess',
-		'timeLabelPresenter'
+		'timeLabelPresenter',
+		'menuBarPresenter',
+		'haltOnError',
+		'menuRowPresenter'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -65,6 +68,43 @@ mission := (SecurizationMission new polygon: polygon) assignToCluster: cluster1.
 "mission connaît les waypoints, cluster1 mission: mission"
 view := self  openOn: sim.
 
+]
+
+{ #category : 'examples' }
+UISimulation class >> exampleClusterFile [
+^'# Synthetic drone deployment for simulation ONLY (not real-world defense layout)
+# Columns: clusterId,droneId,latitude,longitude,altitude(m)
+clusterId,droneId,latitude,longitude,altitude
+10,D001,48.2829,-4.4645,150
+10,D002,48.2835,-4.4682,160
+10,D003,48.2818,-4.4598,155
+10,D004,48.2852,-4.4621,150
+10,D005,48.2844,-4.4559,145
+10,D006,48.2860,-4.4575,150
+10,D007,48.2830,-4.4725,170
+10,D008,48.2812,-4.4689,165
+10,D009,48.2871,-4.4652,155
+10,D010,48.2799,-4.4615,160
+10,D011,48.2858,-4.4512,140
+10,D012,48.2884,-4.4588,145
+10,D013,48.2807,-4.4550,150
+10,D014,48.2821,-4.4504,145
+10,D015,48.2869,-4.4710,165
+20,D016,48.4700,-5.0600,200
+20,D017,48.4500,-5.1000,200
+20,D018,48.4300,-5.1400,210
+20,D019,48.4100,-5.1800,210
+20,D020,48.3900,-5.2100,220
+20,D021,48.3600,-5.2300,220
+20,D022,48.3300,-5.2400,230
+20,D023,48.3000,-5.2500,230
+20,D024,48.2700,-5.2400,220
+20,D025,48.2400,-5.2300,215
+30,D026,48.4000,-4.8000,180
+30,D027,48.4200,-4.7600,180
+30,D028,48.4400,-4.7200,185
+30,D029,48.4600,-4.6800,185
+30,D030,48.4800,-4.6400,190'
 ]
 
 { #category : 'as yet unclassified' }
@@ -113,6 +153,31 @@ UISimulation >> allDrones [
     clusters isEmpty ifTrue: [ ^ #() ].
     ^ clusters gather: [ :c | (c respondsTo: #drones) ifTrue: [ c drones ifNil: [ #() ] ] ifFalse: [ #() ] ]
 
+]
+
+{ #category : 'CSV' }
+UISimulation >> attachImportedClusters: clusters [
+    (simulation respondsTo: #addCluster:) ifTrue: [
+        clusters do: [ :c | simulation addCluster: c ].
+        ^ self ].
+    (simulation respondsTo: #allFleets) ifTrue: [
+        | fleet fleetClass |
+        fleet := simulation allFleets ifNotEmpty: [ :fs | fs first ] ifEmpty: [
+            fleetClass := Smalltalk at: #DroneFleet ifAbsent: [ nil ].
+            fleetClass ifNil: [ ^ self ].
+            fleetClass new ].
+        clusters do: [ :c | (fleet respondsTo: #addCluster:) ifTrue: [ fleet addCluster: c ] ] ]
+]
+
+{ #category : 'CSV' }
+UISimulation >> attachImportedMissions: missions [
+
+	(simulation respondsTo: #addMission:) ifTrue: [
+			missions do: [ :m | simulation addMission: m ].
+			^ self ].
+	(simulation respondsTo: #missions) ifTrue: [
+			(simulation missions respondsTo: #add:) ifTrue: [
+				missions do: [ :m | simulation missions add: m ] ] ]
 ]
 
 { #category : 'accessing' }
@@ -186,7 +251,7 @@ UISimulation >> buildBaseMap [
 { #category : 'presenters' }
 UISimulation >> buildCanvasPresenter [
     canvasPresenter ifNotNil: [ ^ canvasPresenter ].
-    self buildToolBar.   "Assure toolbar prête"
+  "  self buildToolBar. "  "Assure toolbar prête"
     self ensureCanvas.
     canvasPresenter := self newPresenter.
     canvasPresenter layout: (SpBoxLayout newTopToBottom
@@ -271,6 +336,50 @@ UISimulation >> buildLists [
 ]
 
 { #category : 'presenters-building' }
+UISimulation >> buildMenuBar [
+    | simMenu zoomMenu importMenu |    menuBarPresenter ifNotNil: [ ^ menuBarPresenter ].
+    menuBarPresenter := SpMenuBarPresenter new.
+
+
+    simMenu := menuBarPresenter addMenu: 'Simulation'.
+    simMenu addItem: [ :it | it name: 'Start'; action: [ self startSimulationLoop ] ].
+    simMenu addItem: [ :it | it name: 'Step'; action: [ self simulationStepOnce ] ].
+    simMenu addItem: [ :it | it name: 'Jump...'; action: [ self jumpDialog ] ].
+    simMenu addItem: [ :it |
+        it name: 'HaltOn Errors';
+        checkable: true;
+        state: [ haltOnError ];
+        action: [ haltOnError := haltOnError not ] ].
+    simMenu addSeparator.
+    simMenu addItem: [ :it | it name: 'Save'; action: [ self saveSimulationDialog ] ].
+    simMenu addItem: [ :it | it name: 'Load'; action: [ self loadSimulationDialog ] ].
+
+    zoomMenu := menuBarPresenter addMenu: 'Zoom'.
+    zoomMenu addItem: [ :it | it name: 'Fit'; action: [ self fitZoom ] ].
+    zoomMenu addItem: [ :it | it name: 'Zoom +'; action: [ self zoomIn ] ].
+    zoomMenu addItem: [ :it | it name: 'Zoom -'; action: [ self zoomOut ] ].
+
+    importMenu := menuBarPresenter addMenu: 'Import'.
+    importMenu addItem: [ :it | it name: 'Clusters CSV...'; action: [ self importClustersFromCSVDialog ] ].
+    importMenu addItem: [ :it | it name: 'Missions CSV...'; action: [ self importMissionsFromCSVDialog ] ].
+
+    ^ menuBarPresenter
+]
+
+{ #category : 'presenters' }
+UISimulation >> buildMenuRow [
+    menuRowPresenter ifNotNil: [ ^ menuRowPresenter ].
+    menuRowPresenter := self newPresenter.
+    menuRowPresenter layout: (SpBoxLayout newLeftToRight
+        spacing: 6;
+        add: (self menuButtonLabel: 'Simulation' menuBlock: [ self simulationMenu ]);
+        add: (self menuButtonLabel: 'Zoom'        menuBlock: [ self zoomMenu ]);
+        add: (self menuButtonLabel: 'Import'      menuBlock: [ self importMenu ]);
+        yourself).
+    ^ menuRowPresenter
+]
+
+{ #category : 'presenters-building' }
 UISimulation >> buildOverlayPanel [
 
 	| lay p |
@@ -351,6 +460,13 @@ UISimulation >> canvasPresenter [
 UISimulation >> canvasPresenter: anObject [
 
 	canvasPresenter := anObject
+]
+
+{ #category : 'CSV' }
+UISimulation >> chooseCSVFileLabel: aLabel [
+    (Smalltalk includesKey: #UIManager) ifFalse: [ ^ nil ].
+    ^ (UIManager default chooseFullFileNameMatching: #('*.csv') label: aLabel)
+        ifNotNil: [ :path | path asFileReference ]
 ]
 
 { #category : 'presenters' }
@@ -549,6 +665,56 @@ UISimulation >> defaultImageWidth [
 
 { #category : 'presenters' }
 UISimulation >> defaultLayout [
+
+	| right main |
+	self buildMenuRow.
+
+	right := SpBoxLayout newTopToBottom
+		         spacing: 6;
+		         add: overlayPanelPresenter;
+		         add: clusterListPresenter;
+		         add: droneListPresenter;
+		         add: statusLabelPresenter;
+		         yourself.
+	main := SpBoxLayout newTopToBottom
+		        spacing: 2;
+		        add: menuRowPresenter;
+		        add: (SpBoxLayout newLeftToRight
+				         spacing: 10;
+				         add: canvasPresenter;
+				         add: (self newPresenter
+						          layout: right;
+						          yourself);
+				         yourself);
+		        yourself.
+	^ main
+]
+
+{ #category : 'presenters' }
+UISimulation >> defaultLayoutWithMenu [
+    "Menu en haut, puis layout existant."
+    | right main |
+    right := SpBoxLayout newTopToBottom
+        spacing: 6;
+        add: overlayPanelPresenter;
+        add: clusterListPresenter;
+        add: droneListPresenter;
+        add: statusLabelPresenter;
+        yourself.
+    main := SpBoxLayout newTopToBottom
+        spacing: 2;
+        add: menuBarPresenter;
+        add: (SpBoxLayout newLeftToRight
+            spacing: 10;
+            add: canvasPresenter;
+            add: (self newPresenter layout: right; yourself);
+            yourself);
+        yourself.
+    ^ main
+]
+
+{ #category : 'presenters' }
+UISimulation >> defaultLayoutlegacy [
     | right |
     right := SpBoxLayout newTopToBottom
         spacing: 6;
@@ -868,6 +1034,14 @@ UISimulation >> fetchBitmapFromWMS [
     rsCanvas add: bmp.
 ]
 
+{ #category : 'Menu Bar' }
+UISimulation >> fitZoom [
+    self computeBoundingBox.
+    zoomLevel := 1.0.
+    self markBaseMapDirty.
+    self refreshAll.
+]
+
 { #category : 'updating status' }
 UISimulation >> fullDroneRefresh [
     self computeBoundingBox.
@@ -949,33 +1123,116 @@ UISimulation >> imageWidth: anObject [
 	imageWidth := anObject
 ]
 
+{ #category : 'CSV' }
+UISimulation >> importClustersFromCSV: aFileRef [
+    | rows groups clusters |
+    rows := self readCSVLinesFrom: aFileRef.
+    rows isEmpty ifTrue: [ ^ self ].
+    groups := Dictionary new.
+   ( rows reject:[:a| a first ='clusterId']) do: [ :cols |
+        | cid |
+        cid := cols first asNumber.
+        (groups at: cid ifAbsentPut: [ OrderedCollection new ]) add: cols ].
+    clusters := groups keys collect: [ :cid |
+        | lines cluster droneClass |
+        lines := groups at: cid.
+        cluster := (Smalltalk at: #DroneCluster ifAbsent: [ nil ]) ifNotNil: [ :c | c new ].
+        droneClass := Smalltalk at: #Drone ifAbsent: [ nil ].
+        (cluster isNil or: [ droneClass isNil ]) ifTrue: [ nil ] ifFalse: [
+            lines do: [ :cols |
+                | id lat lon alt d |
+                id := cols second. lat := cols third asNumber.
+                lon := (cols at:4) asNumber.
+                alt := (cols at: 5 ifAbsent: [ 100 ]) asNumber.
+                d := droneClass new
+uniqueId: id;
+                    latitude: lat;
+                    longitude: lon;
+                    altitude: alt;
+                    yourself.
+                (cluster respondsTo: #addDrone:) ifTrue: [ cluster addDrone: d ] ].
+            (cluster respondsTo: #clusterId:) ifTrue: [ cluster clusterId: cid ].
+            cluster ] ].
+    self attachImportedClusters: (clusters reject: #isNil).
+    self updateClusterListFromFleet.
+    self updateDroneListFromSelectedClusters.
+    self refreshDrones
+]
+
+{ #category : 'CSV' }
+UISimulation >> importClustersFromCSVDialog [
+    | file |
+    file := self chooseCSVFileLabel: 'Clusters CSV'.
+    file ifNil: [ ^ self ].
+    self importClustersFromCSV: file.
+]
+
+{ #category : 'presenters' }
+UISimulation >> importMenu [
+    | m |
+    m := SpMenuPresenter new.
+    m addItem: [ :it | it name: 'Clusters CSV…'; action: [ self importClustersFromCSVDialog ] ].
+    m addItem: [ :it | it name: 'Missions CSV…'; action: [ self importMissionsFromCSVDialog ] ].
+    ^ m
+]
+
+{ #category : 'CSV' }
+UISimulation >> importMissionsFromCSV: aFileRef [
+    | rows missionClass waypointClass missions |
+    rows := self readCSVLinesFrom: aFileRef.
+    rows isEmpty ifTrue: [ ^ self ].
+    missionClass := Smalltalk at: #Mission ifAbsent: [ nil ].
+    waypointClass := Smalltalk at: #Waypoint ifAbsent: [ nil ].
+    missions := rows collect: [ :cols |
+        (missionClass isNil or: [ waypointClass isNil ]) ifTrue: [ nil ] ifFalse: [
+            | lat lon alt m wp |
+            lat := cols second asNumber.
+            lon := cols third asNumber.
+            alt := (cols at: 4 ifAbsent: [ 100 ]) asNumber.
+            m := missionClass new.
+            (wp := (waypointClass latitude: lat longitude: lon altitude: alt)) ifNotNil: [
+                (m respondsTo: #addWaypoint:) ifTrue: [ m addWaypoint: wp ] ].m]].
+    self attachImportedMissions: (missions reject: #isNil).
+    self refreshOverlays.
+]
+
+{ #category : 'CSV' }
+UISimulation >> importMissionsFromCSVDialog [
+    | file |
+    file := self chooseCSVFileLabel: 'Missions CSV'.
+    file ifNil: [ ^ self ].
+    self importMissionsFromCSV: file.
+]
+
 { #category : 'presenters' }
 UISimulation >> initialize [
-
-	super initialize.
-	baseMapDirty := true.
-	imageWidth := 1200.
-	overlayChecks := Dictionary new.
-	waypointCaptureOn := false.
-	pendingWaypoints := OrderedCollection new.
-	zoomLevel := 1.
-	baseShapes := OrderedCollection new.
-	overlayShapes := OrderedCollection new.
-	simRunning := false.
-	simLoopProcess := nil.
-	self
-		ensureOverlayModel;
-		ensureOverlayChecks;
-		ensureBaseShapes
+    super initialize.
+    baseMapDirty := true.
+    imageWidth := 1200.
+    overlayChecks := Dictionary new.
+    waypointCaptureOn := false.
+    pendingWaypoints := OrderedCollection new.
+    zoomLevel := 1.
+    baseShapes := OrderedCollection new.
+    overlayShapes := OrderedCollection new.
+    simRunning := false.
+    simLoopProcess := nil.
+    haltOnError := false.          "NOUVEAU"
+    self
+        ensureOverlayModel;
+        ensureOverlayChecks;
+        ensureBaseShapes
 ]
 
 { #category : 'presenters-building' }
 UISimulation >> initializePresenters [
-    self buildCanvasPresenter;
-        buildLists;
-        buildOverlayPanel;
-        buildToolBar;
-        buildStatusLabel.
+
+	self
+  
+		buildCanvasPresenter; buildLists;
+		buildOverlayPanel;
+		buildToolBar;
+		buildStatusLabel
 ]
 
 { #category : 'presenters' }
@@ -1014,6 +1271,23 @@ UISimulation >> isOverlayShape: aShape [
     ^ overlayShapes notNil and: [ overlayShapes includes: aShape ]
 ]
 
+{ #category : 'Menu Bar' }
+UISimulation >> jump: nSteps [
+    1 to: nSteps do: [ :i | self simulationStepOnce ].
+    self updateTimeLabel.
+]
+
+{ #category : 'Menu Bar' }
+UISimulation >> jumpDialog [
+    | answer n |
+    (Smalltalk includesKey: #UIManager)
+        ifFalse: [ ^ self jump: 100 ].
+    answer := UIManager default request: 'Nombre de steps' initialAnswer: '100'.
+    answer ifNil: [ ^ self ].
+    [ n := answer asNumber ] on: Error do: [ ^ self ].
+    n > 0 ifTrue: [ self jump: n ]
+]
+
 { #category : 'overlays' }
 UISimulation >> loadSimulationDialog [
     | ref |
@@ -1049,6 +1323,16 @@ UISimulation >> markOverlayShape: aShape [
     overlayShapes ifNil: [ overlayShapes := OrderedCollection new ].
     (overlayShapes includes: aShape) ifFalse: [ overlayShapes add: aShape ].
     ^ aShape
+]
+
+{ #category : 'presenters' }
+UISimulation >> menuButtonLabel: aString menuBlock: aBlock [
+    | b |
+    b := SpButtonPresenter new
+        label: aString;
+        action: [ self showMenu: aBlock value fromButton: b ];
+        yourself.
+    ^ b
 ]
 
 { #category : 'overlay models' }
@@ -1091,11 +1375,11 @@ UISimulation >> newButtonLabel: aString icon: baseName action: aBlock [
 { #category : 'presenters' }
 UISimulation >> open [
     self layout ifNil: [
-        self initializePresenters.
-        self layout: self defaultLayout.
+        self initializePresenters.          "construit canvas / listes / overlays / toolbar existante (si tu veux garder la toolbar)"
+        self buildMenuBar.                  "NOUVEAU"
+        self layout: self defaultLayoutWithMenu.
         self installShortcutsAndMenus ].
     ^ super open
-
 ]
 
 { #category : 'overlay models' }
@@ -1256,6 +1540,96 @@ UISimulation >> pixelForWaypoint: wp [
 	^ self canvasPointFromPixel: pix
 ]
 
+{ #category : 'CSV' }
+UISimulation >> readCSVLinesFrom: aFileRef [
+    | rows |
+    (Smalltalk includesKey: #NeoCSVReader) ifTrue: [ ^ self readCSVWithNeoFrom: aFileRef ].
+    rows := OrderedCollection new.
+    aFileRef readStreamDo: [ :str |
+        [ str atEnd ] whileFalse: [
+            | line cols |
+            line := str nextLine.
+            (line isEmpty or: [ line first = $# ])
+                ifTrue: [ "skip comment/empty" ]
+                ifFalse: [
+                    cols := line findTokens: ','.
+                    rows add: cols ] ] ].
+    ^ rows
+]
+
+{ #category : 'CSV' }
+UISimulation >> readCSVWithNeoFrom: aFileRef [
+    | allLines headerLine headerTokens reader stream rows fieldAdder |
+    "1) Lire toutes les lignes (simple) pour détecter un header sans utiliser #peek."
+self halt.     allLines := aFileRef readStream contents lines.
+    "Filtrer commentaires (#...) et vides pour trouver une éventuelle première ligne d'en-tête."
+    headerLine := allLines
+        detect: [ :ln | ln notEmpty and: [ ln first ~= $# ] ]
+        ifNone: [ nil ].
+    headerTokens := headerLine
+        ifNil: [ #() ]
+        ifNotNil: [ headerLine findTokens: ',' ].
+
+    "2) Recréer un stream frais pour NeoCSV (car on a déjà consommé le contenu)."
+    stream := aFileRef readStream.
+
+    "3) Configurer le reader."
+    reader := NeoCSVReader on: stream.
+    reader separator: $,.
+
+    "Compat: certaines versions ont addFieldNamed:, d'autres addField."
+    fieldAdder := (reader respondsTo: #addFieldNamed:)
+        ifTrue: [[ :name | reader addFieldNamed: name ]]
+        ifFalse: [[ :name | reader addField ]].
+
+    headerTokens isEmpty
+        ifTrue: [
+            "Pas d’en‑tête détectée: on ne connaît pas le nombre de colonnes.
+            Heuristique: on lit la première ligne brute pour deviner."
+            | firstData colsCount |
+            firstData := stream nextLine.
+            firstData ifNil: [ ^ OrderedCollection new ].
+            (firstData isEmpty or: [ firstData first = $# ])
+                ifTrue: [ ^ OrderedCollection new ].
+            colsCount := (firstData findTokens: ',') size.
+            1 to: colsCount do: [ :i | fieldAdder value: ('col', i asString) ].
+            "Recréer un nouveau stream incluant à nouveau firstData (on repart depuis zéro)."
+            stream close.
+            stream := aFileRef readStream.
+            reader := NeoCSVReader on: stream.
+            reader separator: $,.
+            1 to: colsCount do: [ :i | (reader respondsTo: #addFieldNamed:)
+                    ifTrue: [ reader addFieldNamed: ('col', i asString) ]
+                    ifFalse: [ reader addField ] ] ]
+        ifFalse: [
+            headerTokens do: [ :name | fieldAdder value: name ].
+            (reader respondsTo: #skipHeader) ifTrue: [ reader skipHeader ] ].
+
+    "4) Lecture de toutes les lignes restantes."
+    rows := OrderedCollection new.
+    [ reader atEnd ] whileFalse: [
+        | rec normalized |
+        rec := reader next.
+        "NeoCSV peut rendre un Array d’associations (si mapping), ou déjà des valeurs.
+        On transforme en Array simple de Strings."
+        rec isArray
+            ifTrue: [
+                (rec isEmpty or: [ rec first isAssociation ])
+                    ifTrue: [ 
+                        normalized := rec collect: [ :assoc |
+                            assoc isAssociation
+                                ifTrue: [ assoc value asString ]
+                                ifFalse: [ assoc asString ] ] ]
+                    ifFalse: [ normalized := rec collect: [ :v | v asString ] ] ]
+            ifFalse: [
+                normalized := { rec asString } ].
+        "Filtrer éventuelle ligne vide / commentaire."
+        (normalized allSatisfy: [ :v | v isEmpty ]) ifFalse: [
+            (normalized first beginsWith: '#') ifFalse: [ rows add: normalized ] ] ].
+
+    ^ rows
+]
+
 { #category : 'overlay models' }
 UISimulation >> rebuildBaseMap [
     rsCanvas ifNil: [ ^ self ].
@@ -1374,6 +1748,35 @@ UISimulation >> shape: aShape hasAttribute: key equals: expected [
     ^ false
 ]
 
+{ #category : 'presenters' }
+UISimulation >> showMenu: aMenuPresenter fromButton: aButton [
+    "Affiche le menu. Essaie plusieurs sélecteurs (#openWithSpec, #open, #openInWorld). Fallback UIManager."
+     | tried selectors success |   aMenuPresenter ifNil: [ ^ self ].
+
+
+    selectors := #(#openWithSpec #open #openInWorld).
+    success := false.
+    selectors do: [ :sel |
+        (success not and: [ aMenuPresenter respondsTo: sel ]) ifTrue: [
+            [ aMenuPresenter perform: sel.
+              success := true ]
+                on: Error do: [ :ex | Transcript show: 'Menu open error (', sel, '): ', ex messageText; cr ] ] ].
+    success ifTrue: [ ^ self ].
+
+    "Fallback simple list choice"
+    (UIManager default
+        chooseFrom: (aMenuPresenter items collect: [ :it | it name ])
+        title: ((aMenuPresenter respondsTo: #label) ifTrue: [ aMenuPresenter label ] ifFalse: [ 'Menu' ]))
+            ifNotNil: [ :index |
+                index > 0 ifTrue: [
+                    | item |
+                    item := aMenuPresenter items at: index.
+                    (item respondsTo: #performAction)
+                        ifTrue: [ item performAction ]
+                        ifFalse: [
+                            (item respondsTo: #action) ifTrue: [ item action value ] ] ] ].
+]
+
 { #category : 'accessing' }
 UISimulation >> simulation [
 
@@ -1392,14 +1795,33 @@ UISimulation >> simulation: aSim [
     ^ self.
 ]
 
+{ #category : 'presenters' }
+UISimulation >> simulationMenu [
+    | m |
+    m := SpMenuPresenter new.
+    m addItem: [ :it | it name: 'Start'; action: [ self startSimulationLoop ] ].
+    m addItem: [ :it | it name: 'Step'; action: [ self simulationStepOnce ] ].
+    m addItem: [ :it | it name: 'Jump…'; action: [ self jumpDialog ] ].
+    m addItem: [ :it | it name: (haltOnError ifTrue: ['HaltOn Errors ✓'] ifFalse: ['HaltOn Errors']);
+        action: [ haltOnError := haltOnError not ] ].
+    "m addSeparator."
+    m addItem: [ :it | it name: 'Save'; action: [ self saveSimulationDialog ] ].
+    m addItem: [ :it | it name: 'Load'; action: [ self loadSimulationDialog ] ].
+    ^ m
+
+]
+
 { #category : 'overlays' }
 UISimulation >> simulationStepOnce [
-    (simulation respondsTo: #step)
-        ifTrue: [
-            [ simulation step ] on: Error do: [ :ex |
-                Transcript show: 'Step error: ', ex messageText; cr ] ].
+    (simulation respondsTo: #step) ifTrue: [
+        haltOnError
+            ifTrue: [ simulation step ]   "laisse remonter l'erreur"
+            ifFalse: [
+                [ simulation step ] on: Error do: [ :ex |
+                    Transcript show: 'Step error: ', ex messageText; cr ] ] ].
     self refreshDrones.
     self updateTimeLabel.
+
 ]
 
 { #category : 'overlays' }
@@ -1469,6 +1891,16 @@ UISimulation >> toolBarPresenter [
 UISimulation >> toolBarPresenter: anObject [
 
 	toolBarPresenter := anObject
+]
+
+{ #category : 'CSV' }
+UISimulation >> updateClusterListFromFleet [
+	| clusters |
+	clusterListPresenter ifNil: [ ^ self ].
+
+	clusters := self simulation allFleets first clusters.
+	
+clusterListPresenter items: clusters
 ]
 
 { #category : 'presenters-building' }
@@ -1566,6 +1998,16 @@ UISimulation >> zoomLevel: aNumber [
     self updateZoomedBBox.
     self markBaseMapDirty.
     self refreshAll.
+]
+
+{ #category : 'presenters' }
+UISimulation >> zoomMenu [
+    | m |
+    m := SpMenuPresenter new.
+    m addItem: [ :it | it name: 'Fit'; action: [ self fitZoom ] ].
+    m addItem: [ :it | it name: 'Zoom +'; action: [ self zoomIn ] ].
+    m addItem: [ :it | it name: 'Zoom -'; action: [ self zoomOut ] ].
+    ^ m
 ]
 
 { #category : 'presenters' }
