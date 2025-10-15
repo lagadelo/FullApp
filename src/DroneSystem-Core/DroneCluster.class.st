@@ -15,6 +15,12 @@ Class {
 	#package : 'DroneSystem-Core'
 }
 
+{ #category : 'instance creation' }
+DroneCluster class >> clusterId: id [
+
+^self new    clusterId: id
+]
+
 { #category : 'accessing' }
 DroneCluster class >> example:n [
 
@@ -27,7 +33,11 @@ tmp := self new clusterId: #test; yourself. ((1 to: n) do:  [:i| tmp addDrone: D
 { #category : 'instance creation' }
 DroneCluster class >> with: drones [
 
-^self new  initializeWithDrones: drones  clusterId: nil;yourself
+|tmp|
+
+tmp := self  clusterId: nil.
+tmp  initializeWithDrones: drones.
+ ^tmp
 ]
 
 { #category : 'visiting' }

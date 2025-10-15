@@ -2,6 +2,13 @@ Class {
 	#name : 'UISimulation',
 	#superclass : 'SpPresenter',
 	#instVars : [
+		'checkPerception',
+		'checkMissions',
+		'overlayChecksLabel',
+		'dronesAllButton',
+		'dronesSelectedButton',
+		'dronesModeLabel',
+		'showAllDrones',
 		'simulation',
 		'canvasPresenter',
 		'rsCanvas',
@@ -28,7 +35,12 @@ Class {
 		'timeLabelPresenter',
 		'menuBarPresenter',
 		'haltOnError',
-		'menuRowPresenter'
+		'menuRowPresenter',
+		'overlayChecksPanelPresenters',
+		'allDrones',
+		'checkHull',
+		'checkAmmunition',
+		'checkFuel'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -119,18 +131,46 @@ UISimulation class >> lonLatToWebMercator: lonLatPoint [
 
 { #category : 'instance creation' }
 UISimulation class >> openOn: aSimulation [
-    ^ (self basicNew simulation: aSimulation; initialize ) open.
+
+ 
+
+    ^ (self basicNew simulation: aSimulation; halt; initialize ) open.
 ]
 
 { #category : 'as yet unclassified' }
 UISimulation class >> pixelForLon: lon lat: lat inBbox: aBbox width: w height: h [
-    | coord xMin yMin xMax yMax xNorm yNorm |
+  "  | coord xMin yMin xMax yMax xNorm yNorm |
     coord := self lonLatToWebMercator: (lon @ lat).
     xMin := aBbox origin x. yMin := aBbox origin y.
     xMax := aBbox corner x. yMax := aBbox corner y.
     xNorm := (coord x - xMin) / (xMax - xMin).
     yNorm := (yMax - coord y) / (yMax - yMin).
-    ^ ((xNorm * w) rounded) @ ((yNorm * h) rounded).
+    ^ ((xNorm * w) rounded) @ ((yNorm * h) rounded)."
+
+  | pt mMin mMax xMin xMax yMin yMax dx dy xNorm yNorm |
+    (aBbox isNil or: [ w isNil or: [ h isNil ] ]) ifTrue: [ ^ nil ].
+
+    pt := self lonLatToWebMercator: (lon @ lat).
+    mMin := self lonLatToWebMercator: (aBbox origin x @ aBbox origin y).
+    mMax := self lonLatToWebMercator: (aBbox corner x @ aBbox corner y).
+
+    xMin := mMin x min: mMax x.
+    xMax := mMin x max: mMax x.
+    yMin := mMin y min: mMax y.
+    yMax := mMin y max: mMax y.
+
+    dx := xMax - xMin.
+    dy := yMax - yMin.
+    (dx = 0 or: [ dy = 0 ]) ifTrue: [ ^ nil ].
+
+    xNorm := (pt x - xMin) / dx.
+    yNorm := (yMax - pt y) / dy.  "invert Y (pixel Y grows downward)"
+
+    "Clamp in [0..1]"
+    xNorm := (0.0 max: xNorm) min: 1.0.
+    yNorm := (0.0 max: yNorm) min: 1.0.
+
+    ^ (xNorm * w) @ (yNorm * h)
 ]
 
 { #category : 'presenters' }
@@ -143,16 +183,21 @@ UISimulation >> addBaseShape: aShape [
     ^ aShape
 ]
 
-{ #category : 'debugging' }
-UISimulation >> allDrones [
-    | selClusters clusters |
-    selClusters := self selectedClusters.
-    clusters := selClusters isEmpty
-        ifTrue: [ self clustersFromSimulation ]
-        ifFalse: [ selClusters ].
+{ #category : 'overlays' }
+UISimulation >> allClusters [
+    | clusters |
+ 
+    self showAllDrones  not 
+        ifTrue: [ clusters := self clustersFromSimulation ]
+        ifFalse: [ clusters := self selectedClusters ].
     clusters isEmpty ifTrue: [ ^ #() ].
-    ^ clusters gather: [ :c | (c respondsTo: #drones) ifTrue: [ c drones ifNil: [ #() ] ] ifFalse: [ #() ] ]
+    ^ clusters  
+]
 
+{ #category : 'overlays' }
+UISimulation >> allDrones [
+  
+    ^ self allClusters gather: [ :c | (c respondsTo: #drones) ifTrue: [ c drones ifNil: [ #() ] ] ifFalse: [ #() ] ]
 ]
 
 { #category : 'CSV' }
@@ -251,12 +296,11 @@ UISimulation >> buildBaseMap [
 { #category : 'presenters' }
 UISimulation >> buildCanvasPresenter [
     canvasPresenter ifNotNil: [ ^ canvasPresenter ].
-  "  self buildToolBar. "  "Assure toolbar prête"
     self ensureCanvas.
+   self ensureOverlayModel.
     canvasPresenter := self newPresenter.
     canvasPresenter layout: (SpBoxLayout newTopToBottom
-        spacing: 4;
-        add: toolBarPresenter height:20;          "<<< Toolbar au dessus de la carte"
+        spacing: 0;
         add: (self buildCanvasWidget);
         yourself).
     ^ canvasPresenter
@@ -275,6 +319,107 @@ UISimulation >> buildCanvasWidget [
             morph: rsCanvas asMorph;
             yourself ].
     ^ SpLabelPresenter new label: 'Pas de presenter Roassal'
+]
+
+{ #category : 'debugging' }
+UISimulation >> buildDroneFilterPanel [
+
+	| panel title allBtn selBtn radioClass groupClass group |
+	panel := self newPresenter.
+	title := SpLabelPresenter new
+		         label: 'Drones';
+		         yourself.
+
+	radioClass := Smalltalk at: #SpRadioButtonPresenter ifAbsent: [ nil ].
+	radioClass notNil
+		ifTrue: [
+				groupClass := Smalltalk at: #SpRadioButtonGroup ifAbsent: [ nil ].
+				group := groupClass ifNotNil: [ groupClass new ].
+
+				allBtn := radioClass new
+					          label: 'All';
+					          yourself.
+				selBtn := radioClass new
+					          label: 'Selected';
+					          yourself.
+
+				(group notNil and: [ allBtn respondsTo: #group: ]) ifTrue: [
+						allBtn group: group.
+						selBtn group: group ].
+
+				"Init via le groupe (meilleure mise à jour graphique)"
+				(group notNil and: [ group respondsTo: #select: ])
+					ifTrue: [
+							group select: (self showAllDrones
+									 ifTrue: [ allBtn ]
+									 ifFalse: [ selBtn ]) ]
+					ifFalse: [
+							allBtn state: self showAllDrones.
+							selBtn state: self showAllDrones not ].
+
+				"Callbacks"
+				(allBtn respondsTo: #whenActivatedDo:)
+					ifTrue: [
+							allBtn whenActivatedDo: [ self showAllDrones: true ].
+							selBtn whenActivatedDo: [ self showAllDrones: false ] ]
+					ifFalse: [
+							allBtn whenChangedDo: [ self showAllDrones: true ].
+							selBtn whenChangedDo: [ self showAllDrones: false ] ] ]
+		ifFalse: [ "Fallback: deux toggles exclusifs"
+				allBtn := SpToggleButtonPresenter new
+					          label: 'All';
+					          yourself.
+				selBtn := SpToggleButtonPresenter new
+					          label: 'Selected';
+					          yourself.
+				allBtn state: self showAllDrones.
+				selBtn state: self showAllDrones not.
+				allBtn action: [ self showAllDrones: true ].
+				selBtn action: [ self showAllDrones: false ] ].
+
+	panel layout: (SpBoxLayout newTopToBottom
+			 spacing: 2;
+			 add: title;
+			 add: allBtn;
+			 add: selBtn;
+			 yourself).
+	^ panel
+]
+
+{ #category : 'layout' }
+UISimulation >> buildDroneModePanel [
+    "Panel radio Drones (All | Selected)"
+    dronesAllButton ifNil: [ dronesAllButton := self newRadioButton ].
+    dronesSelectedButton ifNil: [ dronesSelectedButton := self newRadioButton ].
+    dronesModeLabel ifNil: [ dronesModeLabel := self newLabel ].
+
+    dronesAllButton associatedRadioButtons: { dronesSelectedButton }.
+    dronesAllButton label: 'All'.
+    dronesSelectedButton label: 'Selected'.
+
+    "État initial (showAllDrones doit être un slot booléen)"
+    showAllDrones ifNil: [ showAllDrones := true ].
+    dronesAllButton state: showAllDrones.
+    dronesSelectedButton state: showAllDrones not.
+
+    "Callbacks"
+    dronesAllButton whenChangedDo: [
+        showAllDrones := true.
+        self updateDroneListFromSelectedClusters.
+        self refreshDrones ].
+    dronesSelectedButton whenChangedDo: [
+        showAllDrones := false.
+        self updateDroneListFromSelectedClusters.
+        self refreshDrones ].
+
+    ^ (self newPresenter)
+        layout: (SpBoxLayout newTopToBottom
+            add: (SpBoxLayout newTopToBottom
+                    add: dronesAllButton expand: false;
+                    add: dronesSelectedButton expand: false;
+                    yourself)
+                expand: false;
+            yourself)
 ]
 
 { #category : 'as yet unclassified' }
@@ -335,35 +480,86 @@ UISimulation >> buildLists [
     self updateDroneListFromSelectedClusters
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'presenters' }
 UISimulation >> buildMenuBar [
-    | simMenu zoomMenu importMenu |    menuBarPresenter ifNotNil: [ ^ menuBarPresenter ].
-    menuBarPresenter := SpMenuBarPresenter new.
 
+	| menuBar simMenu zoomMenu importMenu |
+	menuBarPresenter ifNotNil: [ ^ menuBarPresenter ].
+	menuBar := self newMenuBar.
 
-    simMenu := menuBarPresenter addMenu: 'Simulation'.
-    simMenu addItem: [ :it | it name: 'Start'; action: [ self startSimulationLoop ] ].
-    simMenu addItem: [ :it | it name: 'Step'; action: [ self simulationStepOnce ] ].
-    simMenu addItem: [ :it | it name: 'Jump...'; action: [ self jumpDialog ] ].
-    simMenu addItem: [ :it |
-        it name: 'HaltOn Errors';
-        checkable: true;
-        state: [ haltOnError ];
-        action: [ haltOnError := haltOnError not ] ].
-    simMenu addSeparator.
-    simMenu addItem: [ :it | it name: 'Save'; action: [ self saveSimulationDialog ] ].
-    simMenu addItem: [ :it | it name: 'Load'; action: [ self loadSimulationDialog ] ].
+	"Simulation"
+	simMenu := SpMenuPresenter new
+		           addItem: [ :it |
+				           it
+					           name: 'Start';
+					           icon: (self iconNamed: #smallForward);
+					           action: [ self startSimulationLoop ] ];
+		           addItem: [ :it |
+				           it
+					           name: 'Step';
+					           icon: (self iconNamed: #smallDoIt);
+					           action: [ self simulationStepOnce ] ];
+		           addItem: [ :it |
+				           it
+					           name: 'Jump…';
+					           icon: (self iconNamed: #smallForward);
+					           action: [ self jumpDialog ] ];
+		           addItem: [ :it |
+				           it
+					           name: 'HaltOn';
+					           icon: (self iconNamed: #smallError);
+					           action: [ haltOnError := haltOnError not ] ];
+		           yourself.
 
-    zoomMenu := menuBarPresenter addMenu: 'Zoom'.
-    zoomMenu addItem: [ :it | it name: 'Fit'; action: [ self fitZoom ] ].
-    zoomMenu addItem: [ :it | it name: 'Zoom +'; action: [ self zoomIn ] ].
-    zoomMenu addItem: [ :it | it name: 'Zoom -'; action: [ self zoomOut ] ].
+	"Zoom"
+	zoomMenu := SpMenuPresenter new
+		            addItem: [ :it |
+				            it
+					            name: 'Fit';
+					            icon: (self iconNamed: #smallFind);
+					            action: [ self fitZoom ] ];
+		            addItem: [ :it |
+				            it
+					            name: 'Zoom +';
+					            icon: (self iconNamed: #smallZoomIn);
+					            action: [ self zoomIn ] ];
+		            addItem: [ :it |
+				            it
+					            name: 'Zoom -';
+					            icon: (self iconNamed: #smallZoomOut);
+					            action: [ self zoomOut ] ];
+		            yourself.
 
-    importMenu := menuBarPresenter addMenu: 'Import'.
-    importMenu addItem: [ :it | it name: 'Clusters CSV...'; action: [ self importClustersFromCSVDialog ] ].
-    importMenu addItem: [ :it | it name: 'Missions CSV...'; action: [ self importMissionsFromCSVDialog ] ].
+	"Import CSV"
+	importMenu := SpMenuPresenter new
+		              addItem: [ :it |
+				              it
+					              name: 'Clusters CSV…';
+					              icon: (self iconNamed: #smallOpen);
+					              action: [ self importClustersFromCSVDialog ] ];
+		              addItem: [ :it |
+				              it
+					              name: 'Missions CSV…';
+					              icon: (self iconNamed: #smallOpen);
+					              action: [ self importMissionsFromCSVDialog ] ];
+		              yourself.
 
-    ^ menuBarPresenter
+	menuBar addGroup: [ :group |
+			group addItem: [ :it |
+					it
+						name: 'Simulation';
+						subMenu: simMenu ].
+			group addItem: [ :it |
+					it
+						name: 'Zoom';
+						subMenu: zoomMenu ].
+			group addItem: [ :it |
+					it
+						name: 'Import';
+						subMenu: importMenu ] ].
+
+	menuBarPresenter := menuBar.
+	^ menuBarPresenter
 ]
 
 { #category : 'presenters' }
@@ -379,32 +575,65 @@ UISimulation >> buildMenuRow [
     ^ menuRowPresenter
 ]
 
+{ #category : 'layout' }
+UISimulation >> buildOverlayChecksPanel [
+	"Cases à cocher Missions / Hull / Ammunition / Fuel"
+
+	checkPerception ifNil: [ checkPerception := self newCheckBox ].
+	checkMissions ifNil: [ checkMissions := self newCheckBox ].
+	checkHull ifNil: [ checkHull := self newCheckBox ].
+	checkAmmunition ifNil: [ checkAmmunition := self newCheckBox ].
+	checkFuel ifNil: [ checkFuel := self newCheckBox ].
+	overlayChecksLabel ifNil: [ overlayChecksLabel := self newLabel ].
+
+
+	checkPerception label: 'Perception'.
+	checkMissions label: 'Missions'.
+	checkHull label: 'Hull'.
+	checkAmmunition label: 'Ammunition'.
+	checkFuel label: 'Fuel'.
+
+	overlayChecks ifNil: [ overlayChecks := Dictionary new ].
+	checkPerception state:
+		(overlayChecks at: #perception ifAbsentPut: [ true ]).
+
+	checkMissions state:
+		(overlayChecks at: #missions ifAbsentPut: [ true ]).
+	checkHull state: (overlayChecks at: #hull ifAbsentPut: [ true ]).
+	checkAmmunition state:
+		(overlayChecks at: #ammunition ifAbsentPut: [ true ]).
+	checkFuel state: (overlayChecks at: #fuel ifAbsentPut: [ true ]).
+
+	self connectOverlayChecks.
+	self updateOverlayChecksLabel.
+
+	^ self newPresenter
+		  layout: (SpBoxLayout newTopToBottom
+				   add: (SpBoxLayout newLeftToRight
+						    spacing: 6;
+						    add: checkPerception expand: false;
+						    add: checkMissions expand: false;
+						    add: checkHull expand: false;
+						    add: checkAmmunition expand: false;
+						    add: checkFuel expand: false;
+						    yourself)
+				   expand: false;
+				   add: overlayChecksLabel expand: false;
+				   yourself);
+		  yourself
+]
+
 { #category : 'presenters-building' }
 UISimulation >> buildOverlayPanel [
-
-	| lay p |
-	overlayPanelPresenter ifNotNil: [ ^ overlayPanelPresenter ].
-
-	lay := SpBoxLayout newTopToBottom
-		       spacing: 2;
-		       add: (SpLabelPresenter new label: 'Overlays');
-		       add:
-			       (self
-				        overlayCheckboxLabel: 'Perception'
-				        flag: #showPerceptionRadius:);
-		       add:
-			       (self
-				        overlayCheckboxLabel: 'Missions'
-				        flag: #showMissionPaths:);
-		       add:
-			       (self overlayCheckboxLabel: 'Fuel' flag: #showEnergyBars:);
-		       add: (self overlayCheckboxLabel: 'Ammo' flag: #showAmmoBars:);
-		       add:
-			       (self overlayCheckboxLabel: 'Hull' flag: #showClusterHull:);
-		       yourself.
-	p := self newPresenter.
-	p layout: lay.
-	overlayPanelPresenter := p
+    | checksPanel |
+    "checksPanel = ton panneau existant avec 'Perception', 'Missions', etc."
+    checksPanel := self buildOverlayChecksPanel.
+    overlayPanelPresenter := self newPresenter.
+    overlayPanelPresenter layout: (SpBoxLayout newLeftToRight
+        spacing: 10;
+        add: (self buildDroneFilterPanel);   "<<< A GAUCHE"
+        add: checksPanel;                    "<<< À DROITE : tes cases à cocher"
+        yourself)
 ]
 
 { #category : 'presenters-building' }
@@ -511,11 +740,7 @@ UISimulation >> clusterListPresenter: anObject [
 UISimulation >> clustersFromSimulation [
      | fleets |   (simulation respondsTo: #clusters) ifTrue: [ ^ simulation clusters ifNil: [ #() ] ].
 
-    fleets := (simulation respondsTo: #fleets)
-        ifTrue: [ simulation fleets ]
-        ifFalse: [ (simulation respondsTo: #allFleets) ifTrue: [ simulation allFleets first clusters] ifFalse: [ #() ] ].
-    fleets isNil ifTrue: [ ^ #() ].
-    ^ fleets gather: [ :f | (f respondsTo: #clusters) ifTrue: [ f clusters ] ifFalse: [ #() ] ]
+    ^simulation allFleets   gather: [ :f | (f respondsTo: #clusters) ifTrue: [ f clusters ] ifFalse: [ #() ] ]
 
 ]
 
@@ -599,6 +824,60 @@ UISimulation >> connectCanvasEvents [
             waypointCaptureOn ifTrue: [ self handleWaypointClick: evt ] ] for: self ].
 ]
 
+{ #category : 'presenters' }
+UISimulation >> connectDroneModePresenters [
+
+	dronesAllButton whenChangedDo: [
+			showAllDrones := true.
+			self updateDronesModeLabel.
+			self updateDroneListFromSelectedClusters.
+			self refreshDrones ].
+	dronesSelectedButton whenChangedDo: [
+			showAllDrones := false.
+			self updateDronesModeLabel.
+			self updateDroneListFromSelectedClusters.
+			self refreshDrones ]
+]
+
+{ #category : 'layout' }
+UISimulation >> connectOverlayChecks [
+    checkPerception ifNotNil: [
+        checkPerception whenChangedDo: [
+            overlayChecks at: #perception put: checkPerception state.
+            (overlayModel respondsTo: #showPerceptionRadius:) ifTrue: [
+                overlayModel showPerceptionRadius: checkPerception state ].
+            self updateOverlayChecksLabel.
+            self refreshOverlays ] ].
+    checkMissions ifNotNil: [
+        checkMissions whenChangedDo: [
+            overlayChecks at: #missions put: checkMissions state.
+            (overlayModel respondsTo: #showClusterHull:) ifTrue: [
+                overlayModel showClusterHull: checkMissions state ].
+            self updateOverlayChecksLabel.
+            self refreshOverlays ] ].
+    checkHull ifNotNil: [
+        checkHull whenChangedDo: [
+            overlayChecks at: #hull put: checkHull state.
+            (overlayModel respondsTo: #showClusterHull:) ifTrue: [
+                overlayModel showClusterHull: checkHull state ].
+            self updateOverlayChecksLabel.
+            self refreshOverlays ] ].
+    checkAmmunition ifNotNil: [
+        checkAmmunition whenChangedDo: [
+            overlayChecks at: #ammunition put: checkAmmunition state.
+            (overlayModel respondsTo: #showAmmunition:) ifTrue: [
+                overlayModel showAmmunition: checkAmmunition state ].
+            self updateOverlayChecksLabel.
+            self refreshOverlays ] ].
+    checkFuel ifNotNil: [
+        checkFuel whenChangedDo: [
+            overlayChecks at: #fuel put: checkFuel state.
+            (overlayModel respondsTo: #showFuel:) ifTrue: [
+                overlayModel showFuel: checkFuel state ].
+            self updateOverlayChecksLabel.
+            self refreshOverlays ] ].
+]
+
 { #category : 'debugging' }
 UISimulation >> debugBaseShapes [
     Transcript
@@ -663,31 +942,29 @@ UISimulation >> defaultImageWidth [
 ^1600
 ]
 
-{ #category : 'presenters' }
+{ #category : 'layout' }
 UISimulation >> defaultLayout [
+     | right |   
+self buildMenuBar.  "assure menuBarPresenter"
 
-	| right main |
-	self buildMenuRow.
-
-	right := SpBoxLayout newTopToBottom
-		         spacing: 6;
-		         add: overlayPanelPresenter;
-		         add: clusterListPresenter;
-		         add: droneListPresenter;
-		         add: statusLabelPresenter;
-		         yourself.
-	main := SpBoxLayout newTopToBottom
-		        spacing: 2;
-		        add: menuRowPresenter;
-		        add: (SpBoxLayout newLeftToRight
-				         spacing: 10;
-				         add: canvasPresenter;
-				         add: (self newPresenter
-						          layout: right;
-						          yourself);
-				         yourself);
-		        yourself.
-	^ main
+    right := self newPresenter.
+    right layout: (SpBoxLayout newTopToBottom
+        spacing: 6;
+        add: (self buildDroneModePanel) expand: false;     "Drones All/Selected"
+        add: (self buildOverlayChecksPanel) expand: false; "Missions/Hull/Ammunition/Fuel"
+        add: clusterListPresenter;
+        add: droneListPresenter;
+        add: statusLabelPresenter;
+        yourself).
+    ^ SpBoxLayout newTopToBottom
+        spacing: 2;
+        add: menuBarPresenter height: 20;
+        add: (SpBoxLayout newLeftToRight
+            spacing: 10;
+            add: canvasPresenter;
+            add: right;
+            yourself);
+        yourself
 ]
 
 { #category : 'presenters' }
@@ -735,10 +1012,7 @@ UISimulation >> defaultLayoutlegacy [
 { #category : 'overlays' }
 UISimulation >> drawAmmoOverlay [
     | pie |
-((overlayModel respondsTo: #showAmmoBars)
-        and: [ overlayModel showAmmoBars ]) ifFalse: [ ^ self ].
-    (simulation respondsTo: #allDrones ) ifFalse: [ ^ self ].
-    simulation allDrones do: [ :d |
+self allDrones do: [ :d |
         (d respondsTo: #ammunition) ifTrue: [
             | pos barW cap ratio filled fill frame |
             pos := self pixelForDrone: d.
@@ -771,8 +1045,7 @@ UISimulation >> drawClusterHullOverlay [
 	((overlayModel respondsTo: #showClusterHull) and: [
 		 overlayModel showClusterHull ]) ifFalse: [ ^ self ].
  
-visibleClusters := self clusterListPresenter selectedItems ifNotEmpty: [self clusterListPresenter selectedItems] ifEmpty: 
-[self simulation allFleets first clusters]. visibleClusters  do: [ :cluster |
+self allClusters do: [ :cluster |
 			(cluster respondsTo: #drones) ifTrue: [
 					| points hull pts poly |
 					points := cluster drones
@@ -802,7 +1075,7 @@ visibleClusters := self clusterListPresenter selectedItems ifNotEmpty: [self clu
 UISimulation >> drawDroneIcons [
     | drones |
     rsCanvas ifNil: [ ^ self ].
-   drones := self simulation allFleets first  allDrones.
+   drones := self    allDrones.
     drones isEmpty ifTrue: [ ^ self ].
     drones do: [ :d |
         | p dot lbl |
@@ -825,7 +1098,7 @@ UISimulation >> drawDroneIcons [
         lbl translateTo: (p x + 6) @ (p y - 6).
         self markOverlayShape: lbl.
         rsCanvas add: lbl ].
-rsCanvas signalUpdate. 
+ 
 rsCanvas signalUpdate. 
 ]
 
@@ -842,7 +1115,7 @@ colorsMeaning :=[:a|
 	((overlayModel respondsTo: #showEnergyBars) and: [
 		 overlayModel showEnergyBars ]) ifFalse: [ ^ self ].
 	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
-	simulation allDrones do: [ :d |
+	self  allDrones do: [ :d |
 			(d respondsTo: #energy) ifTrue: [
 					| pos barW ratio filled fill frame |
 					pos := self pixelForDrone: d.
@@ -874,7 +1147,7 @@ colorsMeaning :=[:a|
 UISimulation >> drawMissionOverlay [
 
 	| pts poly m |
-	self selectedClusters do:[:c| 	m := c currentMission . 
+	self allClusters do:[:c| 	m := c currentMission . 
 				m ifNotNil:[
 					pts := m "waypoints" polygon
 						       collect: [ :wp | self pixelForWaypoint: wp ]
@@ -885,7 +1158,7 @@ UISimulation >> drawMissionOverlay [
 								        color: (Color yellow alpha: 0.7);
 								        width: 10;
 								        yourself.
-							"   poly attributeAt: #overlay put: true."
+							 
 							self markOverlayShape: poly.
 							rsCanvas add: poly ] ]]
 ]
@@ -893,10 +1166,12 @@ UISimulation >> drawMissionOverlay [
 { #category : 'overlays' }
 UISimulation >> drawPerceptionOverlay [
 
+ 
 	((overlayModel respondsTo: #showPerceptionRadius) and: [
 		 overlayModel showPerceptionRadius ]) ifFalse: [ ^ self ].
-	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
-	simulation allDrones do: [ :d |
+	
+	
+	 self allDrones do: [ :d |
 			(d respondsTo: #detectionRange) ifTrue: [
 					| pos range circle |
 					range := d detectionRange.
@@ -1004,7 +1279,7 @@ UISimulation >> ensureOverlayModel [
                     showPerceptionRadius: true;
                     showMissionPaths: true;
                     showEnergyBars: true;
-                    showAmmoBars: false;
+                    showAmmoBars: true;
                     showClusterHull: true;
                     yourself ]
             ifFalse: [ Dictionary new ] ]
@@ -1136,23 +1411,19 @@ UISimulation >> importClustersFromCSV: aFileRef [
     clusters := groups keys collect: [ :cid |
         | lines cluster droneClass |
         lines := groups at: cid.
-        cluster := (Smalltalk at: #DroneCluster ifAbsent: [ nil ]) ifNotNil: [ :c | c new ].
-        droneClass := Smalltalk at: #Drone ifAbsent: [ nil ].
-        (cluster isNil or: [ droneClass isNil ]) ifTrue: [ nil ] ifFalse: [
+        cluster :=  DroneCluster new clusterId: cid.
             lines do: [ :cols |
                 | id lat lon alt d |
                 id := cols second. lat := cols third asNumber.
                 lon := (cols at:4) asNumber.
                 alt := (cols at: 5 ifAbsent: [ 100 ]) asNumber.
-                d := droneClass new
-uniqueId: id;
-                    latitude: lat;
-                    longitude: lon;
-                    altitude: alt;
-                    yourself.
-                (cluster respondsTo: #addDrone:) ifTrue: [ cluster addDrone: d ] ].
+                d := Drone new initializeWithId: id
+            latitude: lat
+            longitude: lon 
+        altitude: alt.
+                  cluster addDrone: d ] .
             (cluster respondsTo: #clusterId:) ifTrue: [ cluster clusterId: cid ].
-            cluster ] ].
+            cluster ] .
     self attachImportedClusters: (clusters reject: #isNil).
     self updateClusterListFromFleet.
     self updateDroneListFromSelectedClusters.
@@ -1206,33 +1477,71 @@ UISimulation >> importMissionsFromCSVDialog [
 
 { #category : 'presenters' }
 UISimulation >> initialize [
-    super initialize.
-    baseMapDirty := true.
-    imageWidth := 1200.
-    overlayChecks := Dictionary new.
-    waypointCaptureOn := false.
-    pendingWaypoints := OrderedCollection new.
-    zoomLevel := 1.
-    baseShapes := OrderedCollection new.
-    overlayShapes := OrderedCollection new.
-    simRunning := false.
-    simLoopProcess := nil.
-    haltOnError := false.          "NOUVEAU"
-    self
-        ensureOverlayModel;
-        ensureOverlayChecks;
-        ensureBaseShapes
+
+	super initialize.
+	baseMapDirty := true.
+	imageWidth := 1200.
+	overlayChecks := Dictionary new.
+	waypointCaptureOn := false.
+	pendingWaypoints := OrderedCollection new.
+	zoomLevel := 1.
+	baseShapes := OrderedCollection new.
+	overlayShapes := OrderedCollection new.
+	simRunning := false.
+	simLoopProcess := nil.
+	haltOnError := false.
+	showAllDrones := true.
+	self
+		ensureOverlayModel;
+		ensureOverlayChecks;
+		ensureBaseShapes
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'waypoints' }
 UISimulation >> initializePresenters [
+    "Build all presenters (no layout here)."
+    "Canvas"
+    self ensureCanvas.
+    self buildCanvasPresenter.
 
-	self
-  
-		buildCanvasPresenter; buildLists;
-		buildOverlayPanel;
-		buildToolBar;
-		buildStatusLabel
+    "Overlay checkboxes"
+     overlayPanelPresenter := self buildOverlayChecksPanel.
+   overlayChecks ifNil: [ overlayChecks := Dictionary new ].
+    overlayChecks at: #perception ifAbsentPut: [ false ].
+    overlayChecks at: #missions   ifAbsentPut: [ false ].
+    overlayChecks at: #hull ifAbsentPut: [ false ].
+    overlayChecks at: #ammunition   ifAbsentPut: [ false ].
+    overlayChecks at: #fuel   ifAbsentPut: [ false ].
+
+
+    (self respondsTo: #connectOverlayChecks) ifTrue: [ self connectOverlayChecks ].
+    (self respondsTo: #setOverlayChecksFocus) ifTrue: [ self setOverlayChecksFocus ].
+
+    "Lists and status"
+    clusterListPresenter ifNil: [ clusterListPresenter := self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c clusterId asString ] ]]; yourself.
+    droneListPresenter  ifNil: [ droneListPresenter  := self newList ].
+    statusLabelPresenter ifNil: [ statusLabelPresenter := self newLabel ].
+    (statusLabelPresenter respondsTo: #label:) ifTrue: [ statusLabelPresenter label: 'Ready' ].
+
+    "Link lists (refresh drones on cluster selection change)"
+    (clusterListPresenter respondsTo: #whenSelectionChangedDo:)
+        ifTrue: [ clusterListPresenter whenSelectionChangedDo: [ 
+            (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
+            (self respondsTo: #refreshDrones) ifTrue: [ self refreshDrones ] ] ]
+        ifFalse: [
+            (clusterListPresenter respondsTo: #whenChangedDo:) ifTrue: [
+                clusterListPresenter whenChangedDo: [
+                    (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
+                    (self respondsTo: #refreshDrones) ifTrue: [ self refreshDrones ] ] ] ].
+
+    "Initial refresh"
+    self updateOverlayChecksLabel.
+ self updateClusterListFromFleet.
+    (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
+    (self respondsTo: #refreshOverlays)
+        ifTrue: [ self refreshOverlays ]
+        ifFalse: [ (self respondsTo: #refreshAll) ifTrue: [ self refreshAll ] ].
+    ^ self
 ]
 
 { #category : 'presenters' }
@@ -1271,21 +1580,19 @@ UISimulation >> isOverlayShape: aShape [
     ^ overlayShapes notNil and: [ overlayShapes includes: aShape ]
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters' }
 UISimulation >> jump: nSteps [
     1 to: nSteps do: [ :i | self simulationStepOnce ].
     self updateTimeLabel.
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters' }
 UISimulation >> jumpDialog [
     | answer n |
-    (Smalltalk includesKey: #UIManager)
-        ifFalse: [ ^ self jump: 100 ].
     answer := UIManager default request: 'Nombre de steps' initialAnswer: '100'.
     answer ifNil: [ ^ self ].
     [ n := answer asNumber ] on: Error do: [ ^ self ].
-    n > 0 ifTrue: [ self jump: n ]
+    n > 0 ifTrue: [ self jump: n ].
 ]
 
 { #category : 'overlays' }
@@ -1374,12 +1681,11 @@ UISimulation >> newButtonLabel: aString icon: baseName action: aBlock [
 
 { #category : 'presenters' }
 UISimulation >> open [
-    self layout ifNil: [
-        self initializePresenters.          "construit canvas / listes / overlays / toolbar existante (si tu veux garder la toolbar)"
-        self buildMenuBar.                  "NOUVEAU"
-        self layout: self defaultLayoutWithMenu.
-        self installShortcutsAndMenus ].
-    ^ super open
+"    self layout ifNil: ["
+        self initializePresenters.
+        self layout: self defaultLayout "]".
+    ^ (super open)
+        withWindowDo: [ :w | w title: ('WC Drones — ', ("simulation" nil  ifNil: [ 'No scenario' ] ifNotNil: [ simulation class name ])) ]
 ]
 
 { #category : 'overlay models' }
@@ -1741,11 +2047,48 @@ UISimulation >> setAllOverlays: aBoolean [
     self refreshOverlays.
 ]
 
+{ #category : 'waypoints' }
+UISimulation >> setOverlayChecksFocus [
+    "Construit l'ordre de focus en incluant d'autres champs si présents.
+    Ajoute simplement leurs noms dans la liste names."
+    | names candidates |
+    names := #(
+        dronesAllButton
+        dronesSelectedButton
+        checkPerception
+        checkMissions
+        clusterListPresenter
+        droneListPresenter
+    ).
+    candidates := OrderedCollection new.
+    names do: [ :sym |
+        (self class allInstVarNames includes: sym asString)
+            ifTrue: [
+                | v |
+                v := self instVarNamed: sym asString.
+                v ifNotNil: [ candidates add: v ] ] ].
+    candidates do: [ :p |
+        (p respondsTo: #takeKeyboardFocus) ifTrue: [ self focusOrder add: p ] ]
+]
+
 { #category : 'overlay models' }
 UISimulation >> shape: aShape hasAttribute: key equals: expected [
     (aShape respondsTo: #attributeAt:ifAbsent:)
         ifTrue: [ ^ (aShape attributeAt: key ifAbsent: [ ^ false ]) = expected ].
     ^ false
+]
+
+{ #category : 'accessing' }
+UISimulation >> showAllDrones [
+    showAllDrones ifNil:[showAllDrones := true].
+ ^ showAllDrones
+]
+
+{ #category : 'accessing' }
+UISimulation >> showAllDrones: aBoolean [
+    showAllDrones := aBoolean asBoolean.
+    self updateDroneListFromSelectedClusters.
+    self refreshDrones
 ]
 
 { #category : 'presenters' }
@@ -1928,6 +2271,36 @@ UISimulation >> updateDroneListFromSelectedClusters [
 
 	drones := self allDrones.
 	droneListPresenter items: drones
+]
+
+{ #category : 'presenters' }
+UISimulation >> updateDronesModeLabel [
+
+	dronesModeLabel label: (String streamContents: [ :s |
+				 {
+					 dronesAllButton.
+					 dronesSelectedButton }
+					 do: [ :btn |
+							 s
+								 << btn label;
+								 << ' : ';
+								 << (btn state
+										  ifTrue: [ 'V' ]
+										  ifFalse: [ 'X' ]) ]
+					 separatedBy: [ s << ' - ' ] ])
+]
+
+{ #category : 'waypoints' }
+UISimulation >> updateOverlayChecksLabel [
+    overlayChecksLabel
+        label: (String streamContents: [ :s |
+            { checkPerception . checkMissions }
+                do: [ :btn |
+                    s
+                        << btn label;
+                        << ' : ';
+                        << (btn state ifTrue: [ 'V' ] ifFalse: [ 'X' ]) ]
+                separatedBy: [ s << ' - ' ] ])
 ]
 
 { #category : 'overlays' }
