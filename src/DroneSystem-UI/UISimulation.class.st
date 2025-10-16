@@ -119,7 +119,7 @@ clusterId,droneId,latitude,longitude,altitude
 30,D030,48.4800,-4.6400,190'
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'GoeReferencing' }
 UISimulation class >> lonLatToWebMercator: lonLatPoint [
     | lon lat x y |
     lon := lonLatPoint x.
@@ -137,39 +137,43 @@ UISimulation class >> openOn: aSimulation [
     ^ (self basicNew simulation: aSimulation; initialize ) 		open.
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'GoeReferencing' }
+UISimulation class >> physicalLonLatFromPixel: pixel inBbox: aBbox width: w height: h [
+	"Approx inverse WebMercator (lat reconstruction simplifiée)."
+
+	| xMin yMin xMax yMax lon lat |
+	xMin := aBbox origin x.
+	yMin := aBbox origin y.
+	xMax := aBbox corner x.
+	yMax := aBbox corner y.
+	lon := xMax - xMin * (pixel x / w) + xMin.
+	lat := yMax - (yMax - yMin * (pixel y /h )).
+	lat := (lat / 6378137) exp arcTan * 360 / Float pi - 90.
+	^ lon @ lat
+]
+
+{ #category : 'GoeReferencing' }
 UISimulation class >> pixelForLon: lon lat: lat inBbox: aBbox width: w height: h [
     | coord xMin yMin xMax yMax xNorm yNorm |
+
+ 
     coord := self lonLatToWebMercator: (lon @ lat).
     xMin := aBbox origin x. yMin := aBbox origin y.
     xMax := aBbox corner x. yMax := aBbox corner y.
     xNorm := (coord x - xMin) / (xMax - xMin).
-    yNorm := (yMax - coord y) / (yMax - yMin).
+    yNorm := ( coord y - yMin) / (yMax - yMin).
     ^ ((xNorm * w) rounded) @ ((yNorm * h) rounded).
-  "| pt mMin mMax xMin xMax yMin yMax dx dy xNorm yNorm |
-    (aBbox isNil or: [ w isNil or: [ h isNil ] ]) ifTrue: [ ^ nil ].
+  "self  physicalLonLatFromPixel:  ((xNorm * w) rounded) @ ((yNorm * h) rounded) inBbox: aBbox width: w height: h ( "
+]
 
-    pt := self lonLatToWebMercator: (lon @ lat).
-    mMin := self lonLatToWebMercator: (aBbox origin x @ aBbox origin y).
-    mMax := self lonLatToWebMercator: (aBbox corner x @ aBbox corner y).
-
-    xMin := mMin x min: mMax x.
-    xMax := mMin x max: mMax x.
-    yMin := mMin y min: mMax y.
-    yMax := mMin y max: mMax y.
-
-    dx := xMax - xMin.
-    dy := yMax - yMin.
-    (dx = 0 or: [ dy = 0 ]) ifTrue: [ ^ nil ].
-
-    xNorm := (pt x - xMin) / dx.
-    yNorm := (yMax - pt y) / dy.  ""invert Y (pixel Y grows downward)""
-
-    ""Clamp in [0..1]""
-    xNorm := (0.0 max: xNorm) min: 1.0.
-    yNorm := (0.0 max: yNorm) min: 1.0.
-
-    ^ (xNorm * w) @ (yNorm * h)"
+{ #category : 'GoeReferencing' }
+UISimulation class >> webMercatorToLongitureLatitude: lonLatPoint [
+    | lon lat x y |
+    lon := lonLatPoint x.
+    lat := lonLatPoint y.
+    x := lon / 20037508.34 * 180.
+    y :=  ((lat / 6378137) exp arcTan * 360 / Float pi) - 90.
+    ^ x @ y.
 ]
 
 { #category : 'presenters' }
@@ -182,7 +186,7 @@ UISimulation >> addBaseShape: aShape [
     ^ aShape
 ]
 
-{ #category : 'overlays' }
+{ #category : 'accessing - model' }
 UISimulation >> allClusters [
     | clusters |
  
@@ -193,7 +197,7 @@ UISimulation >> allClusters [
     ^ clusters  
 ]
 
-{ #category : 'overlays' }
+{ #category : 'accessing - model' }
 UISimulation >> allDrones [
   
     ^ self allClusters gather: [ :c | (c respondsTo: #drones) ifTrue: [ c drones ifNil: [ #() ] ] ifFalse: [ #() ] ]
@@ -292,10 +296,27 @@ UISimulation >> buildBaseMap [
         ifFalse: [ self buildFallbackBaseMap ]
 ]
 
+{ #category : 'Menu Bar' }
+UISimulation >> buildCSVMenu [
+
+	^ SpMenuPresenter new
+		  addItem: [ :it |
+				  it
+					  name: 'Clusters CSV…';
+					  icon: (self iconNamed: #smallOpen);
+					  action: [ self importClustersFromCSVDialog ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Missions CSV…';
+					  icon: (self iconNamed: #smallOpen);
+					  action: [ self importMissionsFromCSVDialog ] ];
+		  yourself
+]
+
 { #category : 'presenters' }
 UISimulation >> buildCanvasPresenter [
     canvasPresenter ifNotNil: [ ^ canvasPresenter ].
-    self ensureCanvas.
+   self ensureCanvas.
    self ensureOverlayModel.
     canvasPresenter := self newPresenter.
     canvasPresenter layout: (SpBoxLayout newTopToBottom
@@ -318,6 +339,18 @@ UISimulation >> buildCanvasWidget [
             morph: rsCanvas asMorph;
             yourself ].
     ^ SpLabelPresenter new label: 'Pas de presenter Roassal'
+]
+
+{ #category : 'Menu Bar' }
+UISimulation >> buildDevMenu [
+
+	^ SpMenuPresenter new
+		  addItem: [ :it |
+				  it
+					  name: 'Inspect';
+					  icon: (self iconNamed: #inspect);
+					  action: [ self inspect ] ];
+		  yourself
 ]
 
 { #category : 'debugging' }
@@ -482,66 +515,19 @@ UISimulation >> buildLists [
 { #category : 'presenters' }
 UISimulation >> buildMenuBar [
 
-	| menuBar simMenu zoomMenu importMenu |
+	| menuBar simMenu zoomMenu importMenu waypointsMenu devMenu |
 	menuBarPresenter ifNotNil: [ ^ menuBarPresenter ].
 	menuBar := self newMenuBar.
 
 	"Simulation"
-	simMenu := SpMenuPresenter new
-		           addItem: [ :it |
-				           it
-					           name: 'Start';
-					           icon: (self iconNamed: #smallForward);
-					           action: [ self startSimulationLoop ] ];
-		           addItem: [ :it |
-				           it
-					           name: 'Step';
-					           icon: (self iconNamed: #smallDoIt);
-					           action: [ self simulationStepOnce ] ];
-		           addItem: [ :it |
-				           it
-					           name: 'Jump…';
-					           icon: (self iconNamed: #smallForward);
-					           action: [ self jumpDialog ] ];
-		           addItem: [ :it |
-				           it
-					           name: 'HaltOn';
-					           icon: (self iconNamed: #smallError);
-					           action: [ haltOnError := haltOnError not ] ];
-		           yourself.
-
+	simMenu := self buildSimulationMenu.
 	"Zoom"
-	zoomMenu := SpMenuPresenter new
-		            addItem: [ :it |
-				            it
-					            name: 'Fit';
-					            icon: (self iconNamed: #smallFind);
-					            action: [ self fitZoom ] ];
-		            addItem: [ :it |
-				            it
-					            name: 'Zoom +';
-					            icon: (self iconNamed: #smallZoomIn);
-					            action: [ self zoomIn ] ];
-		            addItem: [ :it |
-				            it
-					            name: 'Zoom -';
-					            icon: (self iconNamed: #smallZoomOut);
-					            action: [ self zoomOut ] ];
-		            yourself.
-
+	zoomMenu := self buildZoomMenu.
 	"Import CSV"
-	importMenu := SpMenuPresenter new
-		              addItem: [ :it |
-				              it
-					              name: 'Clusters CSV…';
-					              icon: (self iconNamed: #smallOpen);
-					              action: [ self importClustersFromCSVDialog ] ];
-		              addItem: [ :it |
-				              it
-					              name: 'Missions CSV…';
-					              icon: (self iconNamed: #smallOpen);
-					              action: [ self importMissionsFromCSVDialog ] ];
-		              yourself.
+	importMenu := self buildCSVMenu.
+	"Capture WP"
+	waypointsMenu := self buildWaypointsMenu.
+	devMenu := self buildDevMenu.
 
 	menuBar addGroup: [ :group |
 			group addItem: [ :it |
@@ -555,7 +541,15 @@ UISimulation >> buildMenuBar [
 			group addItem: [ :it |
 					it
 						name: 'Import';
-						subMenu: importMenu ] ].
+						subMenu: importMenu ].
+			group addItem: [ :it |
+					it
+						name: 'Waypoints';
+						subMenu: waypointsMenu ].
+			group addItem: [ :it |
+					it
+						name: 'Developpement';
+						subMenu: devMenu ] ].
 
 	menuBarPresenter := menuBar.
 	^ menuBarPresenter
@@ -565,11 +559,13 @@ UISimulation >> buildMenuBar [
 UISimulation >> buildMenuRow [
     menuRowPresenter ifNotNil: [ ^ menuRowPresenter ].
     menuRowPresenter := self newPresenter.
+"timeLabelPresenter := SpLabelPresenter new label: 't=0'."
     menuRowPresenter layout: (SpBoxLayout newLeftToRight
         spacing: 6;
         add: (self menuButtonLabel: 'Simulation' menuBlock: [ self simulationMenu ]);
         add: (self menuButtonLabel: 'Zoom'        menuBlock: [ self zoomMenu ]);
         add: (self menuButtonLabel: 'Import'      menuBlock: [ self importMenu ]);
+      add: (self menuButtonLabel: 'Waypoints'      menuBlock: [ self waypointsMenu ]);
         yourself).
     ^ menuRowPresenter
 ]
@@ -594,14 +590,14 @@ UISimulation >> buildOverlayChecksPanel [
 
 	overlayChecks ifNil: [ overlayChecks := Dictionary new ].
 	checkPerception state:
-		(overlayChecks at: #perception ifAbsentPut: [ true ]).
+		(overlayChecks at: #perception ifAbsentPut: [ false ]).
 
 	checkMissions state:
-		(overlayChecks at: #missions ifAbsentPut: [ true ]).
-	checkHull state: (overlayChecks at: #hull ifAbsentPut: [ true ]).
+		(overlayChecks at: #missions ifAbsentPut: [ false ]).
+	checkHull state: (overlayChecks at: #hull ifAbsentPut: [ false ]).
 	checkAmmunition state:
-		(overlayChecks at: #ammunition ifAbsentPut: [ true ]).
-	checkFuel state: (overlayChecks at: #fuel ifAbsentPut: [ true ]).
+		(overlayChecks at: #ammunition ifAbsentPut: [ false ]).
+	checkFuel state: (overlayChecks at: #fuel ifAbsentPut: [ false ]).
 
 	self connectOverlayChecks.
 	self updateOverlayChecksLabel.
@@ -633,6 +629,33 @@ UISimulation >> buildOverlayPanel [
         add: (self buildDroneFilterPanel);   "<<< A GAUCHE"
         add: checksPanel;                    "<<< À DROITE : tes cases à cocher"
         yourself)
+]
+
+{ #category : 'Menu Bar' }
+UISimulation >> buildSimulationMenu [
+
+	^ SpMenuPresenter new
+		  addItem: [ :it |
+				  it
+					  name: 'Start';
+					  icon: (self iconNamed: #smallForward);
+					  action: [ self startSimulationLoop ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Step';
+					  icon: (self iconNamed: #smallDoIt);
+					  action: [ self simulationStepOnce ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Jump…';
+					  icon: (self iconNamed: #smallForward);
+					  action: [ self jumpDialog ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'HaltOn';
+					  icon: (self iconNamed: #smallError);
+					  action: [ haltOnError := haltOnError not ] ];
+		  yourself
 ]
 
 { #category : 'presenters-building' }
@@ -669,7 +692,57 @@ UISimulation >> buildToolBar [
     ^ toolBarPresenter
 ]
 
-{ #category : 'presenters' }
+{ #category : 'Menu Bar' }
+UISimulation >> buildWaypointsMenu [
+
+	^ SpMenuPresenter new
+		  addItem: [ :it |
+				  it
+					  name: 'Start';
+					  icon: (self iconNamed: #add);
+					  action: [ self startWaypointCapture ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Commit';
+					  icon: (self iconNamed: #accept);
+					  action: [ self commitPendingWaypoints ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Cancel';
+					  icon: (self iconNamed: #cancel);
+					  action: [ self clearPendingWaypoints ] ];
+		   
+		  yourself
+]
+
+{ #category : 'Menu Bar' }
+UISimulation >> buildZoomMenu [
+
+	^ SpMenuPresenter new
+		  addItem: [ :it |
+				  it
+					  name: 'Fit';
+					  icon: (self iconNamed: #smallFind);
+					  action: [ self fitZoom ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Zoom +';
+					  icon: (self iconNamed: #glamorousZoomIn);
+					  action: [ self zoomIn ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Zoom -';
+					  icon: (self iconNamed: #glamorousZoomOut);
+					  action: [ self zoomOut ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Custom';
+					  icon: (self iconNamed: #smallFind);
+					  action: [ self customZoom ] ];
+		  yourself
+]
+
+{ #category : 'canvas' }
 UISimulation >> canvasPointFromPixel: pixelPoint [
     | w h |
     w := self imageSize x asFloat.
@@ -745,6 +818,8 @@ UISimulation >> clustersFromSimulation [
 
 { #category : 'waypoints' }
 UISimulation >> commitPendingWaypoints [
+
+self halt. 
     pendingWaypoints isEmpty
         ifTrue: [ ^ self status: 'No WP' ].
     "Brancher la logique métier ici."
@@ -821,6 +896,9 @@ UISimulation >> connectCanvasEvents [
     (Smalltalk includesKey: #RSMouseClick) ifTrue: [
         rsCanvas when: RSMouseClick do: [ :evt |
             waypointCaptureOn ifTrue: [ self handleWaypointClick: evt ] ] for: self ].
+    (Smalltalk includesKey: #RSMouseRightClick) ifTrue: [
+        rsCanvas when: RSMouseRightClick do: [ :evt |
+            self startOrStopHandlingWaypoints ] for: self ].
 ]
 
 { #category : 'presenters' }
@@ -840,41 +918,54 @@ UISimulation >> connectDroneModePresenters [
 
 { #category : 'layout' }
 UISimulation >> connectOverlayChecks [
-    checkPerception ifNotNil: [
-        checkPerception whenChangedDo: [
-            overlayChecks at: #perception put: checkPerception state.
-            (overlayModel respondsTo: #showPerceptionRadius:) ifTrue: [
-                overlayModel showPerceptionRadius: checkPerception state ].
-            self updateOverlayChecksLabel.
-            self refreshOverlays ] ].
-    checkMissions ifNotNil: [
-        checkMissions whenChangedDo: [
-            overlayChecks at: #missions put: checkMissions state.
-            (overlayModel respondsTo: #showClusterHull:) ifTrue: [
-                overlayModel showClusterHull: checkMissions state ].
-            self updateOverlayChecksLabel.
-            self refreshOverlays ] ].
-    checkHull ifNotNil: [
-        checkHull whenChangedDo: [
-            overlayChecks at: #hull put: checkHull state.
-            (overlayModel respondsTo: #showClusterHull:) ifTrue: [
-                overlayModel showClusterHull: checkHull state ].
-            self updateOverlayChecksLabel.
-            self refreshOverlays ] ].
-    checkAmmunition ifNotNil: [
-        checkAmmunition whenChangedDo: [
-            overlayChecks at: #ammunition put: checkAmmunition state.
-            (overlayModel respondsTo: #showAmmunition:) ifTrue: [
-                overlayModel showAmmunition: checkAmmunition state ].
-            self updateOverlayChecksLabel.
-            self refreshOverlays ] ].
-    checkFuel ifNotNil: [
-        checkFuel whenChangedDo: [
-            overlayChecks at: #fuel put: checkFuel state.
-            (overlayModel respondsTo: #showFuel:) ifTrue: [
-                overlayModel showFuel: checkFuel state ].
-            self updateOverlayChecksLabel.
-            self refreshOverlays ] ].
+
+	checkPerception ifNotNil: [
+			checkPerception whenChangedDo: [
+					"overlayChecks at: #perception put: checkPerception state."
+					(overlayModel respondsTo: #showPerceptionRadius:) ifTrue: [
+						overlayModel showPerceptionRadius: checkPerception state ].
+				"	self updateOverlayChecksLabel."
+					self refreshOverlays ] ].
+	checkMissions ifNotNil: [
+			checkMissions whenChangedDo: [
+				"	overlayChecks at: #missions put: checkMissions state."
+					(overlayModel respondsTo: #showMissionPaths:) ifTrue: [
+						overlayModel showMissionPaths: checkMissions state ].
+				"	self updateOverlayChecksLabel."
+					self refreshOverlays ] ].
+	checkHull ifNotNil: [
+			checkHull whenChangedDo: [
+					"overlayChecks at: #hull put: checkHull state."
+					(overlayModel respondsTo: #showClusterHull:) ifTrue: [
+						overlayModel showClusterHull: checkHull state ].
+				"	self updateOverlayChecksLabel."
+					self refreshOverlays ] ].
+	checkAmmunition ifNotNil: [
+			checkAmmunition whenChangedDo: [
+				"	overlayChecks at: #ammunition put: checkAmmunition state."
+					(overlayModel respondsTo: #showAmmoBars:) ifTrue: [
+						overlayModel showAmmoBars: checkAmmunition state ].
+					"self updateOverlayChecksLabel."
+					self refreshOverlays ] ].
+	checkFuel ifNotNil: [
+			checkFuel whenChangedDo: [
+					"overlayChecks at: #fuel put: checkFuel state."
+					(overlayModel respondsTo: #showEnergyBars:) ifTrue: [
+						overlayModel showEnergyBars: checkFuel state ].
+				"	self updateOverlayChecksLabel."
+					self refreshOverlays ] ]
+]
+
+{ #category : 'zoom animation' }
+UISimulation >> customZoom [
+
+| tmp |
+tmp := UIParameterValue target: self field: #zoomLevel returnsNumber:true.
+
+tmp retrainedValue: self zoomLevel  printString.
+tmp open.
+tmp window title: 'Select Zoom'.
+
 ]
 
 { #category : 'debugging' }
@@ -988,25 +1079,6 @@ UISimulation >> defaultLayoutWithMenu [
             yourself);
         yourself.
     ^ main
-]
-
-{ #category : 'presenters' }
-UISimulation >> defaultLayoutlegacy [
-    | right |
-    right := SpBoxLayout newTopToBottom
-        spacing: 6;
-        add: overlayPanelPresenter;
-        add: clusterListPresenter;
-        add: droneListPresenter;
-        add: statusLabelPresenter;
-        yourself.
-    ^ SpBoxLayout newLeftToRight
-        spacing: 10;
-        add: canvasPresenter;
-        add: (self newPresenter
-            layout: right;
-            yourself);
-        yourself
 ]
 
 { #category : 'overlays' }
@@ -1200,7 +1272,7 @@ UISimulation >> drawTempWaypoint: aWaypoint [
 		     radius: 5;
 		     color: Color red;
 		     yourself.
-	c attributeAt: #overlay put: true.
+
 	c translateTo: p.
 	rsCanvas add: c.
 	self markOverlayShape: c.
@@ -1254,13 +1326,13 @@ UISimulation >> ensureCanvas [
 
 	rsCanvas ifNotNil: [ ^ rsCanvas ].
 
-self halt. 	rsCanvas := RSCanvas new.
+	rsCanvas := RSCanvas new.
 	self ensureBattleZoneFromDrones.
 	self computeBoundingBox.
 	self computeImageSize.
-	
-		self ensureBaseShapes.
-self buildBaseMap.
+
+	self ensureBaseShapes.
+	self buildBaseMap.
 	self connectCanvasEvents.
 	^ rsCanvas
 ]
@@ -1343,34 +1415,18 @@ UISimulation >> graphicalPixelOf: geoPoint [
 { #category : 'waypoints' }
 UISimulation >> handleWaypointClick: evt [
     | wpClass geo wp |
+self halt. 
     (Smalltalk includesKey: #Waypoint) ifFalse: [ ^ self ].
     wpClass := Waypoint.
-    geo := self physicalLonLatFromPixel: evt positionFromCamera.
+    geo := self physicalLonLatFromPixel:  (self pixelFromCanvasPoint: evt positionFromCamera).
+ 
     geo ifNil: [ ^ self ].
     wp := wpClass latitude: geo y longitude: geo x altitude: 100.
     pendingWaypoints add: wp.
     self drawTempWaypoint: wp.
     self status: 'WP count: ', pendingWaypoints size printString.
-]
 
-{ #category : 'presenters' }
-UISimulation >> iconNamed: aBaseName [
-    "Essaie ThemeIcons / Icons. Retourne nil si introuvable (le label restera)."
-    | candidates iconProviders |
-    iconProviders := {
-        [ ThemeIcons current ].
-        [ Smalltalk at: #Icons ifAbsent: [ nil ] ] }.
-    candidates := {
-        ('small', aBaseName capitalized, 'Icon') asSymbol.
-        (aBaseName , 'Icon') asSymbol }.
-    iconProviders do: [ :provBlock |
-        | prov |
-        prov := provBlock value.
-        prov ifNotNil: [
-            candidates do: [ :sel |
-                (prov respondsTo: sel) ifTrue: [
-                    ^ (prov perform: sel) ] ] ] ].
-    ^ nil
+ 
 ]
 
 { #category : 'accessing' }
@@ -1632,16 +1688,6 @@ UISimulation >> markOverlayShape: aShape [
     ^ aShape
 ]
 
-{ #category : 'presenters' }
-UISimulation >> menuButtonLabel: aString menuBlock: aBlock [
-    | b |
-    b := SpButtonPresenter new
-        label: aString;
-        action: [ self showMenu: aBlock value fromButton: b ];
-        yourself.
-    ^ b
-]
-
 { #category : 'overlay models' }
 UISimulation >> migrateMarkExistingBase [
 
@@ -1655,37 +1701,12 @@ UISimulation >> migrateMarkExistingBase [
 ]
 
 { #category : 'presenters' }
-UISimulation >> newButton: labelString icon: iconName action: aBlock [
-
-	| b ic |
-	b := SpButtonPresenter new.
-	labelString isEmpty ifFalse: [ b label: labelString ].
-	(Smalltalk respondsTo: #at:) ifTrue: [ "just to silence" ].
-	ic := (self respondsTo: #iconNamed:)
-		      ifTrue: [ self iconNamed: iconName ]
-		      ifFalse: [ nil ].
-	ic ifNotNil: [ b icon: ic ].
-	b action: aBlock.
-	^ b
-]
-
-{ #category : 'presenters' }
-UISimulation >> newButtonLabel: aString icon: baseName action: aBlock [
-    | b ic |
-    b := SpButtonPresenter new.
-    ic := self iconNamed: baseName.
-    ic ifNotNil: [ b icon: ic ].
-    b label: aString; action: aBlock.
-    ^ b
-]
-
-{ #category : 'presenters' }
 UISimulation >> open [
 "    self layout ifNil: ["
         self initializePresenters.
         self layout: self defaultLayout "]".
     ^ (super open)
-        withWindowDo: [ :w | w title: ('WC Drones — ', ("simulation" nil  ifNil: [ 'No scenario' ] ifNotNil: [ simulation class name ])) ]
+        withWindowDo: [ :w | w title: ('Drones Simulation— ', ("simulation" nil  ifNil: [ 'No scenario' ] ifNotNil: [ simulation class name ])) ]
 ]
 
 { #category : 'overlay models' }
@@ -1772,20 +1793,29 @@ UISimulation >> pendingWaypoints: anObject [
 	pendingWaypoints := anObject
 ]
 
-{ #category : 'waypoints' }
+{ #category : 'canvas' }
 UISimulation >> physicalLonLatFromPixel: pixel [
     "Approx inverse WebMercator (lat reconstruction simplifiée)."
     | xMin yMin xMax yMax lon lat |
-    bbox ifNil: [ ^ nil ].
+    self bbox ifNil: [ ^ nil ].
     xMin := bbox origin x. yMin := bbox origin y.
     xMax := bbox corner x. yMax := bbox corner y.
-    lon := xMin + (xMax - xMin) * (pixel x / self imageSize x).
-    lat := yMax - (yMax - yMin) * (pixel y / self imageSize y).
-    lat := ((lat / 6378137) exp atan * 360 / Float pi) - 90.
-    ^ lon @ lat.
+    lon :=  (xMax - xMin) * (pixel x / self imageSize x) + xMin.
+    lat := yMax - ((yMax - yMin) * (pixel y / self imageSize y)).
+    
+    ^self class webMercatorToLongitureLatitude: lon @ lat.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'canvas' }
+UISimulation >> pixelForCanvasPoint: pixelPoint [
+    | w h |
+    w := self imageSize x asFloat.
+    h := self imageSize y asFloat.
+    "Roassal: on centre => x' = x - w/2 ; y' = (h/2) - y (inversion verticale)."
+    ^ (pixelPoint x - (w / 2)) @ ((h / 2) - pixelPoint y)
+]
+
+{ #category : 'canvas' }
 UISimulation >> pixelForDrone: d [
 
 	| pix |
@@ -1801,36 +1831,7 @@ UISimulation >> pixelForDrone: d [
 	^ self canvasPointFromPixel: pix
 ]
 
-{ #category : 'as yet unclassified' }
-UISimulation >> pixelForLat: lat lon: lon inBbox: aBbox width: widthPx height: heightPx [
-    | coord xMin yMin xMax yMax dx dy xGeo yGeo xNorm yNorm |
-    aBbox ifNil: [ ^ nil ].
-    xMin := aBbox origin x.
-    yMin := aBbox origin y.
-    xMax := aBbox corner x.
-    yMax := aBbox corner y.
-    dx := xMax - xMin.
-    dy := yMax - yMin.
-    (dx = 0 or: [ dy = 0 ]) ifTrue: [ ^ nil ].
-
-    "1) Projection WebMercator"
-    coord := self lonLatToWebMercator: (lon @ lat).
-    xGeo := coord x.
-    yGeo := coord y.
-
-    "2) Normalisation"
-    xNorm := (xGeo - xMin) / dx.
-    yNorm := (yMax - yGeo) / dy.  "inversion Y"
-
-    "3) Clamp 0..1"
-    xNorm := (xNorm max: 0.0) min: 1.0.
-    yNorm := (yNorm max: 0.0) min: 1.0.
-
-    "4) Pixels"
-    ^ (xNorm * widthPx) rounded @ ((yNorm * heightPx) rounded)
-]
-
-{ #category : 'presenters' }
+{ #category : 'canvas' }
 UISimulation >> pixelForWaypoint: wp [
 
 	| pix |
@@ -1844,6 +1845,18 @@ UISimulation >> pixelForWaypoint: wp [
 		       height: self imageSize y.
 	pix ifNil: [ ^ nil ].
 	^ self canvasPointFromPixel: pix
+]
+
+{ #category : 'canvas' }
+UISimulation >> pixelFromCanvasPoint: pixelPoint [
+    | w h p |
+    w := self imageSize x asFloat.
+    h := self imageSize y asFloat.
+    "Roassal: on centre => x' = x - w/2 ; y' = (h/2) - y (inversion verticale)."
+  "  ^ pixelPoint x +(h/2) @ ( (h/2)- pixelPoint y)"
+
+p := pixelPoint -   baseShapes first  encompassingRectangle origin.
+^ p x +(h/2) @ ( (h/2)- p y)
 ]
 
 { #category : 'CSV' }
@@ -1968,14 +1981,14 @@ UISimulation >> refreshDrones [
 UISimulation >> refreshOverlays [
     rsCanvas ifNil: [ ^ self ].
     self removeOverlayShapes.
-self halt. 
+ 
     self drawDroneIcons.          
     self drawClusterHullOverlay.
     self drawPerceptionOverlay.
     self drawMissionOverlay.
     self drawEnergyOverlay.
     self drawAmmoOverlay.
-    rsCanvas signalUpdate.
+   " rsCanvas signalUpdate."
 ]
 
 { #category : 'presenters' }
@@ -2127,12 +2140,6 @@ UISimulation >> simulation [
 ]
 
 { #category : 'accessing' }
-UISimulation >> simulation1: anObject [
-
-	simulation := anObject
-]
-
-{ #category : 'accessing' }
 UISimulation >> simulation: aSim [
     simulation := aSim.
     ^ self.
@@ -2167,6 +2174,10 @@ UISimulation >> simulationStepOnce [
 
 ]
 
+{ #category : 'waypoints' }
+UISimulation >> startOrStopHandlingWaypoints [
+]
+
 { #category : 'overlays' }
 UISimulation >> startSimulationLoop [
 
@@ -2197,13 +2208,13 @@ UISimulation >> status: aString [
 
 ]
 
-{ #category : 'accessing' }
+{ #category : 'presenters' }
 UISimulation >> statusLabelPresenter [
 
 	^ statusLabelPresenter
 ]
 
-{ #category : 'accessing' }
+{ #category : 'presenters' }
 UISimulation >> statusLabelPresenter: anObject [
 
 	statusLabelPresenter := anObject
@@ -2224,13 +2235,13 @@ UISimulation >> syncOverlayCheckboxStates [
             cb state: (overlayModel perform: getter) ] ]
 ]
 
-{ #category : 'accessing' }
+{ #category : 'presenters' }
 UISimulation >> toolBarPresenter [
 
 	^ toolBarPresenter
 ]
 
-{ #category : 'accessing' }
+{ #category : 'presenters' }
 UISimulation >> toolBarPresenter: anObject [
 
 	toolBarPresenter := anObject
@@ -2290,7 +2301,7 @@ UISimulation >> updateDronesModeLabel [
 					 separatedBy: [ s << ' - ' ] ])
 ]
 
-{ #category : 'waypoints' }
+{ #category : 'overlays' }
 UISimulation >> updateOverlayChecksLabel [
     overlayChecksLabel
         label: (String streamContents: [ :s |
@@ -2349,6 +2360,16 @@ UISimulation >> waypointCaptureOn: anObject [
 	waypointCaptureOn := anObject
 ]
 
+{ #category : 'presenters' }
+UISimulation >> waypointsMenu [
+    | m |
+    m := SpMenuPresenter new.
+    m addItem: [ :it | it name: 'Capture'; action: [ self startWaypointCapture ] ].
+    m addItem: [ :it | it name: 'Commit'; action: [ self commitPendingWaypoints ] ].
+  m addItem: [ :it | it name: 'Clear'; action: [ self clearPendingWaypoints ] ].
+    ^ m
+]
+
 { #category : 'presenters-building' }
 UISimulation >> wrapLayout: aLayout [
 	"Encapsule un SpBoxLayout dans un presenter."
@@ -2359,10 +2380,16 @@ UISimulation >> wrapLayout: aLayout [
 	^ p
 ]
 
-{ #category : 'presenters' }
+{ #category : 'zoom animation' }
 UISimulation >> zoomIn [
     self zoomLevel: zoomLevel * 1.4.
 
+]
+
+{ #category : 'presenters' }
+UISimulation >> zoomLevel [
+
+	^ zoomLevel
 ]
 
 { #category : 'presenters' }
@@ -2373,7 +2400,7 @@ UISimulation >> zoomLevel: aNumber [
     self refreshAll.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'zoom animation' }
 UISimulation >> zoomMenu [
     | m |
     m := SpMenuPresenter new.
@@ -2383,7 +2410,7 @@ UISimulation >> zoomMenu [
     ^ m
 ]
 
-{ #category : 'presenters' }
+{ #category : 'zoom animation' }
 UISimulation >> zoomOut [
     self zoomLevel: zoomLevel / 1.4.
 ]
