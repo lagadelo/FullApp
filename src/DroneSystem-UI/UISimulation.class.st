@@ -1,6 +1,6 @@
 Class {
 	#name : 'UISimulation',
-	#superclass : 'SpPresenter',
+	#superclass : 'SpToggleSplitPresenter',
 	#instVars : [
 		'checkPerception',
 		'checkMissions',
@@ -134,20 +134,19 @@ UISimulation class >> openOn: aSimulation [
 
  
 
-    ^ (self basicNew simulation: aSimulation; halt; initialize ) open.
+    ^ (self basicNew simulation: aSimulation; initialize ) 		open.
 ]
 
 { #category : 'as yet unclassified' }
 UISimulation class >> pixelForLon: lon lat: lat inBbox: aBbox width: w height: h [
-  "  | coord xMin yMin xMax yMax xNorm yNorm |
+    | coord xMin yMin xMax yMax xNorm yNorm |
     coord := self lonLatToWebMercator: (lon @ lat).
     xMin := aBbox origin x. yMin := aBbox origin y.
     xMax := aBbox corner x. yMax := aBbox corner y.
     xNorm := (coord x - xMin) / (xMax - xMin).
     yNorm := (yMax - coord y) / (yMax - yMin).
-    ^ ((xNorm * w) rounded) @ ((yNorm * h) rounded)."
-
-  | pt mMin mMax xMin xMax yMin yMax dx dy xNorm yNorm |
+    ^ ((xNorm * w) rounded) @ ((yNorm * h) rounded).
+  "| pt mMin mMax xMin xMax yMin yMax dx dy xNorm yNorm |
     (aBbox isNil or: [ w isNil or: [ h isNil ] ]) ifTrue: [ ^ nil ].
 
     pt := self lonLatToWebMercator: (lon @ lat).
@@ -164,13 +163,13 @@ UISimulation class >> pixelForLon: lon lat: lat inBbox: aBbox width: w height: h
     (dx = 0 or: [ dy = 0 ]) ifTrue: [ ^ nil ].
 
     xNorm := (pt x - xMin) / dx.
-    yNorm := (yMax - pt y) / dy.  "invert Y (pixel Y grows downward)"
+    yNorm := (yMax - pt y) / dy.  ""invert Y (pixel Y grows downward)""
 
-    "Clamp in [0..1]"
+    ""Clamp in [0..1]""
     xNorm := (0.0 max: xNorm) min: 1.0.
     yNorm := (0.0 max: yNorm) min: 1.0.
 
-    ^ (xNorm * w) @ (yNorm * h)
+    ^ (xNorm * w) @ (yNorm * h)"
 ]
 
 { #category : 'presenters' }
@@ -959,10 +958,11 @@ self buildMenuBar.  "assure menuBarPresenter"
     ^ SpBoxLayout newTopToBottom
         spacing: 2;
         add: menuBarPresenter height: 20;
-        add: (SpBoxLayout newLeftToRight
-            spacing: 10;
+        add: (SpPanedLayout newLeftToRight
+            positionOfSlider: 20;
             add: canvasPresenter;
-            add: right;
+            add: right ;
+		
             yourself);
         yourself
 ]
@@ -2294,7 +2294,7 @@ UISimulation >> updateDronesModeLabel [
 UISimulation >> updateOverlayChecksLabel [
     overlayChecksLabel
         label: (String streamContents: [ :s |
-            { checkPerception . checkMissions }
+            { checkPerception . checkMissions  "checkHull  checkAmmunitions  checkFuel"}
                 do: [ :btn |
                     s
                         << btn label;
