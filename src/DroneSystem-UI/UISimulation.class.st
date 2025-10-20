@@ -40,11 +40,41 @@ Class {
 		'allDrones',
 		'checkHull',
 		'checkAmmunition',
-		'checkFuel'
+		'checkFuel',
+		'missionListPresenter'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
+
+{ #category : 'examples' }
+UISimulation class >> exampleClasse2 [
+
+| polygon   sim      mission fleet view intervalMs running   |
+
+intervalMs := 300.  "ms entre steps"
+running := true.
+
+sim := SimulationState  new.
+fleet := DroneFleet new.
+sim addFleet: fleet.
+
+view := self  openOn: sim.
+view presenter importClustersFromCSVDialog.
+ 
+
+polygon := {
+    {50.6292 . 3.0573  . 100}. "Lille"
+    {48.3904 . -4.4947 . 100}. "Brest"
+    {43.2965 . 5.3698 . 100}. "Marseille"
+    {51.5074 . -0.1276   . 100}. "Londres"
+} collect: [:a | GeoPoint with: a ].
+ 
+mission := (SecurizationMission new polygon: polygon) assignToCluster: sim allClusters last.
+"mission connaît les waypoints, cluster1 mission: mission"
+ 
+
+]
 
 { #category : 'examples' }
 UISimulation class >> exampleClasses [ 
@@ -61,12 +91,12 @@ drones := {
     (Drone new moveToLatitude: 40.7640 longitude: 2 altitude: 100) beHostile; yourself. "?"
 } asOrderedCollection.
 
-cluster1 := DroneCluster new initializeWithDrones: drones clusterId: 1.
-cluster2 := DroneCluster example: 20.
+cluster1 := DroneCluster new initializeWithDrones: drones clusterId: #Surveillance.
+cluster2 := DroneCluster example: 20. cluster2 clusterId:#Permanent.
 
 fleet := DroneFleet new.
+"fleet addCluster: cluster2."
 fleet addCluster: cluster1.
-fleet addCluster: cluster2.
 sim addFleet: fleet.
 
 polygon := {
@@ -75,7 +105,7 @@ polygon := {
     {43.2965 . 5.3698 . 100}. "Marseille"
     {51.5074 . -0.1276   . 100}. "Londres"
 } collect: [:a | GeoPoint with: a ].
-
+self halt. 
 mission := (SecurizationMission new polygon: polygon) assignToCluster: cluster1.
 "mission connaît les waypoints, cluster1 mission: mission"
 view := self  openOn: sim.
@@ -465,53 +495,6 @@ UISimulation >> buildFallbackBaseMap [
     self addBaseShape: rect.
 ]
 
-{ #category : 'debugging' }
-UISimulation >> buildLists [
-    clusterListPresenter ifNil: [
-        clusterListPresenter := SpListPresenter new
-            headerTitle: 'Clusters';
-            items: self clusterItems;
-            yourself.
-
-        "Activer multi‑sélection selon l’API dispo"
-        (clusterListPresenter respondsTo: #beMultipleSelection)
-            ifTrue: [ clusterListPresenter beMultipleSelection ]
-            ifFalse: [
-                (clusterListPresenter respondsTo: #multipleSelection:)
-                    ifTrue: [ clusterListPresenter multipleSelection: true ]
-                    ifFalse: [
-                        (clusterListPresenter respondsTo: #allowMultipleSelection:)
-                            ifTrue: [ clusterListPresenter allowMultipleSelection: true ] ] ].
-
-        clusterListPresenter display: [ :c |
-            c ifNil: [ '' ] ifNotNil: [
-                (c respondsTo: #name)
-                    ifTrue: [ c name ]
-                    ifFalse: [
-                        (c respondsTo: #clusterId)
-                            ifTrue: [ 'C', c clusterId printString ]
-                            ifFalse: [ c printString ] ] ] ].
-
-        clusterListPresenter whenSelectionChangedDo: [
-            self updateDroneListFromSelectedClusters.
-            self refreshDrones ] ].
-
-    droneListPresenter ifNil: [
-        droneListPresenter := SpListPresenter new
-            headerTitle: 'Drones';
-            yourself.
-        droneListPresenter display: [ :d |
-            d ifNil: [ '' ] ifNotNil: [
-                (d respondsTo: #uniqueId)
-                    ifTrue: [ d uniqueId printString ]
-                    ifFalse: [
-                        (d respondsTo: #name)
-                            ifTrue: [ d name ]
-                            ifFalse: [ d printString ] ] ] ] ].
-
-    self updateDroneListFromSelectedClusters
-]
-
 { #category : 'presenters' }
 UISimulation >> buildMenuBar [
 
@@ -553,21 +536,6 @@ UISimulation >> buildMenuBar [
 
 	menuBarPresenter := menuBar.
 	^ menuBarPresenter
-]
-
-{ #category : 'presenters' }
-UISimulation >> buildMenuRow [
-    menuRowPresenter ifNotNil: [ ^ menuRowPresenter ].
-    menuRowPresenter := self newPresenter.
-"timeLabelPresenter := SpLabelPresenter new label: 't=0'."
-    menuRowPresenter layout: (SpBoxLayout newLeftToRight
-        spacing: 6;
-        add: (self menuButtonLabel: 'Simulation' menuBlock: [ self simulationMenu ]);
-        add: (self menuButtonLabel: 'Zoom'        menuBlock: [ self zoomMenu ]);
-        add: (self menuButtonLabel: 'Import'      menuBlock: [ self importMenu ]);
-      add: (self menuButtonLabel: 'Waypoints'      menuBlock: [ self waypointsMenu ]);
-        yourself).
-    ^ menuRowPresenter
 ]
 
 { #category : 'layout' }
@@ -663,33 +631,6 @@ UISimulation >> buildStatusLabel [
     statusLabelPresenter ifNotNil: [ ^ statusLabelPresenter ].
     statusLabelPresenter := SpLabelPresenter new label: 'Ready'.
     ^ statusLabelPresenter.
-]
-
-{ #category : 'presenters' }
-UISimulation >> buildToolBar [
-    toolBarPresenter ifNotNil: [ ^ toolBarPresenter ].
-    timeLabelPresenter := SpLabelPresenter new label: 't=0'.
-    toolBarPresenter := self newPresenter.
-    toolBarPresenter layout: (SpBoxLayout newLeftToRight
-        spacing: 4;
-    "    add: (self newButton: 'Play'    icon: 'play'    action: [ self startSimulationLoop ]);
-        add: (self newButton: 'Pause'   icon: 'pause'   action: [ self pauseSimulationLoop ]);
-        add: (self newButton: 'Save'    icon: 'save'    action: [ self saveSimulationDialog ]);
-        add: (self newButton: 'Load'    icon: 'open'    action: [ self loadSimulationDialog ]);
-"        add: (self newButton: 'Inspect' icon: 'inspect' action: [ simulation inspect ]);
-        add: (self newButton: 'Reload'  icon: 'refresh' action: [ self markBaseMapDirty; refreshAll ]);
-        add: (self newButton: 'ON'  icon: 'flag'    action: [ self setAllOverlays: true ]);
-        add: (self newButton: 'AOFF' icon: 'flag'    action: [ self setAllOverlays: false ]);
-        add: (self newButton: 'Cap WP'  icon: 'flag'    action: [ self startWaypointCapture ]);
-        add: (self newButton: 'Commit'  icon: 'commit'  action: [ self commitPendingWaypoints ]);
-        add: (self newButton: 'Clear'   icon: 'clear'   action: [ self clearPendingWaypoints ]);
-        add: (self newButton: 'Refresh' icon: 'refresh' action: [ self refreshDrones ]);
-        add: (self newButton: '+'  icon: 'zoomIn'  action: [ self zoomIn ]);
-        add: (self newButton: '-'  icon: 'zoomOut' action: [ self zoomOut ]);
-        add: (self newButton: 'Rst'   icon: 'reset'   action: [ self resetZoom ]);
-        addLast: timeLabelPresenter;
-        yourself).
-    ^ toolBarPresenter
 ]
 
 { #category : 'Menu Bar' }
@@ -1045,7 +986,8 @@ self buildMenuBar.  "assure menuBarPresenter"
         add: clusterListPresenter;
         add: droneListPresenter;
         add: statusLabelPresenter;
-        yourself).
+        add: missionListPresenter;        
+yourself).
     ^ SpBoxLayout newTopToBottom
         spacing: 2;
         add: menuBarPresenter height: 20;
@@ -1067,6 +1009,7 @@ UISimulation >> defaultLayoutWithMenu [
         add: overlayPanelPresenter;
         add: clusterListPresenter;
         add: droneListPresenter;
+        add: missionListPresenter;
         add: statusLabelPresenter;
         yourself.
     main := SpBoxLayout newTopToBottom
@@ -1219,20 +1162,28 @@ colorsMeaning :=[:a|
 UISimulation >> drawMissionOverlay [
 
 	| pts poly m |
+	
+		((overlayModel respondsTo: #showMissionPaths) and: [
+		 overlayModel showMissionPaths ]) ifFalse: [ ^ self ].
 	self allClusters do:[:c| 	m := c currentMission . 
-				m ifNotNil:[
-					pts := m "waypoints" polygon
-						       collect: [ :wp | self pixelForWaypoint: wp ]
-						       thenSelect: #notNil.
-					pts size > 1 ifTrue: [
-							poly := RSPolygon new
-								        points: pts;
-								        color: (Color yellow alpha: 0.7);
-								        width: 10;
-								        yourself.
+				m ifNotNil:[|points hull |
+					points := m   polygon.
+						       
+					points size > 2 ifTrue: [
+							hull := ConvexHullCalculator new hullForGeoPoints: points.
+							pts := hull
+								       collect: [ :gp | self graphicalPixelOf: gp ]
+								       thenSelect: #notNil.
+							pts size > 2 ifTrue: [
+									poly := RSPolygon new
+										        points: pts;
+										        color: (Color yellow alpha: 0.07);
+										        borderColor: (Color black  );
+										        borderWidth: 1;
+										        yourself.			 
 							 
 							self markOverlayShape: poly.
-							rsCanvas add: poly ] ]]
+							rsCanvas add: poly ] ]]]
 ]
 
 { #category : 'overlays' }
@@ -1574,8 +1525,9 @@ UISimulation >> initializePresenters [
     (self respondsTo: #setOverlayChecksFocus) ifTrue: [ self setOverlayChecksFocus ].
 
     "Lists and status"
-    clusterListPresenter ifNil: [ clusterListPresenter := self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c clusterId asString ] ]]; yourself.
-    droneListPresenter  ifNil: [ droneListPresenter  := self newList ].
+    clusterListPresenter ifNil: [self  clusterListPresenter: (self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c clusterId asString ] ])]; yourself.
+    droneListPresenter  ifNil: [ self droneListPresenter: ( self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ 'Drone ', c uniqueId asString ] ])]; yourself.
+   missionListPresenter  ifNil: [ self missionListPresenter: ( self newList display:[ :m | m ifNil: [ '' ] ifNotNil: [ 'Mission ', m class printString ] ])]; yourself.
     statusLabelPresenter ifNil: [ statusLabelPresenter := self newLabel ].
     (statusLabelPresenter respondsTo: #label:) ifTrue: [ statusLabelPresenter label: 'Ready' ].
 
@@ -1700,6 +1652,17 @@ UISimulation >> migrateMarkExistingBase [
 				baseShapes addIfAbsent: s ] ]
 ]
 
+{ #category : 'accessing' }
+UISimulation >> missionListPresenter [
+
+	^ missionListPresenter
+]
+
+{ #category : 'accessing' }
+UISimulation >> missionListPresenter: anObject [
+missionListPresenter := anObject
+]
+
 { #category : 'presenters' }
 UISimulation >> open [
 "    self layout ifNil: ["
@@ -1712,6 +1675,8 @@ UISimulation >> open [
 { #category : 'overlay models' }
 UISimulation >> overlayCheckboxLabel: aLabel flag: setterSelector [
     | getter cb |
+
+self halt. 
     getter := (setterSelector allButLast) asSymbol.
     cb := SpCheckBoxPresenter new
         label: aLabel;
@@ -1981,7 +1946,7 @@ UISimulation >> refreshDrones [
 UISimulation >> refreshOverlays [
     rsCanvas ifNil: [ ^ self ].
     self removeOverlayShapes.
- 
+ self halt. 
     self drawDroneIcons.          
     self drawClusterHullOverlay.
     self drawPerceptionOverlay.
@@ -2062,26 +2027,20 @@ UISimulation >> setAllOverlays: aBoolean [
 
 { #category : 'waypoints' }
 UISimulation >> setOverlayChecksFocus [
-    "Construit l'ordre de focus en incluant d'autres champs si présents.
+	"Construit l'ordre de focus en incluant d'autres champs si présents.
     Ajoute simplement leurs noms dans la liste names."
-    | names candidates |
-    names := #(
-        dronesAllButton
-        dronesSelectedButton
-        checkPerception
-        checkMissions
-        clusterListPresenter
-        droneListPresenter
-    ).
-    candidates := OrderedCollection new.
-    names do: [ :sym |
-        (self class allInstVarNames includes: sym asString)
-            ifTrue: [
-                | v |
-                v := self instVarNamed: sym asString.
-                v ifNotNil: [ candidates add: v ] ] ].
-    candidates do: [ :p |
-        (p respondsTo: #takeKeyboardFocus) ifTrue: [ self focusOrder add: p ] ]
+
+	| names candidates |
+	names := #( dronesAllButton dronesSelectedButton checkPerception
+	            checkMissions clusterListPresenter missionListPresenter ).
+	candidates := OrderedCollection new.
+	names do: [ :sym |
+			(self class allInstVarNames includes: sym asString) ifTrue: [
+					| v |
+					v := self instVarNamed: sym asString.
+					v ifNotNil: [ candidates add: v ] ] ].
+	candidates do: [ :p |
+		(p respondsTo: #takeKeyboardFocus) ifTrue: [ self focusOrder add: p ] ]
 ]
 
 { #category : 'overlay models' }
@@ -2305,7 +2264,7 @@ UISimulation >> updateDronesModeLabel [
 UISimulation >> updateOverlayChecksLabel [
     overlayChecksLabel
         label: (String streamContents: [ :s |
-            { checkPerception . checkMissions  "checkHull  checkAmmunitions  checkFuel"}
+            { checkPerception . checkMissions   . checkHull  . checkAmmunition  .checkFuel}
                 do: [ :btn |
                     s
                         << btn label;
