@@ -59,6 +59,12 @@ DiscreteEventScheduler >> nextEvent [
 ]
 
 { #category : 'initialization' }
+DiscreteEventScheduler >> potentialNextEvent [
+    ^ eventQueue ifNotEmpty: [ eventQueue first ].
+
+]
+
+{ #category : 'initialization' }
 DiscreteEventScheduler >> scheduleEvent: anEvent [
     eventQueue add: anEvent.
 

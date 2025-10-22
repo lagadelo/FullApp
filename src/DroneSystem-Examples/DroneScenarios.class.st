@@ -316,7 +316,7 @@ DroneScenarios class >> exampleSimpleBlock2 [
  
 evt timestamp:1.
 	simulator scheduleEvent: evt after: Set new.].
-
+polygon inspect.
 	^ simulator
 ]
 

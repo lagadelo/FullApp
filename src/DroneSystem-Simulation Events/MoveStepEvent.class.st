@@ -42,10 +42,11 @@ MoveStepEvent >> executeOn: simulator [
     distanceRemaining := drone position distanceTo: wayPoint .
     direction := (wayPoint - drone position) normalize.
        distanceToMove := (speed  ) * simulator timeStep.
-    ratio := distanceToMove / distanceRemaining.
-	self duration: simulator timeStep *ratio.
+    ratio := distanceRemaining / distanceToMove.
+
+	self duration: simulator timeStep * (1 min: ratio).
     "Calcul de nouvelle position"
-     drone position: drone position + ((wayPoint - drone position) * ratio).
+ratio <1 ifTrue: [ drone position: wayPoint] ifFalse:[      drone position: drone position + ((wayPoint - drone position) / ratio)].
 
   
 
@@ -66,7 +67,7 @@ evt := self.
 	
         simulator scheduleEvent: (
          evt :=    self class new
-                timestamp: self timestamp + simulator timeStep;
+                timestamp: self endTime ;
                 drone: drone;
                 wayPoint: wayPoint ;
                 speed: speed;

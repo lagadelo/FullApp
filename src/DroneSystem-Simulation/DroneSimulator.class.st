@@ -288,21 +288,21 @@ DroneSimulator >> requeueEvent: anEvent delay: aDelay [
 ]
 
 { #category : 'instance creation' }
-DroneSimulator >> runSimulation [
+DroneSimulator >> runSimulation [ 
     [ scheduler hasEvents ] whileTrue: [
         | event |
-        event := scheduler nextEvent.
+        event := scheduler potentialNextEvent.
 
-        (eventGraph isReady: event) ifTrue: [
-            currentTime := event timestamp.
-            event simulationState: self.
-            event execute.
-            "self updateGUI."
-        ] ifFalse: [
-            "⚠️ L'événement n'est pas prêt : on le replanifie temporairement à +ε"
-            scheduler requeueEvent: event delay: 0.1.
-        ].
-    ].
+        (entityEventMap isReady: event) ifTrue:[self step.  ]].
+]
+
+{ #category : 'instance creation' }
+DroneSimulator >> runSimulationWithGUI [
+    [ scheduler hasEvents ] whileTrue: [
+        | event |
+        event := scheduler potentialNextEvent.
+
+        (entityEventMap isReady: event) ifTrue:[self step. [self model hasChanged] fork. (Delay forSeconds:0) wait.]].
 ]
 
 { #category : 'instance creation' }
@@ -379,7 +379,7 @@ DroneSimulator >> step [
 	(entityEventMap isReady: event)
 		ifTrue: [ "Met à jour le temps courant de la simulation"
 				currentTime = event timestamp ifFalse: [ "Only refresh once when several events share timestamp"
-						self model ifNotNil: [ self model hasChanged ].
+						self model ifNotNil: [ [self model hasChanged] fork.(Delay forSeconds:1) wait.].
 						currentTime := event timestamp ].
 
 				event simulationState: self.
