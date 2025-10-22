@@ -187,8 +187,8 @@ SimulationState >> eventLog: anObject [
 ]
 
 { #category : 'system changes' }
-SimulationState >> hasChanged [
-self observers do:[:a| a update:self] 
+SimulationState >> hasChanged [ 
+self observers do:[:a| self notify: a].
 ]
 
 { #category : 'initialization' }
@@ -232,6 +232,12 @@ SimulationState >> missions: anObject [
 	missions := anObject
 ]
 
+{ #category : 'system changes' }
+SimulationState >> notify: anObserver [
+
+	anObserver updateFrom: self
+]
+
 { #category : 'accessing' }
 SimulationState >> observers [
 
@@ -245,11 +251,11 @@ SimulationState >> observers: anObject [
 ]
 
 { #category : 'user interface' }
-SimulationState >> open [ 
-| tmp |
-tmp  := (DroneMapWithOWSView  simulation: self ).
-self  registerObserver: tmp.
-tmp open
+SimulationState >> open [
+
+	| tmp |
+	tmp := UISimulation openOn: self.
+	self registerObserver: tmp
 ]
 
 { #category : 'accessing' }

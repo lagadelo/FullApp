@@ -33,6 +33,14 @@ Drone class >> example [
         altitude: (Random new next *100) 
 ]
 
+{ #category : 'examples' }
+Drone class >> exampleAngers [
+^self new initializeWithId: #Angers
+            latitude: 47.45
+            longitude: 0.5 
+        altitude:  20
+]
+
 { #category : 'visiting' }
 Drone >> accept: aVisitor [
 

@@ -28,6 +28,18 @@ GeoPoint class >> with: anArray [
 ]
 
 { #category : 'arithmetic' }
+GeoPoint >> * aNumber [
+
+^self class with: (Array with:  self latitude * aNumber  with:  self longitude * aNumber with: self altitude * aNumber)
+]
+
+{ #category : 'arithmetic' }
+GeoPoint >> + aPoint [
+
+^self class with: (Array with:  self latitude + aPoint latitude with:  self longitude + aPoint longitude with: self altitude + aPoint altitude )
+]
+
+{ #category : 'arithmetic' }
 GeoPoint >> - aPoint [
 
 ^self class with: (Array with:  self latitude - aPoint latitude with:  self longitude - aPoint longitude with: self altitude - aPoint altitude )
@@ -52,15 +64,18 @@ GeoPoint >> altitude: anObject [
 ]
 
 { #category : 'distance functions' }
-GeoPoint >> distanceTo: aGeoPoint [  "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
-    | dLat dLon meanLat earthRadius horizDist altDiff |
-    earthRadius := 6371.0. "km, rayon moyen Terre"
-    dLat := (aGeoPoint latitude - self latitude) degreesToRadians.
-    dLon := (aGeoPoint longitude - self longitude) degreesToRadians.
-    meanLat := ((aGeoPoint latitude + self latitude) / 2) degreesToRadians.
-    horizDist := earthRadius * ((dLat squared + ((dLon * meanLat cos) squared)) sqrt).
-    altDiff := (aGeoPoint altitude  - self altitude) / 1000.0. "convertir mètres → km"
-    ^ (horizDist squared + altDiff squared) sqrt.
+GeoPoint >> distanceTo: aGeoPoint [
+	"Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
+
+	| dLat dLon meanLat earthRadius horizDist altDiff |
+	earthRadius := 6371.0. "km, rayon moyen Terre"
+	dLat := (aGeoPoint latitude - self latitude) degreesToRadians.
+	dLon := (aGeoPoint longitude - self longitude) degreesToRadians.
+	meanLat := (aGeoPoint latitude + self latitude / 2) degreesToRadians.
+	horizDist := earthRadius
+	             * (dLat squared + (dLon * meanLat cos) squared) sqrt.
+	altDiff := aGeoPoint altitude - self altitude / 1000.0. "convertir mètres → km"
+	^ (horizDist squared + altDiff squared) sqrt
 ]
 
 { #category : 'accessing' }
@@ -85,6 +100,27 @@ GeoPoint >> longitude [
 GeoPoint >> longitude: anObject [
 
 	longitude := anObject
+]
+
+{ #category : 'distance functions' }
+GeoPoint >> newPointByMovingBy: aDelta [
+    "Calcule un nouveau point géoréférencé en se déplaçant de deltaX km vers l'Est
+    et deltaY km vers le Nord à partir du point actuel."
+
+    | earthRadius newLat newLon deltaLat deltaLon |
+
+    earthRadius := 6371.0. "km, rayon moyen de la Terre"
+
+    "Conversion déplacement en latitude (deltaY) et longitude (deltaX)"
+    deltaLat := (aDelta y / earthRadius) * 180 / Float pi.
+    "Correction de la longitude selon la latitude courante"
+    deltaLon := (aDelta x / (earthRadius * (self latitude degreesToRadians cos))) * 180 / Float pi.
+
+    newLat := self latitude + deltaLat.
+    newLon := self longitude + deltaLon.
+
+    ^ self class latitude: newLat longitude: newLon altitude: self altitude
+
 ]
 
 { #category : 'arithmetic' }

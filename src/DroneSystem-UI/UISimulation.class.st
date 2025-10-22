@@ -113,6 +113,44 @@ view := self  openOn: sim.
 ]
 
 { #category : 'examples' }
+UISimulation class >> exampleClasses3 [
+
+	| polygon drones sim cluster1 mission fleet view intervalMs running |
+	intervalMs := 300. "ms entre steps"
+	running := true.
+	sim := SimulationState new.
+	drones := { ((Drone new
+		            moveToLatitude: 48.8566
+		            longitude: 2.3522
+		            altitude: 100)
+		           beAlly;
+		           yourself) } asOrderedCollection.
+
+	cluster1 := DroneCluster new
+		            initializeWithDrones: drones
+		            clusterId: #Surveillance.
+
+
+	fleet := DroneFleet new.
+
+	fleet addCluster: cluster1.
+	sim addFleet: fleet.
+
+	polygon := {
+		           { 50.6292. 3.0573. 100 }. "Lille"
+		           { 48.3904. -4.4947. 100 }. "Brest"
+		           { 43.2965. 5.3698. 100 }. "Marseille"
+		           { 51.5074. -0.1276. 100 } "Londres" } collect: [ :a |
+		           GeoPoint with: a ].
+
+	mission := (SecurizationMission new polygon: polygon)
+		           assignToCluster: cluster1.
+
+	view := self openOn: sim.
+	^ sim
+]
+
+{ #category : 'examples' }
 UISimulation class >> exampleClusterFile [
 ^'# Synthetic drone deployment for simulation ONLY (not real-world defense layout)
 # Columns: clusterId,droneId,latitude,longitude,altitude(m)
@@ -162,9 +200,12 @@ UISimulation class >> lonLatToWebMercator: lonLatPoint [
 { #category : 'instance creation' }
 UISimulation class >> openOn: aSimulation [
 
- 
-
-    ^ (self basicNew simulation: aSimulation; initialize ) 		open.
+	| tmp |
+	tmp := self basicNew
+		       simulation: aSimulation;
+		       initialize.
+	tmp open.
+	^ tmp
 ]
 
 { #category : 'GoeReferencing' }
@@ -1946,7 +1987,7 @@ UISimulation >> refreshDrones [
 UISimulation >> refreshOverlays [
     rsCanvas ifNil: [ ^ self ].
     self removeOverlayShapes.
- self halt. 
+  
     self drawDroneIcons.          
     self drawClusterHullOverlay.
     self drawPerceptionOverlay.
@@ -2258,6 +2299,12 @@ UISimulation >> updateDronesModeLabel [
 										  ifTrue: [ 'V' ]
 										  ifFalse: [ 'X' ]) ]
 					 separatedBy: [ s << ' - ' ] ])
+]
+
+{ #category : 'model - updating' }
+UISimulation >> updateFrom: aSimulationState [
+
+self refreshDrones
 ]
 
 { #category : 'overlays' }

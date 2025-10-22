@@ -230,7 +230,7 @@ DroneSimulator >> hasEvents [
 { #category : 'initialization' }
 DroneSimulator >> initialize [
      
-	 scheduler := DiscreteEventScheduler new.
+	scheduler := DiscreteEventScheduler new.
 	entityEventMap := EventDependencyGraph new.
 
     currentTime := 0.
@@ -251,6 +251,12 @@ DroneSimulator >> invalidateFutureEventsFor: anEntity after: timestamp [
     ].
 self removeEvents: eventsToRemove fromEntity: anEntity
  
+]
+
+{ #category : 'as yet unclassified' }
+DroneSimulator >> markAsExecuted: anEvent [
+
+self scheduler markAsExecuted: anEvent
 ]
 
 { #category : 'accessing' }
@@ -364,29 +370,35 @@ DroneSimulator >> scheduler: anObject [
 
 { #category : 'scheduling' }
 DroneSimulator >> step [
-    | event |
-    
-    self hasEvents ifFalse: [ ^self ].
 
-    event := scheduler nextEvent.
+	| event |
+	self hasEvents ifFalse: [ ^ self ].
 
-    (entityEventMap isReady: event) ifTrue: [
-        "Met à jour le temps courant de la simulation"
-        currentTime := event timestamp.
-        event simulationState: self.
+	event := scheduler nextEvent.
 
-        "Exécute l'événement et le marque comme terminé"
-        event executeOn:self .
-        event markAsExecuted.
+	(entityEventMap isReady: event)
+		ifTrue: [ "Met à jour le temps courant de la simulation"
+				currentTime = event timestamp ifFalse: [ "Only refresh once when several events share timestamp"
+						self model ifNotNil: [ self model hasChanged ].
+						currentTime := event timestamp ].
 
-        "Log optionnel"
-        Transcript show: '[', currentTime printString, '] Executed: ', event class name;
-                  space; show: event printString; cr.
+				event simulationState: self.
 
-    ] ifFalse: [
-        "Dépendances non satisfaites : on remet l'événement en file, légèrement décalé"
-        scheduler requeueEvent: event delay: 0.1.
-    ].
+				"Exécute l'événement et le marque comme terminé"
+				event executeOn: self.
+
+				self markAsExecuted: event.
+
+				"Log optionnel"
+				Transcript
+					show:
+						'[' , currentTime printString , '] Executed: '
+						, event class name;
+					space;
+					show: event printString;
+					cr ]
+		ifFalse: [ "Dépendances non satisfaites : on remet l'événement en file, légèrement décalé"
+			scheduler requeueEvent: event delay: 0.1 ]
 ]
 
 { #category : 'accessing' }

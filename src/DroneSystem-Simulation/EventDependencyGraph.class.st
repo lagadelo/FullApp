@@ -98,6 +98,15 @@ EventDependencyGraph >> isReady: anEvent [
 
 ]
 
+{ #category : 'add-remove' }
+EventDependencyGraph >> markAsExecuted: anEvent [
+
+
+"Shift timeStamp to reflect dependencies"
+anEvent markAsExecuted.
+(self  allDescendantsOf: anEvent) do:[:dep| dep timestamp: (dep timestamp min: anEvent endTime)].
+]
+
 { #category : 'accessing' }
 EventDependencyGraph >> nodes [
 

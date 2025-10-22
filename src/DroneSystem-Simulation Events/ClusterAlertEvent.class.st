@@ -2,7 +2,6 @@ Class {
 	#name : 'ClusterAlertEvent',
 	#superclass : 'ScheduledEvent',
 	#instVars : [
-		'cluste',
 		'alertingDrone',
 		'enemy',
 		'enemyPosition',

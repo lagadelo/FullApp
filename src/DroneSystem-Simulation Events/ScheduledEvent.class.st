@@ -29,13 +29,21 @@ ScheduledEvent >> affectsSameEntitiesAs: anotherEvent [
 
 { #category : 'as yet unclassified' }
 ScheduledEvent >> duration [ 
-^0
+
+" Should refactor - which events have a real duration?"
+^ duration ifNil:[^duration := 0]    ifNotNil:[duration]
 ]
 
 { #category : 'accessing' }
 ScheduledEvent >> duration: anObject [
 
 	duration := anObject
+]
+
+{ #category : 'as yet unclassified' }
+ScheduledEvent >> endTime [ 
+^self timestamp + self duration 
+ 
 ]
 
 { #category : 'as yet unclassified' }

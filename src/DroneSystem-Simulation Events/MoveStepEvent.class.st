@@ -10,6 +10,16 @@ Class {
 	#package : 'DroneSystem-Simulation Events'
 }
 
+{ #category : 'instance creation' }
+MoveStepEvent class >> drone: aDrone wayPoint: aWaypoint speed: aSpeed [
+
+	^ self new
+		  drone: aDrone;
+		  wayPoint: aWaypoint;
+		  speed: aSpeed;
+		  yourself
+]
+
 { #category : 'accessing' }
 MoveStepEvent >> drone [
 
@@ -24,39 +34,52 @@ MoveStepEvent >> drone: anObject [
 
 { #category : 'accessing' }
 MoveStepEvent >> executeOn: simulator [
-    | distanceRemaining direction   distanceToMove newPos |
+    | distanceRemaining direction   distanceToMove ratio evt |
+
+
+"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
 
     distanceRemaining := drone position distanceTo: wayPoint .
     direction := (wayPoint - drone position) normalize.
-    distanceToMove := (speed  ) * simulator timeStep.
-
+       distanceToMove := (speed  ) * simulator timeStep.
+    ratio := distanceToMove / distanceRemaining.
+	self duration: simulator timeStep *ratio.
     "Calcul de nouvelle position"
-    newPos := drone position + (direction * (distanceToMove min: distanceRemaining)).
+     drone position: drone position + ((wayPoint - drone position) * ratio).
 
-    drone position: newPos.
+  
 
     "Détection proximité"
-    (simulator entitiesInPerceptionRangeOf: drone) do: [:entity |
+"    (simulator entitiesInPerceptionRangeOf: drone) do: [:entity |
         simulator scheduleEvent: (
-            "IntrusionDetectedEvent"DetectionEvent new
+            ""IntrusionDetectedEvent""DetectionEvent new
                 timestamp: self timestamp;
                 drone: drone;
                 intruder: entity  ;
                 yourself
         ) after: (Set with: self)
-    ].
-
+    ]."
+evt := self.
     "Planifier prochaine étape si pas encore arrivé"
-    distanceRemaining > distanceToMove ifTrue: [
+    distanceRemaining > distanceToMove ifTrue: [ 
+
+	
         simulator scheduleEvent: (
-            self class new
+         evt :=    self class new
                 timestamp: self timestamp + simulator timeStep;
                 drone: drone;
-                destination: wayPoint ;
+                wayPoint: wayPoint ;
                 speed: speed;
                 yourself
         ) after: (Set with: self)
     ].
+^evt 
+]
+
+{ #category : 'printing' }
+MoveStepEvent >> printOn: aStream [
+
+aStream nextPutAll: 'Drone ', drone printString,' moves towards ',self wayPoint printString,' at speed ', self speed printString,'  ... reached :', drone position printString;cr
 ]
 
 { #category : 'accessing' }
