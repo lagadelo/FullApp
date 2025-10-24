@@ -34,46 +34,30 @@ MoveStepEvent >> drone: anObject [
 
 { #category : 'accessing' }
 MoveStepEvent >> executeOn: simulator [
-    | distanceRemaining direction   distanceToMove ratio evt |
 
-
-"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
-
-    distanceRemaining := drone position distanceTo: wayPoint .
-    direction := (wayPoint - drone position) normalize.
-       distanceToMove := (speed  ) * simulator timeStep.
-    ratio := distanceToMove / distanceRemaining.
-	self duration: simulator timeStep *ratio.
-    "Calcul de nouvelle position"
-     drone position: drone position + ((wayPoint - drone position) * ratio).
-
-  
-
-    "Détection proximité"
-"    (simulator entitiesInPerceptionRangeOf: drone) do: [:entity |
-        simulator scheduleEvent: (
-            ""IntrusionDetectedEvent""DetectionEvent new
-                timestamp: self timestamp;
-                drone: drone;
-                intruder: entity  ;
-                yourself
-        ) after: (Set with: self)
-    ]."
-evt := self.
-    "Planifier prochaine étape si pas encore arrivé"
-    distanceRemaining > distanceToMove ifTrue: [ 
-
-	
-        simulator scheduleEvent: (
-         evt :=    self class new
-                timestamp: self timestamp + simulator timeStep;
-                drone: drone;
-                wayPoint: wayPoint ;
-                speed: speed;
-                yourself
-        ) after: (Set with: self)
-    ].
-^evt 
+	| distanceRemaining direction distanceToMove ratio evt |
+	"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
+	distanceRemaining := drone position distanceTo: wayPoint.
+	direction := (wayPoint - drone position) normalize.
+	distanceToMove := speed * simulator timeStep.
+	ratio := distanceToMove / distanceRemaining.
+	self duration: simulator timeStep. "*ratio"
+	"Calcul de nouvelle position"
+	ratio > 1
+		ifTrue: [
+				drone position: wayPoint.
+				^ nil ]
+		ifFalse: [
+				drone position:
+					drone position + ((wayPoint - drone position) * ratio).
+				^ simulator
+					  scheduleEvent: (evt := self class new
+							          timestamp: self timestamp + simulator timeStep;
+							          drone: drone;
+							          wayPoint: wayPoint;
+							          speed: speed;
+							          yourself)
+					  after: (Set with: self) ]
 ]
 
 { #category : 'printing' }
