@@ -18,10 +18,12 @@ BaselineOfDrone >> baseline: spec [
 		repository: 'github://ThalesGroup/PharoOWS:main';
 		load.
 	spec
-    baseline: 'NeoCSV';
-    repository: 'github://svenvc/NeoCSV/src';
-    load.
-
+		baseline: 'NeoCSV';
+		repository: 'github://svenvc/NeoCSV/src';
+		load.
+	spec
+		baseline: 'Roassal'
+		with: [ spec repository: 'github://pharo-graphics/Roassal/src' ].
 	spec
 		repository: 'git@github.com:lagadelo/FullApp.git/src';
 		package: 'DroneSystem-Core';
@@ -37,4 +39,13 @@ BaselineOfDrone >> baseline: spec [
 		package: 'DroneSystem-Utils';
 		package: 'DroneSystem-Verification';
 		package: 'DroneSystem-Visualization'
+]
+
+{ #category : 'information' }
+BaselineOfDrone >> howTo [
+
+Metacello new
+    baseline: 'FullApp';
+    repository: 'github:/lagadelo/FullApp';
+    load.
 ]

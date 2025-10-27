@@ -365,7 +365,7 @@ DroneCluster >> updateCoverage [
 
     "1. Extraire les positions des drones valides"
     activePositions := (drones select: [:d | d isDestroyed not])
-        collect: [:d | { d    longitude . d latitude } ].
+        collect: [:d |  d    longitude @ d latitude  ].
 
     "2. Si aucun drone actif → pas de couverture"
     activePositions isEmpty ifTrue: [

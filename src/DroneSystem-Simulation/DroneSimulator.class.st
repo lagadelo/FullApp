@@ -390,13 +390,13 @@ DroneSimulator >> step [
 				self markAsExecuted: event.
 
 				"Log optionnel"
-				Transcript
+"				Transcript
 					show:
 						'[' , currentTime printString , '] Executed: '
 						, event class name;
 					space;
 					show: event printString;
-					cr ]
+					cr" ]
 		ifFalse: [ "Dépendances non satisfaites : on remet l'événement en file, légèrement décalé"
 			scheduler requeueEvent: event delay: 0.1 ]
 ]

@@ -63,7 +63,7 @@ MoveStepEvent >> executeOn: simulator [
 { #category : 'printing' }
 MoveStepEvent >> printOn: aStream [
 
-aStream nextPutAll: 'Drone ', drone printString,' moves towards ',self wayPoint printString,' at speed ', self speed printString,'  ... reached :', drone position printString;cr
+"aStream nextPutAll: 'Drone ', drone printString,' moves towards ',self wayPoint printString,' at speed ', self speed printString,'  ... reached :', drone position printString;cr"
 ]
 
 { #category : 'accessing' }
