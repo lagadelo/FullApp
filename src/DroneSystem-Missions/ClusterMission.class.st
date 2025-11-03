@@ -190,7 +190,7 @@ ClusterMission >> assignSurveillanceBehaviorsTo: aCluster [
 ClusterMission >> assignToCluster: aCluster [
 
 	self assignedCluster: aCluster.
-	self assignedCluster currentMission: self.
+	self assignedCluster missions assignMission: self.
 
 	status := #active.
 	^ self

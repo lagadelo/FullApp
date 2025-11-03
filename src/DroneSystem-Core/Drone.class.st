@@ -3,17 +3,8 @@ Class {
 	#superclass : 'AbstractDrone',
 	#instVars : [
 		'geoPoint',
-		'fuel',
-		'consumables',
-		'speed',
-		'perceptionRange',
 		'behavior',
-		'type',
-		'currentMission',
-		'needsHelp',
-		'detectedEnemy',
-		'health',
-		'isHostile'
+		'type'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -47,30 +38,33 @@ Drone >> accept: aVisitor [
 ^aVisitor visitDrone: self 
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> altitude [
 
 	^ self geoPoint altitude
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> altitude: anObject [
 
 	self geoPoint altitude: anObject
 ]
 
-{ #category : 'accessing' }
-Drone >> ammunition [
+{ #category : 'damages' }
+Drone >> applyDamage: damage to: aCapacity [
 
-^self consumables at:#munitions
+	self capacities consume: damage of: aCapacity
 ]
 
 { #category : 'damages' }
-Drone >> applyDamage: damage [
-    fuel := (fuel - damage) max: 0.
-    speed := (speed - (damage / 10)) max: 0.
-    perceptionRange := (perceptionRange - (damage / 20)) max: 0.
-    ^ self.
+Drone >> applyPercentageDamage: damage to: aCapacity [
+
+	self capacities consumePercent: damage of: aCapacity
+]
+
+{ #category : 'converting' }
+Drone >> asCluster [
+self shouldBeImplemented 
 ]
 
 { #category : 'action' }
@@ -91,18 +85,6 @@ Drone >> attackDrone: targetDrone withWeapon: weaponName quantity: qty probabili
 
 ]
 
-{ #category : 'initialization' }
-Drone >> beAlly [
-
-isHostile := false
-]
-
-{ #category : 'initialization' }
-Drone >> beHostile [
-
-isHostile := true
-]
-
 { #category : 'accessing' }
 Drone >> behavior [
 
@@ -115,50 +97,24 @@ Drone >> behavior: anObject [
 	behavior := anObject
 ]
 
-{ #category : 'testing' }
-Drone >> canPerceiveDrone: otherDrone [
-   " ^ (self distanceToLatitude: otherDrone latitude longitude: otherDrone longitude altitude: otherDrone altitude) <= perceptionRange.
-"
+{ #category : 'facilities' }
+Drone >> canCommunicateWith: anObject [
+ 
+	^ (self position distanceTo: anObject position)
+	  <= self capabilities communicationRange
+]
 
- ^(self  position distanceTo:    otherDrone position  )  <= perceptionRange.
+{ #category : 'facilities' }
+Drone >> canPerceive: anObject [
+
+	^ (self position distanceTo: anObject position)
+	  <= self capabilities perceptionRange
 ]
 
 { #category : 'action' }
 Drone >> communicateWithConsensus: consensus [
     consensus receiveStatusMessage: self statusMessage.
 
-]
-
-{ #category : 'accessing' }
-Drone >> consumables [
-
-	^ consumables
-]
-
-{ #category : 'accessing' }
-Drone >> consumables: anObject [
-
-	consumables := anObject
-]
-
-{ #category : 'action' }
-Drone >> consumeFuel: amount [
-	"Réduit le niveau de carburant/énergie"
-
-	fuel := fuel - amount.
-	fuel := fuel max: 0
-]
-
-{ #category : 'accessing' }
-Drone >> currentMission [
-
-	^ currentMission
-]
-
-{ #category : 'accessing' }
-Drone >> currentMission: anObject [
-
-	currentMission := anObject
 ]
 
 { #category : 'copying' }
@@ -190,72 +146,34 @@ Drone >> destroy [
 	speed := 0
 ]
 
-{ #category : 'accessing' }
-Drone >> detectedEnemy [
-
-	^ detectedEnemy
-]
-
-{ #category : 'accessing' }
-Drone >> detectedEnemy: anObject [
-
-	detectedEnemy := anObject
-]
-
-{ #category : 'as yet unclassified' }
-Drone >> detectionRange [ 
-
-"UI compatibility - should refactor"
-^self perceptionRange 
-
-]
-
-{ #category : 'as yet unclassified' }
-Drone >> detectionRange: a [
-
-"UI compatibility - should refactor"
-^self perceptionRange: a
-
-]
-
 { #category : 'computing' }
 Drone >> distanceToLatitude: lat longitude: lon altitude: alt [
     "Calcule la distance approximative en km entre la position actuelle et une nouvelle coordonnée."
     | dLat dLon meanLat earthRadius horizDist altDiff |
     earthRadius := 6371.0. "km, rayon moyen Terre"
-    dLat := (lat - latitude) degreesToRadians.
-    dLon := (lon - longitude) degreesToRadians.
-    meanLat := ((lat + latitude) / 2) degreesToRadians.
+    dLat := (lat - self latitude) degreesToRadians.
+    dLon := (lon - self longitude) degreesToRadians.
+    meanLat := ((lat + self latitude) / 2) degreesToRadians.
     horizDist := earthRadius * ((dLat squared + ((dLon * meanLat cos) squared)) sqrt).
-    altDiff := (alt - altitude) / 1000.0. "convertir mètres → km"
+    altDiff := (alt - self altitude) / 1000.0. "convertir mètres → km"
     ^ (horizDist squared + altDiff squared) sqrt.
 ]
 
-{ #category : 'as yet unclassified' }
-Drone >> energy [ 
+{ #category : 'messages processing' }
+Drone >> emitHelpRequest [
 
-"UI compatibility - should refactor"
-^self fuel 
+	^ Message broadcastHelpRequest: self
 ]
 
-{ #category : 'as yet unclassified' }
-Drone >> energy: a [
+{ #category : 'messages processing' }
+Drone >> emitQueryRequest: aPayload to: receivers [
 
-"UI compatibility - should refactor"
-^self fuel: a
-
-]
-
-{ #category : 'accessing' }
-Drone >> fuel [
-
-	^ fuel
-]
-
-{ #category : 'accessing' }
-Drone >> fuel: anObject [
-
-	fuel := anObject
+ 
+	^ Message
+		  intent: #Query
+		  from: self
+		  to: receivers
+		  payload: aPayload
 ]
 
 { #category : 'accessing' }
@@ -273,13 +191,7 @@ geoPoint := a
 { #category : 'accessing' }
 Drone >> health [
 
-	^ health
-]
-
-{ #category : 'accessing' }
-Drone >> health: anObject [
-
-	health := anObject
+	^ self capabilities computeHealth
 ]
 
 { #category : 'action' }
@@ -294,24 +206,25 @@ Drone >> helpRequestMessage [
 
 { #category : 'initialization' }
 Drone >> initialize [
- 	geoPoint := self class LandingBase.
-    fuel := 100.
-    consumables := Dictionary new.
-    consumables at:#munitions put:1000.
-    speed := 10.
-	 health := 100.
-    perceptionRange := 50.
-    behavior := nil.
-    uniqueId := UUID new asString.
-    type := 'standard'.
-    currentMission := nil.
-    needsHelp := false.
-    detectedEnemy := false.
-	isHostile:= false.
+
+	super initialize.
+	geoPoint := self class LandingBase.
+	capabilities := Capabilities new.
+
+	capabilities define: #energy maxValue: 100.
+	capabilities define: #ammunitions maxValue: 1000.
+
+	capabilities define: #perceptionRange maxValue: 50.
+	capabilities define: #communicationRange maxValue: 50.
+	behavior := nil.
+	id := UUID new asString.
+	type := 'standard'.
+
+	hostile := false
 ]
 
 { #category : 'initialization' }
-Drone >> initializeWithId: id
+Drone >> initializeWithId: anID
             latitude: aLatitude
             longitude: aLongiture
             altitude: anAltitude [ 
@@ -320,13 +233,7 @@ Drone >> initializeWithId: id
 self latitude: aLatitude .
 self longitude: aLongiture .
 self altitude: anAltitude .
-uniqueId :=  id.
-]
-
-{ #category : 'initialization' }
-Drone >> isAlly [
-
-^isHostile not
+id :=  anID.
 ]
 
 { #category : 'testing' }
@@ -334,13 +241,7 @@ Drone >> isDestroyed [
     ^ fuel = 0 or: [speed = 0].
 ]
 
-{ #category : 'testing' }
-Drone >> isHostile [
-
-	^ isHostile
-]
-
-{ #category : 'testing' }
+{ #category : 'accessing' }
 Drone >> isHostile: anObject [
 
 	isHostile := anObject
@@ -351,25 +252,25 @@ Drone >> isInDanger [
     ^ (health < 50) or: [ fuel < 20 ].
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> latitude [
 
 	^ self geoPoint latitude
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> latitude: anObject [
 
 	self geoPoint latitude: anObject
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> longitude [
 
 	^ self geoPoint longitude
 ]
 
-{ #category : 'accessing' }
+{ #category : 'facilities' }
 Drone >> longitude: anObject [
 
 	self geoPoint longitude: anObject
@@ -438,35 +339,34 @@ Drone >> needsHelp: anObject [
 	needsHelp := anObject
 ]
 
-{ #category : 'accessing' }
-Drone >> perceptionRange [
+{ #category : 'facilities' }
+Drone >> perceivedElemnts [
 
-	^ perceptionRange
+	^ DroneFleet allElements select: [ :a | self canPerceive: a ]
 ]
 
-{ #category : 'accessing' }
-Drone >> perceptionRange: anObject [
+{ #category : 'facilities' }
+Drone >> reachableElemnts [
 
-	perceptionRange := anObject
+	^ DroneFleet allElements select: [ :a | self canCommunicateWith: a ]
 ]
 
-{ #category : 'accessing' }
-Drone >> position [
+{ #category : 'messages processing' }
+Drone >> receiveQueryRequest: aMessage [
 
-^self geoPoint 
+	aMessage emiter isHostile ifTrue: [ "ignore message" ^ self ].
+
+	^ Message
+		  intent: #Information
+		  from: self
+		  to: aMessage emiter
+		  payload: (aMessage value: aMessage emiter value: self)
 ]
 
-{ #category : 'accessing' }
-Drone >> position:a [ 
-"facility - should refactor" 
-^self geoPoint: a 
+{ #category : 'consumption' }
+Drone >> sendHelpRequest [
 
-]
-
-{ #category : 'action' }
-Drone >> refuel [
-
-	fuel := 100
+ ^Message emiter: self 
 ]
 
 { #category : 'action' }
@@ -477,18 +377,6 @@ Drone >> sendHelpRequestToConsensus: consensus [
 { #category : 'accessing' }
 Drone >> setBehavior: aBehavior [
     behavior := aBehavior.
-]
-
-{ #category : 'accessing' }
-Drone >> speed [
-
-	^ speed
-]
-
-{ #category : 'accessing' }
-Drone >> speed: anObject [
-
-	speed := anObject
 ]
 
 { #category : 'status' }
@@ -525,16 +413,4 @@ Drone >> type [
 Drone >> type: anObject [
 
 	type := anObject
-]
-
-{ #category : 'accessing' }
-Drone >> uniqueId [
-
-	^ uniqueId
-]
-
-{ #category : 'accessing' }
-Drone >> uniqueId: anObject [
-
-	uniqueId := anObject
 ]

@@ -7,7 +7,7 @@ Class {
 		'position',
 		'movable',
 		'strategicImportance',
-		'type',
+		'model',
 		'dependencies',
 		'dependents',
 		'destroyed'
@@ -51,58 +51,48 @@ Target class >> named: aString position: aGeoPoint type: aSymbol strategicImport
         yourself
 ]
 
-{ #category : 'adding' }
+{ #category : 'building' }
 Target >> addDependency: aTarget [ 
     dependencies add: aTarget.
     aTarget addDependent: self.
 ]
 
-{ #category : 'adding' }
+{ #category : 'building' }
 Target >> addDependent: aTarget [ 
     dependents add: aTarget.
 
 ]
 
-{ #category : 'accessing' }
+{ #category : 'destroying' }
+Target >> cascadeDestroy [
+
+	self dependents do: [ :a | a destroy ]
+]
+
+{ #category : 'building' }
 Target >> dependencies [
 
 	^ dependencies
 ]
 
-{ #category : 'accessing' }
-Target >> dependencies: anObject [
-
-	dependencies := anObject
-]
-
-{ #category : 'accessing' }
-Target >> dependents1 [
+{ #category : 'building' }
+Target >> dependents [
 
 	^ dependents
 ]
 
-{ #category : 'accessing' }
-Target >> dependents: anObject [
+{ #category : 'destroying' }
+Target >> destroy [
 
-	dependents := anObject
-]
-
-{ #category : 'adding' }
-Target >> destroy [ 
-    destroyed := true.
-    dependents do: [:dep | dep weakenDueTo: self]
+	self model destroy.
+	destroyed := true.
+	self cascadeDestroy
 ]
 
 { #category : 'accessing' }
 Target >> destroyed [
 
 	^ destroyed
-]
-
-{ #category : 'accessing' }
-Target >> destroyed: anObject [
-
-	destroyed := anObject
 ]
 
 { #category : 'accessing' }
@@ -117,16 +107,24 @@ Target >> id: anObject [
 	id := anObject
 ]
 
-{ #category : 'accessing' }
-Target >> movable [
+{ #category : 'adding' }
+Target >> initialize [
 
-	^ movable
+	destroyed := false.
+	dependents := OrderedCollection new.
+	dependencies := OrderedCollection new
 ]
 
 { #category : 'accessing' }
-Target >> movable: anObject [
+Target >> isMovable [
 
-	movable := anObject
+	^ self model isMovable
+]
+
+{ #category : 'accessing' }
+Target >> model [
+
+	^ model
 ]
 
 { #category : 'accessing' }
@@ -165,19 +163,7 @@ Target >> strategicImportance: anObject [
 	strategicImportance := anObject
 ]
 
-{ #category : 'accessing' }
-Target >> type [
-
-	^ type
-]
-
-{ #category : 'accessing' }
-Target >> type: anObject [
-
-	type := anObject
-]
-
-{ #category : 'adding' }
+{ #category : 'destroying' }
 Target >> weakenDueTo: aTarget [ 
     "Reduce strategic importance or mark as weakened"
     strategicImportance := strategicImportance // 2.

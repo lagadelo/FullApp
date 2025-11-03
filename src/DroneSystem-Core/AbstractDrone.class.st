@@ -1,8 +1,7 @@
 Class {
 	#name : 'AbstractDrone',
-	#superclass : 'Object',
+	#superclass : 'FleetElement',
 	#instVars : [
-		'uniqueId',
 		'waypoint'
 	],
 	#category : 'DroneSystem-Core',

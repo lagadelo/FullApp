@@ -36,7 +36,7 @@ DroneFleet >> addAlliedeCluster: aCluster [
 DroneFleet >> addCluster: aCluster [
     clusters add: aCluster.
 	
-    log add: 'New cluster ', aCluster clusterId asString, ' accepted.'.
+    log add: 'New cluster ', aCluster id asString, ' accepted.'.
 ]
 
 { #category : 'initialization' }
