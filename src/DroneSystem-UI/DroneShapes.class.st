@@ -129,7 +129,7 @@ self energy ifNotNil:[	self energy color: ([ :a |
 						 a < 0.7
 							 ifTrue: [ Color purple alpha: 0.3 ]
 							 ifFalse: [ Color black ] ] ]
-			 value: ((self model energy max: 0) / 100.0
+			 value: ((self model capabilities energy max: 0) / 100.0
 			 min: 1.0))]
 ]
 

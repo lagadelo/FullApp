@@ -90,7 +90,7 @@ SimulationState >> allHostileDrones [
 { #category : 'resolution' }
 SimulationState >> allMissions [ 
 "should refactor: select:[:a status ...]"
-^(self allClusters collect:[:c| c currentMission]) reject:  [:a| a isNil]
+^(self allClusters collectMany: [:c| c missions assignedMissions ]) reject:  [:a| a isNil]
 ]
 
 { #category : 'api - selection' }
@@ -255,7 +255,9 @@ SimulationState >> open [
 
 	| tmp |
 	tmp := UISimulation openOn: self.
-	self registerObserver: tmp
+	self registerObserver: tmp.
+	
+^tmp 
 ]
 
 { #category : 'accessing' }

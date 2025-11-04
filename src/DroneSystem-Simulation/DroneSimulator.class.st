@@ -271,6 +271,17 @@ DroneSimulator >> model: anObject [
 	model := anObject
 ]
 
+{ #category : 'user interface' }
+DroneSimulator >> open [
+
+	| tmp |
+	tmp := self model open.
+
+	tmp simulator: self.
+
+	^ tmp
+]
+
 { #category : 'removing' }
 DroneSimulator >> removeEvents: events fromEntity: entity [
     | set |
@@ -379,7 +390,7 @@ DroneSimulator >> step [
 	(entityEventMap isReady: event)
 		ifTrue: [ "Met à jour le temps courant de la simulation"
 				currentTime = event timestamp ifFalse: [ "Only refresh once when several events share timestamp"
-						self model ifNotNil: [ self model hasChanged ].
+					 	self model ifNotNil: [ self model hasChanged ].  "This should now be delegated in jump: method of UISimulator"
 						currentTime := event timestamp ].
 
 				event simulationState: self.

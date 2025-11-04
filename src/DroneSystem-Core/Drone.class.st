@@ -345,6 +345,20 @@ Drone >> perceivedElemnts [
 	^ DroneFleet allElements select: [ :a | self canPerceive: a ]
 ]
 
+{ #category : 'accessing' }
+Drone >> position [
+	"Also appears as a capability"
+
+	^ self geoPoint
+]
+
+{ #category : 'accessing' }
+Drone >> position: aValue [
+	"Also appears as a capability"
+
+	^ self geoPoint: aValue
+]
+
 { #category : 'facilities' }
 Drone >> reachableElemnts [
 

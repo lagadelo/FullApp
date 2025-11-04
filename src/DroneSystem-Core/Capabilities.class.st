@@ -20,6 +20,17 @@ Capabilities >> ammunition: aValue [
 	^ self setCapability: #ammunition value: aValue
 ]
 
+{ #category : 'facilities' }
+Capabilities >> ammunitions [ 
+^self getCapability: #ammunitions
+]
+
+{ #category : 'facilities' }
+Capabilities >> ammunitions: aValue [
+
+	^ self setCapability: #ammunitions value: aValue
+]
+
 { #category : 'availability' }
 Capabilities >> availablePercentage: aCapabilityName [
 

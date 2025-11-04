@@ -2,6 +2,8 @@ Class {
 	#name : 'UISimulation',
 	#superclass : 'SpToggleSplitPresenter',
 	#instVars : [
+		'simulation',
+		'simulator',
 		'checkPerception',
 		'checkMissions',
 		'overlayChecksLabel',
@@ -9,7 +11,6 @@ Class {
 		'dronesSelectedButton',
 		'dronesModeLabel',
 		'showAllDrones',
-		'simulation',
 		'canvasPresenter',
 		'rsCanvas',
 		'baseBitmap',
@@ -1065,14 +1066,14 @@ UISimulation >> drawAmmoOverlayFor: d at: p [
 	| s pie ratio |
 	s := self ensureDroneShapes: d.
 	s ammunitions ifNil: [
-			ratio := d ammunition / 1000 max: 0.
+			ratio := d capabilities ammunitions / 1000 max: 0.
 
 
 			pie := RSPieSlice new
-				       model: d ammunition;
+				       model: d capabilities ammunitions;
 				       alphaAngle: 0;
 				       color: Color transparent;
-				       borderColor: Color transparent;
+				       "borderColoapabilitiesr: Color transparent;"
 				       betaAngle: 360;
 				       innerRadius: 5;
 				       cornerRadii: 0;
@@ -1087,7 +1088,7 @@ UISimulation >> drawAmmoOverlayFor: d at: p [
 			self markOverlayShape: pie.
 			rsCanvas add: pie ].
 	s ammunitions
-		betaAngle: 360 * (d ammunition / 1000 max: 0);
+		betaAngle: 360 * (d capabilities availablePercentage: #ammunitions);
 		translateTo: p - s ammunitions externalRadius
 ]
 
@@ -1141,7 +1142,7 @@ UISimulation >> drawDroneIcons [
         | p     |
         p := self pixelForDrone: d.
         p ifNil: [ ^ self ].
-       self drawDroneIconsFor:d at:p.
+       self drawDroneIconsFor:d at:p. rsCanvas signalUpdate .
 "       self drawDroneIconsTextFor:d at:p."].
  
 ]
@@ -1154,7 +1155,7 @@ UISimulation >> drawDroneIconsFor: d at: p [
 	s position ifNil: [
 			dot := RSCircle new
 				       radius: 5;
-				       color: Color transparent ;
+				       color: Color  red"transparent" ;
 				       yourself.
 			s position: dot. "s is a DroneShape"
 			self markOverlayShape: dot.
@@ -1234,7 +1235,7 @@ UISimulation >> drawEnergyOverlayFor: d at: p [
 	s := self ensureDroneShapes: d.
 	s energy ifNil: [
 			s energy: (RSBox new
-					 width: d energy;
+					 width: d capabilities energy;
 					 height: 5;
 					 color: Color transparent;
 					 yourself).
@@ -1246,12 +1247,12 @@ UISimulation >> drawEnergyOverlayFor: d at: p [
 { #category : 'overlay models' }
 UISimulation >> drawMissionOverlay [
 
-	| pts poly m |
+	| pts poly assignedMissions |
 	
 		((overlayModel respondsTo: #showMissionPaths) and: [
 		 overlayModel showMissionPaths ]) ifFalse: [ ^ self ].
-	self allClusters do:[:c| 	m := c currentMission . 
-				m ifNotNil:[|points hull |
+	self allClusters do:[:c| 	assignedMissions := c missions  assignedMissions . 
+				assignedMissions ifNotNil:[assignedMissions do:[:m||points hull |
 					points := m   polygon.
 						       
 					points size > 2 ifTrue: [
@@ -1268,7 +1269,7 @@ UISimulation >> drawMissionOverlay [
 										        yourself.			 
 							 
 							self markOverlayShape: poly.
-							rsCanvas add: poly ] ]]]
+							rsCanvas add: poly ] ]]]]
 ]
 
 { #category : 'overlay models' }
@@ -1303,7 +1304,7 @@ UISimulation >> drawPerceptionOverlayFor: d at: p [
 	s := self ensureDroneShapes: d.
 	s perceptionRange ifNil: [
 			dot := RSCircle new
-				       radius: d perceptionRange / 2;
+				       radius: (d capabilities perceptionRange) / 2;
 				       color: Color transparent;
 				       borderColor: (Color lightBlue alpha: 0.4);
 				       yourself.
@@ -1653,8 +1654,8 @@ UISimulation >> initializePresenters [
     (self respondsTo: #setOverlayChecksFocus) ifTrue: [ self setOverlayChecksFocus ].
 
     "Lists and status"
-    clusterListPresenter ifNil: [self  clusterListPresenter: (self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c clusterId asString ] ])]; yourself.
-    droneListPresenter  ifNil: [ self droneListPresenter: ( self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ 'Drone ', c uniqueId asString ] ])]; yourself.
+    clusterListPresenter ifNil: [self  clusterListPresenter: (self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c id asString ] ])]; yourself.
+    droneListPresenter  ifNil: [ self droneListPresenter: ( self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ 'Drone ', c id asString ] ])]; yourself.
    missionListPresenter  ifNil: [ self missionListPresenter: ( self newList display:[ :m | m ifNil: [ '' ] ifNotNil: [ 'Mission ', m class printString ] ])]; yourself.
     statusLabelPresenter ifNil: [ statusLabelPresenter := self newLabel ].
     (statusLabelPresenter respondsTo: #label:) ifTrue: [ statusLabelPresenter label: 'Ready' ].
@@ -1718,8 +1719,27 @@ UISimulation >> isOverlayShape: aShape [
 
 { #category : 'presenters' }
 UISimulation >> jump: nSteps [
-    1 to: nSteps do: [ :i | self simulationStepOnce ].
-    self updateTimeLabel.
+  
+| isRunning worker |
+isRunning := true.
+worker := [
+[ 1 to: nSteps do: [:i |
+isRunning ifFalse: [ ^ self ].
+
+    "1) Calcul hors UI (ne touche pas aux shapes ici)"
+     self  simulator step.   "=> met à jour le modèle (positions/états), pas le canvas"
+
+    "2) Application UI courte et un seul refresh"
+    UIManager default defer: [
+        self simulator model hasChanged .  "=> lit le modèle, met à jour les shapes"
+        "self canvases do: [:c | c signalUpdate ]. " "1 seul signal par canvas"
+    ].
+
+    (Delay forMilliseconds: 10) wait.
+] ] ensure: [ isRunning := false ].
+
+
+] forkAt: Processor userBackgroundPriority.
 ]
 
 { #category : 'presenters' }
@@ -1732,7 +1752,10 @@ UISimulation >> jumpDialog [
 		text: '1';
 		acceptLabel: 'step ahead';
 		cancelLabel: 'Cancel';
-		onAccept: [ :dialog | n :=   dialog presenter text asNumber. n > 0 ifTrue: [ self jump: n ]. ];
+		onAccept: [ :dialog | n :=   dialog presenter text asNumber. n > 0 ifTrue: [ self jump: n
+ 
+
+ ]];
 		openDialog.
     
 ]
@@ -1795,6 +1818,12 @@ UISimulation >> missionListPresenter [
 { #category : 'accessing' }
 UISimulation >> missionListPresenter: anObject [
 missionListPresenter := anObject
+]
+
+{ #category : 'accessing' }
+UISimulation >> model [
+
+	^ self simulation
 ]
 
 { #category : 'presenters' }
@@ -2281,6 +2310,18 @@ UISimulation >> simulationStepOnce [
     self refreshDrones.
     self updateTimeLabel.
 
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> simulator [
+
+	^ simulator
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> simulator: aValue [
+
+	simulator := aValue
 ]
 
 { #category : 'waypoints' }
