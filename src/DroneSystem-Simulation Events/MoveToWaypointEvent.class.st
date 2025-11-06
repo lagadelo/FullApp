@@ -3,7 +3,8 @@ Class {
 	#superclass : 'ScheduledEvent',
 	#instVars : [
 		'drone',
-		'wayPoint'
+		'wayPoint',
+		'speed'
 	],
 	#category : 'DroneSystem-Simulation Events',
 	#package : 'DroneSystem-Simulation Events'
@@ -17,6 +18,17 @@ MoveToWaypointEvent class >> for: aDrone to: aWaypoint at: aTimestamp [
         wayPoint: aWaypoint;
         yourself.
 
+]
+
+{ #category : 'as yet unclassified' }
+MoveToWaypointEvent class >> for: aDrone to: aWaypoint speed: aSpeed at: aTimestamp [
+
+	^ self new
+		  timestamp: aTimestamp;
+		  drone: aDrone;
+		  wayPoint: aWaypoint;
+		  speed: aSpeed;
+		  yourself
 ]
 
 { #category : 'as yet unclassified' }
@@ -58,7 +70,7 @@ MoveToWaypointEvent >> executeOn: simulator [
 	| arrivalEvent |
 	"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
 	drone position distanceTo: wayPoint.
-	duration := ((wayPoint - drone position) normalize / drone speed)
+	duration := ((drone position distanceTo: wayPoint) /   speed)
 		            ceiling.
 
 	arrivalEvent := WayPointReachedEvent new
@@ -67,6 +79,18 @@ MoveToWaypointEvent >> executeOn: simulator [
 		                wayPoint: wayPoint;
 		                yourself.
 	^ simulator scheduleEvent: arrivalEvent after: (Set with: self)
+]
+
+{ #category : 'accessing' }
+MoveToWaypointEvent >> speed [
+
+	^ speed
+]
+
+{ #category : 'accessing' }
+MoveToWaypointEvent >> speed: anObject [
+
+	speed := anObject
 ]
 
 { #category : 'accessing' }

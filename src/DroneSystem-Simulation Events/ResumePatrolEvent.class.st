@@ -21,6 +21,18 @@ ResumePatrolEvent >> affectedEntities [
     ^ Set with: drone.
 ]
 
+{ #category : 'accessing' }
+ResumePatrolEvent >> drone [
+
+	^ drone
+]
+
+{ #category : 'accessing' }
+ResumePatrolEvent >> drone: anObject [
+
+	drone := anObject
+]
+
 { #category : 'as yet unclassified' }
 ResumePatrolEvent >> duration [
     ^ 0.
@@ -37,6 +49,9 @@ ResumePatrolEvent >> executeOn: simulator [
 			point ifNotNil: [
 					simulator
 						scheduleEvent:
-						(MoveToWaypointEvent for: drone to: point at: self timestamp)
-						after: (Set with: self) ] ]
+						"(MoveToWaypointEvent for: drone to: point at: self timestamp)"( MoveStepEvent  
+		  drone: drone
+		  wayPoint: point
+		  speed: drone speed)
+						after: (Set with: 100) ] ]
 ]

@@ -48,7 +48,7 @@ MoveStepEvent >> executeOn: simulator [
 				drone position: wayPoint.
 		 
 	^ simulator scheduleEvent: (WayPointReachedEvent new
-		                timestamp: self timeStamp;
+		                timestamp:  self timestamp ;
 		                drone: drone;
 		                wayPoint: wayPoint;
 		                yourself) after: (Set with: self) ]

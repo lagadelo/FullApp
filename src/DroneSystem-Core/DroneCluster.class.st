@@ -44,7 +44,8 @@ DroneCluster >> accept: aVisitor [
 { #category : 'accessing' }
 DroneCluster >> addDrone: aDrone [
 
-	self drones add: aDrone
+	self drones add: aDrone.
+	aDrone cluster: self .
 ]
 
 { #category : 'initialization' }

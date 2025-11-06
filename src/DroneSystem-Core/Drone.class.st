@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'geoPoint',
 		'behavior',
-		'type'
+		'type',
+		'cluster'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -109,6 +110,18 @@ Drone >> canPerceive: anObject [
 
 	^ (self position distanceTo: anObject position)
 	  <= self capabilities perceptionRange
+]
+
+{ #category : 'accessing' }
+Drone >> cluster [
+
+	^ cluster
+]
+
+{ #category : 'accessing' }
+Drone >> cluster: anObject [
+
+	cluster := anObject
 ]
 
 { #category : 'action' }
