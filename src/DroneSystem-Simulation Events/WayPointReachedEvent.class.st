@@ -28,7 +28,9 @@ WayPointReachedEvent >> drone: anObject [
 
 { #category : 'execution' }
 WayPointReachedEvent >> executeOn: aSimulator [
-    aSimulator handleWaitPointReached: self.
+     aSimulator scheduleEvent: (
+        ResumePatrolEvent for: drone at: self timestamp  
+    ) after: (Set with: self).
 ]
 
 { #category : 'accessing' }

@@ -14,7 +14,7 @@ MoveToWaypointEvent class >> for: aDrone to: aWaypoint at: aTimestamp [
     ^ self new
         timestamp: aTimestamp;
         drone: aDrone;
-        targetWaypoint: aWaypoint;
+        wayPoint: aWaypoint;
         yourself.
 
 ]
@@ -54,13 +54,19 @@ MoveToWaypointEvent >> execute [
 
 { #category : 'executing' }
 MoveToWaypointEvent >> executeOn: simulator [
-    | arrivalEvent   |
-    arrivalEvent := WayPointReachedEvent new
-        timestamp: self endTimestamp;
-        drone: drone;
-        wayPoint: wayPoint;
-        yourself.
-    simulator scheduleEvent: arrivalEvent after: (Set with: self).
+
+	| arrivalEvent |
+	"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
+	drone position distanceTo: wayPoint.
+	duration := ((wayPoint - drone position) normalize / drone speed)
+		            ceiling.
+
+	arrivalEvent := WayPointReachedEvent new
+		                timestamp: self endTimestamp;
+		                drone: drone;
+		                wayPoint: wayPoint;
+		                yourself.
+	^ simulator scheduleEvent: arrivalEvent after: (Set with: self)
 ]
 
 { #category : 'accessing' }

@@ -28,8 +28,15 @@ ResumePatrolEvent >> duration [
 
 { #category : 'as yet unclassified' }
 ResumePatrolEvent >> executeOn: simulator [
-"Demande à la mission de redéfinir les objectifs"
-    drone cluster currentMission ifNotNil: [:mission |
-        mission planNextPatrolFor: drone at: self timestamp in: simulator
-    ].
+	"Demande à la mission de redéfinir les objectifs"
+
+	| mission point |
+	mission := drone cluster currentMission.
+	mission ifNotNil: [
+			point := mission nextWayPointFor: drone.
+			point ifNotNil: [
+					simulator
+						scheduleEvent:
+						(MoveToWaypointEvent for: drone to: point at: self timestamp)
+						after: (Set with: self) ] ]
 ]

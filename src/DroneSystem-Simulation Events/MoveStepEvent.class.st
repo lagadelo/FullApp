@@ -46,7 +46,12 @@ MoveStepEvent >> executeOn: simulator [
 	ratio > 1
 		ifTrue: [
 				drone position: wayPoint.
-				^ nil ]
+		 
+	^ simulator scheduleEvent: (WayPointReachedEvent new
+		                timestamp: self timeStamp;
+		                drone: drone;
+		                wayPoint: wayPoint;
+		                yourself) after: (Set with: self) ]
 		ifFalse: [
 				drone position:
 					drone position + ((wayPoint - drone position) * ratio).

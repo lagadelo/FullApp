@@ -286,7 +286,7 @@ DroneScenarios class >> exampleSimpleBlock2 [
 
 	cluster1 := DroneCluster new
 		            initializeWithDrones: drones
-		            clusterId: #Surveillance.
+		            clusterId: 'Cluster for Surveillance'.
 
 
 	fleet := DroneFleet new.

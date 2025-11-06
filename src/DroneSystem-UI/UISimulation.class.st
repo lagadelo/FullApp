@@ -44,7 +44,9 @@ Class {
 		'checkFuel',
 		'missionListPresenter',
 		'droneShapes',
-		'clusterShapes'
+		'clusterShapes',
+		'testList',
+		'scriptPresenter'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -250,6 +252,24 @@ UISimulation class >> webMercatorToLongitureLatitude: lonLatPoint [
     ^ x @ y.
 ]
 
+{ #category : 'initializing' }
+UISimulation >> + buildCheckList [
+
+	| checkListPresenter cbx |
+	checkListPresenter := SpPresenter new.
+	cbx := { #perception. #missions. #energy. #ammunitions. #hull }
+		       with:
+			       { #showPerceptionRadius:. #showMissionPaths:.
+			       #showEnergyBars:. #showAmmoBars:. #showClusterHull: }
+		       do: [ :aSymbol :aMessage |
+				       | aCheckBox |
+				       aCheckBox := self newCheckBox
+					                    label: aSymbol;
+					                    yourself.
+				       aCheckBox whenChangedDo: [
+					       self perform: aMessage with: aCheckBox status ] ]
+]
+
 { #category : 'presenters' }
 UISimulation >> addBaseShape: aShape [
     baseShapes ifNil: [ baseShapes := OrderedCollection new ].
@@ -345,7 +365,7 @@ UISimulation >> boundingBox [
     ^ bbox.
 ]
 
-{ #category : 'overlay models' }
+{ #category : 'presenters-building' }
 UISimulation >> buildBaseMap [
     rsCanvas ifNil: [ ^ self ].
     baseMapDirty := false.
@@ -370,7 +390,7 @@ UISimulation >> buildBaseMap [
         ifFalse: [ self buildFallbackBaseMap ]
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters-building' }
 UISimulation >> buildCSVMenu [
 
 	^ SpMenuPresenter new
@@ -387,7 +407,7 @@ UISimulation >> buildCSVMenu [
 		  yourself
 ]
 
-{ #category : 'presenters' }
+{ #category : 'presenters-building' }
 UISimulation >> buildCanvasPresenter [
     canvasPresenter ifNotNil: [ ^ canvasPresenter ].
    self ensureCanvas.
@@ -415,7 +435,50 @@ UISimulation >> buildCanvasWidget [
     ^ SpLabelPresenter new label: 'Pas de presenter Roassal'
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'initializing' }
+UISimulation >> buildCheckList [
+
+	| cbx collection checkBoxesLayout |
+	collection := OrderedCollection new.
+
+	cbx := { #perception. #missions. #energy. #ammunitions. #hull }
+		       with:
+			       { #showPerceptionRadius:. #showMissionPaths:.
+			       #showEnergyBars:. #showAmmoBars:. #showClusterHull: }
+		       do: [ :aSymbol :aMessage |
+				       | aCheckBox |
+				       aCheckBox := self newCheckBox
+					                    label: aSymbol;
+					                    yourself.
+				       aCheckBox whenChangedDo: [
+					       self overlayModel
+						       perform: aMessage
+						       with: aCheckBox state ].
+				       collection add: aCheckBox ].
+
+	checkBoxesLayout := SpBoxLayout newLeftToRight.
+	collection do: [ :aCheckBox |
+			checkBoxesLayout add: aCheckBox withConstraints: [ :constraints |
+					constraints
+						height: 20;
+						width: 60 ] ].
+
+	^ self newPresenter
+		  layout: checkBoxesLayout;
+		  yourself
+]
+
+{ #category : 'presenters-building' }
+UISimulation >> buildClusterListPresenter [
+
+	^clusterListPresenter
+		ifNil: [
+				self clusterListPresenter: (self newList display: [ :c |
+								 c ifNil: [ '' ] ifNotNil: [ c id asString ] ]) ];
+		yourself
+]
+
+{ #category : 'presenters-building' }
 UISimulation >> buildDevMenu [
 
 	^ SpMenuPresenter new
@@ -427,7 +490,7 @@ UISimulation >> buildDevMenu [
 		  yourself
 ]
 
-{ #category : 'debugging' }
+{ #category : 'presenters-building' }
 UISimulation >> buildDroneFilterPanel [
 
 	| panel title allBtn selBtn radioClass groupClass group |
@@ -492,7 +555,17 @@ UISimulation >> buildDroneFilterPanel [
 	^ panel
 ]
 
-{ #category : 'layout' }
+{ #category : 'presenters-building' }
+UISimulation >> buildDroneListPresenter [
+
+	^ droneListPresenter
+		  ifNil: [
+				  self droneListPresenter: (self newList display: [ :c |
+								   c ifNil: [ '' ] ifNotNil: [ 'Drone ' , c id asString ] ]) ];
+		  yourself
+]
+
+{ #category : 'presenters-building' }
 UISimulation >> buildDroneModePanel [
     "Panel radio Drones (All | Selected)"
     dronesAllButton ifNil: [ dronesAllButton := self newRadioButton ].
@@ -528,7 +601,7 @@ UISimulation >> buildDroneModePanel [
             yourself)
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'presenters-building' }
 UISimulation >> buildFallbackBaseMap [
     | rect |
     rect := RSBox new
@@ -539,7 +612,7 @@ UISimulation >> buildFallbackBaseMap [
     self addBaseShape: rect.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'presenters-building' }
 UISimulation >> buildMenuBar [
 
 	| menuBar simMenu zoomMenu importMenu waypointsMenu devMenu |
@@ -582,7 +655,19 @@ UISimulation >> buildMenuBar [
 	^ menuBarPresenter
 ]
 
-{ #category : 'layout' }
+{ #category : 'presenters-building' }
+UISimulation >> buildMissionListPresenter [
+
+	^ missionListPresenter
+		  ifNil: [
+				  self missionListPresenter: (self newList display: [ :m |
+								   m
+									   ifNil: [ '' ]
+									   ifNotNil: [ 'Mission ' , m class printString ] ]) ];
+		  yourself
+]
+
+{ #category : 'presenters-building' }
 UISimulation >> buildOverlayChecksPanel [
 	"Cases à cocher Missions / Hull / Ammunition / Fuel"
 
@@ -643,7 +728,42 @@ UISimulation >> buildOverlayPanel [
         yourself)
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters-building' }
+UISimulation >> buildScriptPresenter [
+
+ 
+	| clearButton runButton saveButton readButton |
+	scriptPresenter := self instantiate: SpTextInputFieldPresenter.
+	clearButton := self newButton
+		               label: 'Clear';
+		 iconName: #trash;
+		               action: [ self clearScript ].
+	runButton := self newButton
+		               label: 'Run';
+		 iconName: #trash;
+		               action: [ self runScript ].
+		  
+	saveButton := self newButton
+		              label: 'Save';
+				iconName: #glamorousSave;
+		              action: [ self saveScript ].
+	readButton := self newButton
+		              label: 'Load';
+				iconName: #catalog;
+		              action: [ self loadScript ].
+	^ self newPresenter layout: (SpBoxLayout newTopToBottom
+			   add: (SpBoxLayout newLeftToRight
+					    add: runButton    withConstraints: [ :constraints | constraints height: 20; width:  60]  ;
+					    add: clearButton   withConstraints: [ :constraints | constraints height: 20; width:  60] ;
+					    add: readButton    withConstraints: [ :constraints | constraints height: 20; width:  60];
+					    add: saveButton    withConstraints: [ :constraints | constraints height: 20; width:  60];
+					    yourself)
+			   expand: false;
+			   add: scriptPresenter  withConstraints: [ :constraints | constraints height: 150  ];  
+			   yourself)
+]
+
+{ #category : 'presenters-building' }
 UISimulation >> buildSimulationMenu [
 
 	^ SpMenuPresenter new
@@ -656,7 +776,7 @@ UISimulation >> buildSimulationMenu [
 				  it
 					  name: 'Step';
 					  icon: (self iconNamed: #smallDoIt);
-					  action: [ self simulationStepOnce ] ];
+					  action: [ self jump:1 ] ];
 		  addItem: [ :it |
 				  it
 					  name: 'Jump…';
@@ -677,7 +797,7 @@ UISimulation >> buildStatusLabel [
     ^ statusLabelPresenter.
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters-building' }
 UISimulation >> buildWaypointsMenu [
 
 	^ SpMenuPresenter new
@@ -700,7 +820,7 @@ UISimulation >> buildWaypointsMenu [
 		  yourself
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'presenters-building' }
 UISimulation >> buildZoomMenu [
 
 	^ SpMenuPresenter new
@@ -767,6 +887,13 @@ UISimulation >> clearPendingWaypoints [
     pendingWaypoints removeAll.
     self status: 'Cleared WP'.
     self refreshOverlays.
+]
+
+{ #category : 'scripting' }
+UISimulation >> clearScript [
+
+scriptPresenter text:''
+
 ]
 
 { #category : 'tests - test data' }
@@ -981,29 +1108,32 @@ UISimulation >> defaultImageWidth [
 
 { #category : 'layout' }
 UISimulation >> defaultLayout [
-     | right |   
-self buildMenuBar.  "assure menuBarPresenter"
 
-    right := self newPresenter.
-    right layout: (SpBoxLayout newTopToBottom
-        spacing: 6;
-        add: (self buildDroneModePanel) expand: false;     "Drones All/Selected"
-        add: (self buildOverlayChecksPanel) expand: false; "Missions/Hull/Ammunition/Fuel"
-        add: clusterListPresenter;
-        add: droneListPresenter;
-        add: statusLabelPresenter;
-        add: missionListPresenter;        
-yourself).
-    ^ SpBoxLayout newTopToBottom
-        spacing: 2;
-        add: menuBarPresenter height: 20;
-        add: (SpPanedLayout newLeftToRight
-            positionOfSlider: 20;
-            add: canvasPresenter;
-            add: right ;
-		
-            yourself);
-        yourself
+	| right |
+	self buildMenuBar. "assure menuBarPresenter"
+
+	right := self newPresenter.
+	right layout: (SpBoxLayout newTopToBottom
+			 spacing: 6;
+			 add: self buildDroneModePanel expand: false;
+			  add: self buildCheckList height:100 ;
+"			 add: self buildOverlayChecksPanel expand: false;"
+			 "Missions/Hull/Ammunition/Fuel"add: clusterListPresenter;
+			 add: droneListPresenter;
+			 add: missionListPresenter;
+				 add: self buildScriptPresenter height:100;
+						 add: statusLabelPresenter;
+
+			 yourself).
+	^ SpBoxLayout newTopToBottom
+		  spacing: 2;
+		  add: menuBarPresenter height: 20;
+		  add: (SpPanedLayout newLeftToRight
+				   positionOfSlider: 20 percent;
+				   add: canvasPresenter;
+				   add: right;
+				   yourself);
+		  yourself
 ]
 
 { #category : 'presenters' }
@@ -1028,36 +1158,6 @@ UISimulation >> defaultLayoutWithMenu [
             yourself);
         yourself.
     ^ main
-]
-
-{ #category : 'overlay models' }
-UISimulation >> drawAmmoOverlay [
-    | pie |
-self allDrones do: [ :d |
-        (d respondsTo: #ammunition) ifTrue: [
-            | pos barW cap ratio filled fill frame |
-            pos := self pixelForDrone: d.
-            pos ifNil: [ ^ self ].
-            
-            ratio := (d ammunition  / 1000) max: 0 .
-            
-            
-            pie := RSPieSlice new
-		model: d ammunition ;
-		alphaAngle: 0;
-		color: Color blue;
-		borderColor: Color black;
-		betaAngle: 360* ratio;
-		innerRadius: 5;
-		cornerRadii: 0;
-		externalRadius: 10;
-		position: 50@ -50;
-		yourself.
- 
-            
-            pie translateTo: (pos x - pie externalRadius ) @ (pos y - pie externalRadius ).
-     self markOverlayShape: pie.
-            rsCanvas add: pie  ] ]
 ]
 
 { #category : 'overlays' }
@@ -1101,35 +1201,39 @@ self allClusters do: [ :cluster | self drawClusterHullOverlayFor:cluster]
 { #category : 'overlays' }
 UISimulation >> drawClusterHullOverlayFor: c [
 
-	| s points pts poly |
-	^self.
-	
-	s := self droneShapes at: c ifAbsentPut: [ ClusterShapes new ].
+	| points pts poly s |
+	s := self ensureClusterShapes: c.
+	s hull ifNotNil: [
+			(rsCanvas shapes includes: s hull) ifTrue: [
+				rsCanvas removeShape: s hull ] ].
+
+
+
+
+
 
 	points := c drones collect: [ :d |
-		          (self droneShapes at: d) position center ].
+		         (self pixelForDrone: d) ].
 
 	pts := points size > 2
 		       ifTrue: [ ConvexHullCalculator new hullForPoints: points ]
 		       ifFalse: [ #(  ) ].
 
 
-	s hull ifNotNil: [
-			s hull points size = pts size
-				ifTrue: [ s hull points: pts "Update" ]
-				ifFalse: [ s hull: nil "force recompute" ] ].
-	s hull ifNil: [
-			pts size > 2 ifTrue: [
-					poly := RSPolygon new
-						        points: pts;
-						        color: Color transparent"(Color red alpha: 0.07);
-						        borderColor: (Color red alpha: 0.4)";
-						        borderWidth: 1;
-						        yourself.
-					s hull: poly.
- 
-					self markOverlayShape: poly.
-					rsCanvas add: poly ] ]
+
+	pts size > 2 ifTrue: [
+			poly := RSPolygon new
+				        points: pts;
+				        color: (Color red alpha: 0.5);
+				        borderColor: (Color red alpha: 0.4);
+				        borderWidth: 1;
+				        yourself. "(Color red alpha: 0.07);
+						        borderColor: (Color red alpha: 0.4)"
+			"poly moveTo: (self pixelForDrone: c drones first)."
+
+
+			s hull: poly.
+			rsCanvas addShape: poly ] "rsCanvas signalUpdate"
 ]
 
 { #category : 'presenters' }
@@ -1143,7 +1247,7 @@ UISimulation >> drawDroneIcons [
         p := self pixelForDrone: d.
         p ifNil: [ ^ self ].
        self drawDroneIconsFor:d at:p. rsCanvas signalUpdate .
-"       self drawDroneIconsTextFor:d at:p."].
+       self drawDroneIconsTextFor:d at:p.].
  
 ]
 
@@ -1248,7 +1352,7 @@ UISimulation >> drawEnergyOverlayFor: d at: p [
 UISimulation >> drawMissionOverlay [
 
 	| pts poly assignedMissions |
-	
+	self halt.
 		((overlayModel respondsTo: #showMissionPaths) and: [
 		 overlayModel showMissionPaths ]) ifFalse: [ ^ self ].
 	self allClusters do:[:c| 	assignedMissions := c missions  assignedMissions . 
@@ -1270,6 +1374,26 @@ UISimulation >> drawMissionOverlay [
 							 
 							self markOverlayShape: poly.
 							rsCanvas add: poly ] ]]]]
+]
+
+{ #category : 'overlays' }
+UISimulation >> drawMissionOverlayFor: c [
+
+	|  poly s |
+	s := self ensureClusterShapes: c.
+
+ 	s mission ifNotNil: [ rsCanvas removeShape: s mission ].
+			poly := RSPolygon new
+				        points: 	(c missions assignedMissions first   polygon collect:[:p | self pixelForDrone: p]);
+				        color: Color transparent;
+				        borderWidth: 1;
+				        yourself. "(Color red alpha: 0.07);
+						        borderColor: (Color red alpha: 0.4)"
+		"	poly moveTo: (self pixelForDrone: c drones first)."
+
+
+			s mission: poly.
+			rsCanvas addShape: poly 
 ]
 
 { #category : 'overlay models' }
@@ -1402,6 +1526,12 @@ UISimulation >> ensureCanvas [
 ]
 
 { #category : 'overlays' }
+UISimulation >> ensureClusterShapes: d [  
+	 ^self clusterShapes at: d ifAbsentPut: [ ClusterShapes newFor: d ].
+	 
+]
+
+{ #category : 'overlays' }
 UISimulation >> ensureDroneShapes: d [  
 	 ^self droneShapes at: d ifAbsentPut: [ DroneShapes newFor: d ].
 	 
@@ -1429,11 +1559,14 @@ UISimulation >> ensureOverlayModel [
 
 { #category : 'canvas' }
 UISimulation >> fetchBitmapFromWMS [
-    | wms img bmp  operations getmap layers map |
-    rsCanvas ifNil: [ ^ self ].
-    [(Smalltalk at: #OWSServiceWMS) new] on: Error do: [ ^ self ].
-    wms := OWSServiceWMS new.
-    wms url: 'https://data.geopf.fr/wms-r'.
+
+	| wms bmp operations getmap layers map |
+	rsCanvas ifNil: [ ^ self ].
+	[ (Smalltalk at: #OWSServiceWMS) new ]
+		on: Error
+		do: [ ^ self ].
+	wms := OWSServiceWMS new.
+	wms url: 'https://data.geopf.fr/wms-r'.
 
 	operations := wms operations.
 	getmap := operations detect: [ :request | request name = 'GetMap' ].
@@ -1445,10 +1578,10 @@ UISimulation >> fetchBitmapFromWMS [
 		       size: self imageSize
 		       epsg: '3857'
 		       format: 'image/png'.
- 
-    bmp := RSBitmap newFrom: map.
-    "bmp attributeAt: #base put: true."
-    rsCanvas add: bmp.
+
+	bmp := RSBitmap newFrom: map.
+	"bmp attributeAt: #base put: true."
+	rsCanvas add: bmp
 ]
 
 { #category : 'Menu Bar' }
@@ -1506,7 +1639,8 @@ UISimulation >> hideDrone: aDrone [
 
 { #category : 'presenters' }
 UISimulation >> hideShapes [
-   self  droneShapes  values do:[:a| a hideAll]
+   self  droneShapes  values do:[:a| a hideAll].
+   ""
 ]
 
 { #category : 'accessing' }
@@ -1611,7 +1745,7 @@ UISimulation >> importMissionsFromCSVDialog [
     self importMissionsFromCSV: file.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'initializing' }
 UISimulation >> initialize [
 
 	super initialize.
@@ -1633,13 +1767,36 @@ UISimulation >> initialize [
 		ensureBaseShapes
 ]
 
-{ #category : 'waypoints' }
+{ #category : 'initializing' }
 UISimulation >> initializePresenters [
     "Build all presenters (no layout here)."
     "Canvas"
     self ensureCanvas.
     self buildCanvasPresenter.
+	self buildStatusLabel.
+	self buildScriptPresenter.
+self buildCheckList.
+ 
+   
+    "Lists and status"
+ self buildClusterListPresenter; buildDroneListPresenter ;buildMissionListPresenter.
 
+
+    "Link lists (refresh drones on cluster selection change)"
+clusterListPresenter whenSelectionChangedDo: [ 
+           self updateDroneListFromSelectedClusters. self refreshDrones ].
+ 
+]
+
+{ #category : 'waypoints' }
+UISimulation >> initializePresentersOld [
+    "Build all presenters (no layout here)."
+    "Canvas"
+    self ensureCanvas.
+    self buildCanvasPresenter.
+testList := self instantiate: SpFilteringSelectableListPresenter.
+testList items:{#perception . #missions .#hull}.
+ 
     "Overlay checkboxes"
      overlayPanelPresenter := self buildOverlayChecksPanel.
    overlayChecks ifNil: [ overlayChecks := Dictionary new ].
@@ -1682,31 +1839,6 @@ UISimulation >> initializePresenters [
 ]
 
 { #category : 'presenters' }
-UISimulation >> installCanvasMenu [
-    canvasPresenter ifNil: [ ^ self ].
-    (canvasPresenter respondsTo: #contextMenu:) ifFalse: [ ^ self ].
-    canvasPresenter contextMenu: [
-        SpMenuPresenter new
-            addItem: [ :i | i name: 'Refresh Drones'; action: [ self refreshDrones ] ];
-            addItem: [ :i | i name: 'Full Refresh'; action: [ self fullDroneRefresh ] ];
-            yourself ].
-]
-
-{ #category : 'presenters' }
-UISimulation >> installShortcuts [
-    (self respondsTo: #bindKeyCombination:toAction:) ifFalse: [ ^ self ].
-    self bindKeyCombination: $r meta toAction: [ self refreshDrones ].
-    self bindKeyCombination: $R meta toAction: [ self fullDroneRefresh ].
-]
-
-{ #category : 'presenters' }
-UISimulation >> installShortcutsAndMenus [
-    "Raccourcis + menu contextuel après construction."
-    self installShortcuts.
-    self installCanvasMenu.
-]
-
-{ #category : 'presenters' }
 UISimulation >> isBaseShape: aShape [
     ^ baseShapes notNil and: [ baseShapes includes: aShape ]
 
@@ -1717,7 +1849,7 @@ UISimulation >> isOverlayShape: aShape [
     ^ overlayShapes notNil and: [ overlayShapes includes: aShape ]
 ]
 
-{ #category : 'presenters' }
+{ #category : 'Simulation control' }
 UISimulation >> jump: nSteps [
   
 | isRunning worker |
@@ -1742,7 +1874,7 @@ isRunning ifFalse: [ ^ self ].
 ] forkAt: Processor userBackgroundPriority.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'Simulation control' }
 UISimulation >> jumpDialog [
 | presenter n |
 	presenter := SpRequestDialog new.
@@ -1758,6 +1890,11 @@ UISimulation >> jumpDialog [
  ]];
 		openDialog.
     
+]
+
+{ #category : 'scripting' }
+UISimulation >> loadScript [
+self scriptPresenter updateTextFromModel: 'test'
 ]
 
 { #category : 'Simulation control' }
@@ -2106,32 +2243,34 @@ UISimulation >> refreshDrones [
     "self removeOverlayShapes." self hideShapes.
 self updateShapes.
 self showShapes.
-"
-    self drawDroneIcons.
-    self drawPerceptionOverlay.
-    self drawMissionOverlay.
-    self drawEnergyOverlay.
-    self drawAmmoOverlay."
+
     rsCanvas signalUpdate.
 ]
 
 { #category : 'tests - test data' }
 UISimulation >> refreshOverlays [
     rsCanvas ifNil: [ ^ self ].
-    self removeOverlayShapes.
+   " self removeOverlayShapes.
   
     self drawDroneIcons.          
     self drawClusterHullOverlay.
     self drawPerceptionOverlay.
     self drawMissionOverlay.
     self drawEnergyOverlay.
-    self drawAmmoOverlay.
-   " rsCanvas signalUpdate."
+    self drawAmmoOverlay. rsCanvas signalUpdate."
+self updateShapes 
 ]
 
 { #category : 'presenters' }
 UISimulation >> removeOverlayShapes [
     self clearOverlayShapes.
+]
+
+{ #category : 'accessing' }
+UISimulation >> resetDroneShapes [
+	"eg. Change zoom requires redesigning shapes"
+
+	droneShapes := nil
 ]
 
 { #category : 'presenters' }
@@ -2149,6 +2288,20 @@ UISimulation >> rsCanvas [
 UISimulation >> rsCanvas: anObject [
 
 	rsCanvas := anObject
+]
+
+{ #category : 'scripting' }
+UISimulation >> runScript [
+
+(OpalCompiler new)
+    source: self scriptPresenter selectedText;
+    receiver: self simulator;
+    evaluate.
+]
+
+{ #category : 'scripting' }
+UISimulation >> saveScript [
+
 ]
 
 { #category : 'Simulation control' }
@@ -2170,6 +2323,13 @@ UISimulation >> saveSimulationTo: aFileRef [
     [ FLSerializer serialize: simulation toFileNamed: aFileRef fullName.
       Transcript show: 'Simulation sauvegardée: ', aFileRef fullName; cr ]
         on: Error do: [ :ex | Transcript show: 'Save error: ', ex messageText; cr ].
+]
+
+{ #category : 'presenters' }
+UISimulation >> scriptPresenter [ 
+
+	 
+	^ scriptPresenter 
 ]
 
 { #category : 'presenters' }
@@ -2237,38 +2397,10 @@ UISimulation >> showAllDrones: aBoolean [
 ]
 
 { #category : 'presenters' }
-UISimulation >> showMenu: aMenuPresenter fromButton: aButton [
-    "Affiche le menu. Essaie plusieurs sélecteurs (#openWithSpec, #open, #openInWorld). Fallback UIManager."
-     | tried selectors success |   aMenuPresenter ifNil: [ ^ self ].
-
-
-    selectors := #(#openWithSpec #open #openInWorld).
-    success := false.
-    selectors do: [ :sel |
-        (success not and: [ aMenuPresenter respondsTo: sel ]) ifTrue: [
-            [ aMenuPresenter perform: sel.
-              success := true ]
-                on: Error do: [ :ex | Transcript show: 'Menu open error (', sel, '): ', ex messageText; cr ] ] ].
-    success ifTrue: [ ^ self ].
-
-    "Fallback simple list choice"
-    (UIManager default
-        chooseFrom: (aMenuPresenter items collect: [ :it | it name ])
-        title: ((aMenuPresenter respondsTo: #label) ifTrue: [ aMenuPresenter label ] ifFalse: [ 'Menu' ]))
-            ifNotNil: [ :index |
-                index > 0 ifTrue: [
-                    | item |
-                    item := aMenuPresenter items at: index.
-                    (item respondsTo: #performAction)
-                        ifTrue: [ item performAction ]
-                        ifFalse: [
-                            (item respondsTo: #action) ifTrue: [ item action value ] ] ] ].
-]
-
-{ #category : 'presenters' }
 UISimulation >> showShapes [
 
-	self droneShapes values do: [ :a | a showAll ]
+	self droneShapes values do: [ :a | a showAll ].
+	 
 ]
 
 { #category : 'accessing' }
@@ -2283,7 +2415,7 @@ UISimulation >> simulation: aSim [
     ^ self.
 ]
 
-{ #category : 'presenters' }
+{ #category : 'presenters-building' }
 UISimulation >> simulationMenu [
     | m |
     m := SpMenuPresenter new.
@@ -2480,9 +2612,10 @@ UISimulation >> updateShapes [
 			self drawPerceptionOverlayFor: d at: p.
 
 			self drawEnergyOverlayFor: d at: p.
-			self drawAmmoOverlayFor:d at: p ].
-	"self drawClusterHullOverlay.
-	self drawMissionOverlay"
+			self drawAmmoOverlayFor: d at: p ].
+	self allClusters do: [ :c |
+			self drawClusterHullOverlayFor: c.
+			self drawMissionOverlayFor: c ]
 ]
 
 { #category : 'overlays' }
@@ -2565,10 +2698,12 @@ UISimulation >> zoomLevel [
 
 { #category : 'presenters' }
 UISimulation >> zoomLevel: aNumber [
-    zoomLevel := (aNumber asFloat max: 0.1) min: 50.
-    self updateZoomedBBox.
-    self markBaseMapDirty.
-    self refreshAll.
+
+	zoomLevel := (aNumber asFloat max: 0.1) min: 50.
+	self updateZoomedBBox.
+	self resetDroneShapes.
+	self markBaseMapDirty.
+	self refreshAll
 ]
 
 { #category : 'zoom animation' }
