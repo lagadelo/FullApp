@@ -1,10 +1,6 @@
 Class {
 	#name : 'ClusterMission',
-	#superclass : 'Object',
-	#instVars : [
-		'assignedCluster',
-		'status'
-	],
+	#superclass : 'Mission',
 	#classInstVars : [
 		'missionType',
 		'zoneParameters',
@@ -196,18 +192,6 @@ ClusterMission >> assignToCluster: aCluster [
 	^ self
 ]
 
-{ #category : 'accessing' }
-ClusterMission >> assignedCluster [
-
-	^ assignedCluster
-]
-
-{ #category : 'accessing' }
-ClusterMission >> assignedCluster: anObject [
-
-	assignedCluster := anObject
-]
-
 { #category : 'copying' }
 ClusterMission >> copy [ 
 | copy |
@@ -316,16 +300,4 @@ ClusterMission >> missionType [
 { #category : 'strategy' }
 ClusterMission >> responseStrategy [
    ^self subclassResponsibility 
-]
-
-{ #category : 'accessing' }
-ClusterMission >> status [
-
-	^ status
-]
-
-{ #category : 'accessing' }
-ClusterMission >> status: anObject [
-
-	status := anObject
 ]

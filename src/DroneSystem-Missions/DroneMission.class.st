@@ -1,34 +1,28 @@
 Class {
 	#name : 'DroneMission',
-	#superclass : 'Object',
+	#superclass : 'Mission',
 	#instVars : [
-		'assignedDrone',
-		'status'
+		'wayPoints'
 	],
 	#category : 'DroneSystem-Missions',
 	#package : 'DroneSystem-Missions'
 }
 
-{ #category : 'accessing' }
-DroneMission >> assignedDrone [
+{ #category : 'as yet unclassified' }
+DroneMission >> nextWayPointFor: aDrone [
 
-	^ assignedDrone
+	aDrone == self model ifFalse: [ self error ].
+	^ self nextWayPoint
 ]
 
 { #category : 'accessing' }
-DroneMission >> assignedDrone: anObject [
+DroneMission >> wayPoints [
 
-	assignedDrone := anObject
+	^ wayPoints
 ]
 
 { #category : 'accessing' }
-DroneMission >> status [
+DroneMission >> wayPoints: anObject [
 
-	^ status
-]
-
-{ #category : 'accessing' }
-DroneMission >> status: anObject [
-
-	status := anObject
+	wayPoints := anObject
 ]

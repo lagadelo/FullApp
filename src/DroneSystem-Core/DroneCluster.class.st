@@ -163,7 +163,7 @@ DroneCluster >> expandedCoverageByFactor: aFactor [
 
 { #category : 'initialization' }
 DroneCluster >> initializeWithDrones: droneList clusterId: anId [
-    drones := droneList.
+     droneList do:[:a| self addDrone: a].
     id := anId.
   
 "    self updateCapabilities.

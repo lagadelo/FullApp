@@ -43,15 +43,15 @@ ResumePatrolEvent >> executeOn: simulator [
 	"Demande à la mission de redéfinir les objectifs"
 
 	| mission point |
-	mission := drone cluster currentMission.
+	mission := drone cluster ifNil: [ ^ self ].
+	mission := drone cluster missions assignedMissions first.
+	self halt.
 	mission ifNotNil: [
 			point := mission nextWayPointFor: drone.
 			point ifNotNil: [
 					simulator
 						scheduleEvent:
-						"(MoveToWaypointEvent for: drone to: point at: self timestamp)"( MoveStepEvent  
-		  drone: drone
-		  wayPoint: point
-		  speed: drone speed)
-						after: (Set with: 100) ] ]
+						(MoveStepEvent drone: drone wayPoint: point speed: drone speed)
+						after: (Set with: 100)
+					"(MoveToWaypointEvent for: drone to: point at: self timestamp)" ] ]
 ]

@@ -1,6 +1,9 @@
 Class {
 	#name : 'BaselineOfDrone',
 	#superclass : 'BaselineOf',
+	#classInstVars : [
+		'spec'
+	],
 	#category : 'DronesSystem-Installation',
 	#package : 'DronesSystem-Installation'
 }

@@ -17,6 +17,12 @@ SecurizationMission >> isSecurizationMission [
 ^true
 ]
 
+{ #category : 'as yet unclassified' }
+SecurizationMission >> nextWayPointFor: drone [
+
+^nil
+]
+
 { #category : 'strategy' }
 SecurizationMission >> responseStrategy [
     ^ HybridStrategy new.

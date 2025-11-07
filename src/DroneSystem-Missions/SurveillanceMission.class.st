@@ -29,6 +29,19 @@ SurveillanceMission >> isSurveillanceMission [
 ]
 
 { #category : 'strategy' }
+SurveillanceMission >> nextWaypointFor: drone [
+
+	| i j r weight |
+	r := Random new.
+	i := (r next * waypoints size rounded min: 1) max: waypoints size.
+	[ j := (r next * waypoints size rounded min: 1) max: waypoints size ]
+		doWhileTrue: [ j = i ].
+	weight := r new.
+	^ (self wayPoints at: i) * weight
+	  + ((self wayPoints at: j) * (1 - weight))
+]
+
+{ #category : 'strategy' }
 SurveillanceMission >> nextWaypointForDrone: drone currentWaypoint: currentWaypoint [
     |   currentIndex nextIndex |
  

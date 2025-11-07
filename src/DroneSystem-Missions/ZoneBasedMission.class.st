@@ -2,7 +2,7 @@ Class {
 	#name : 'ZoneBasedMission',
 	#superclass : 'ClusterMission',
 	#instVars : [
-		'waypoints',
+		'wayPoints',
 		'polygon'
 	],
 	#category : 'DroneSystem-Missions',
@@ -40,10 +40,10 @@ ZoneBasedMission >> battleZone [
 ZoneBasedMission >> generateExtraWaypointsForDrones [
 
 	| nWaypoints segments neededWaypoints result newPoint fraction nDrones |
-	nWaypoints := waypoints size.
+	nWaypoints := wayPoints size.
 	nDrones := self assignedCluster drones size.
 	"Si on a déjà assez de waypoints, on retourne la liste telle quelle"
-	nWaypoints >= nDrones ifTrue: [ ^ waypoints copy ].
+	nWaypoints >= nDrones ifTrue: [ ^ wayPoints copy ].
 
 	result := OrderedCollection new.
 
@@ -51,15 +51,15 @@ ZoneBasedMission >> generateExtraWaypointsForDrones [
 	neededWaypoints := nDrones - nWaypoints.
 
 	"Ajouter d’abord les waypoints existants"
-	result addAll: waypoints.
+	result addAll: wayPoints.
 
 	"Interpolation entre les points existants"
 	segments := (1 to: nWaypoints) collect: [ :i |
 		            | start end |
-		            start := waypoints at: i.
+		            start := wayPoints at: i.
 		            end := i = nWaypoints
-			                   ifTrue: [ waypoints first ]
-			                   ifFalse: [ waypoints at: i + 1 ].
+			                   ifTrue: [ wayPoints first ]
+			                   ifFalse: [ wayPoints at: i + 1 ].
 		            {
 			            start.
 			            end } ].
@@ -102,13 +102,13 @@ ZoneBasedMission >> polygon: anObject [
 ]
 
 { #category : 'accessing' }
-ZoneBasedMission >> waypoints [
+ZoneBasedMission >> wayPoints [
 
-	^ waypoints
+	^ wayPoints
 ]
 
 { #category : 'accessing' }
-ZoneBasedMission >> waypoints: anObject [
+ZoneBasedMission >> wayPoints: anObject [
 
-	waypoints := anObject
+	wayPoints := anObject
 ]
