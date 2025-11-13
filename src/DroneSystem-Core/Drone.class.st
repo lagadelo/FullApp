@@ -220,15 +220,22 @@ Drone >> helpRequestMessage [
 { #category : 'initialization' }
 Drone >> initialize [
 
+	| r |
 	super initialize.
 	geoPoint := self class LandingBase.
 	capabilities := Capabilities new.
+	r := Random new.
 
 	capabilities define: #energy maxValue: 100.
 	capabilities define: #ammunitions maxValue: 1000.
 
 	capabilities define: #perceptionRange maxValue: 50.
 	capabilities define: #communicationRange maxValue: 50.
+
+	capabilities consumePercent: r next * 100 of: #energy.
+	capabilities consumePercent: r next * 100 of: #ammunitions.
+	capabilities consumePercent: r next * 50 of: #communicationRange.
+	 
 	behavior := nil.
 	id := UUID new asString.
 	type := 'standard'.

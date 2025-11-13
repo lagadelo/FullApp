@@ -301,7 +301,7 @@ DroneScenarios class >> exampleSimpleBlock2 [
 		           { 43.2965. 5.3698. 100 }. "Marseille"
 		           { 51.5074. -0.1276. 100 } "Londres" } collect: [ :a |
 		           GeoPoint with: a ].
-
+ 
 	mission := (SecurizationMission new polygon: polygon)
 		           assignToCluster: cluster1.
 
@@ -372,6 +372,56 @@ DroneScenarios class >> exampleSimpleBlock3 [
 	simulator scheduleEvent: evt after: Set new.].
 
 	^ simulator
+]
+
+{ #category : 'as yet unclassified' }
+DroneScenarios class >> exampleSimpleBlock4 [
+	" self exampleSimpleBlock4"
+
+	| simulator polygon drones sim cluster1 mission fleet intervalMs running |
+	intervalMs := 300. "ms entre steps"
+	running := true.
+	sim := SimulationState new.
+	drones := (1 to: 30) collect: [ :a | Drone example ].
+
+	cluster1 := DroneCluster new
+		            initializeWithDrones: drones
+		            clusterId: 'Cluster for Surveillance'.
+
+
+	fleet := DroneFleet new.
+
+	fleet addCluster: cluster1.
+	sim addFleet: fleet.
+
+	polygon := {
+		           { 48.3904. -4.4947. 100 }. "Brest"
+
+		           { 43.2965. 5.3698. 100 }. "Marseille"
+		           { 50.6292. 3.0573. 100 }. "Lille"
+
+		           { 51.5074. -0.1276. 100 } "Londres" } collect: [ :a |
+		           Waypoint with: a ].
+
+	mission := (SecurizationMission new polygon: polygon)
+		           assignToCluster: cluster1.
+
+	simulator := DroneSimulator new.
+	simulator model: sim.
+	simulator currentTime: 1.
+	simulator timeStep: 10. " A verifier par rapport a intervalMs"
+
+
+	simulator scheduleEvent: mission startEvent after: Set new.
+
+	^ simulator
+]
+
+{ #category : 'as yet unclassified' }
+DroneScenarios class >> exampleSimpleBlock4GUI [
+	" self exampleSimpleBlock4GUI"
+
+	self exampleSimpleBlock4 open
 ]
 
 { #category : 'to be refactored' }

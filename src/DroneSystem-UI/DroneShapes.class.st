@@ -58,7 +58,7 @@ DroneShapes >> hideAll [
 	self ammunitions ifNotNil:[ self ammunitions color: Color transparent ].
 	self energy ifNotNil:[ self energy color: Color transparent ].
 	self perceptionRange ifNotNil:[ self perceptionRange color: Color transparent ].
-	self position ifNotNil:[ self position color: Color transparent ].
+	self position ifNotNil:[   self position color: Color transparent ].
 		
 ]
 
@@ -99,6 +99,12 @@ DroneShapes >> position: anObject [
 ]
 
 { #category : 'coloring' }
+DroneShapes >> reset: aField [
+
+	self perform: (aField , ':') asSymbol with: nil
+]
+
+{ #category : 'coloring' }
 DroneShapes >> show: aField [
 
 self perform: (#show,aField capitalized) asSymbol
@@ -134,6 +140,15 @@ self energy ifNotNil:[	self energy color: ([ :a |
 ]
 
 { #category : 'coloring' }
+DroneShapes >> showFollowing: anOverlayModel [
+
+	anOverlayModel showAmmoBars ifTrue: [ self showAmmunitions ].
+	anOverlayModel showEnergyBars ifTrue: [ self showEnergy ].
+	"anOverlayModel showPosition" true ifTrue: [ self showPosition ].
+	anOverlayModel showPerceptionRadius ifTrue: [ self showPerceptionRange ]
+]
+
+{ #category : 'coloring' }
 DroneShapes >> showPerceptionRange [
 
 self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alpha: 0.15)]
@@ -143,7 +158,7 @@ self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alp
 DroneShapes >> showPosition [
 
 	 self position ifNotNil: [
-			self position color: (self model isHostile
+			self position color: "(self model isHostile
 					 ifTrue: [ Color red ]
-					 ifFalse: [ Color black ]) ]
+					 ifFalse: [ Color black ])" Color red ]
 ]

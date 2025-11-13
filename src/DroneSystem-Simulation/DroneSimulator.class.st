@@ -8,11 +8,24 @@ Class {
 		'timeStep',
 		'entityEventMap',
 		'eventGraph',
-		'electionSessions'
+		'electionSessions',
+		'autoResume'
 	],
 	#category : 'DroneSystem-Simulation',
 	#package : 'DroneSystem-Simulation'
 }
+
+{ #category : 'accessing' }
+DroneSimulator >> autoResume [
+
+	^ autoResume
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> autoResume: anObject [
+
+	autoResume := anObject
+]
 
 { #category : 'accessing' }
 DroneSimulator >> currentTime [
@@ -222,6 +235,16 @@ DroneSimulator >> handleWaypointReached: anEvent [
 
 ]
 
+{ #category : 'testing' }
+DroneSimulator >> hasCompleted: aTimestamp [
+
+	| nextEvt |
+	self currentTime > aTimestamp ifTrue: [ ^ true ]. "Alread done"
+	nextEvt := self scheduler potentialNextEvent.
+	nextEvt ifNil: [ ^ false ]. "Not done, and nothing more to do, answers no"
+	^ nextEvt timestamp > aTimestamp "Something to do, but noting at our timeStamp, answers yes"
+]
+
 { #category : 'scheduling' }
 DroneSimulator >> hasEvents [ 
 ^self scheduler hasEvents 
@@ -251,6 +274,12 @@ DroneSimulator >> invalidateFutureEventsFor: anEntity after: timestamp [
     ].
 self removeEvents: eventsToRemove fromEntity: anEntity
  
+]
+
+{ #category : 'testing' }
+DroneSimulator >> isRunning [ 
+
+	^ self hasEvents
 ]
 
 { #category : 'as yet unclassified' }
@@ -367,6 +396,17 @@ DroneSimulator >> scheduleEvent: evt at: aDate [
 	^self scheduleEvent: evt.
 ]
 
+{ #category : 'dependencies' }
+DroneSimulator >> scheduleEvent: anEvent at: aTimestamp after: dependencyEvents [
+
+	anEvent timestamp: aTimestamp.
+	self scheduleEvent: anEvent.
+
+	scheduler eventGraph
+		addEvent: anEvent
+		withDependencies: dependencyEvents
+]
+
 { #category : 'accessing' }
 DroneSimulator >> scheduler [
 
@@ -389,6 +429,7 @@ DroneSimulator >> step [
 
 	(entityEventMap isReady: event)
 		ifTrue: [ "Met à jour le temps courant de la simulation"
+			event timestamp ifNil:[event timestamp: currentTime ].
 				currentTime = event timestamp ifFalse: [ "Only refresh once when several events share timestamp"
 					 	self model ifNotNil: [ self model hasChanged ].  "This should now be delegated in jump: method of UISimulator"
 						currentTime := event timestamp ].

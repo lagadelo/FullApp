@@ -36,17 +36,12 @@ Class {
 		'timeLabelPresenter',
 		'menuBarPresenter',
 		'haltOnError',
-		'menuRowPresenter',
-		'overlayChecksPanelPresenters',
 		'allDrones',
-		'checkHull',
-		'checkAmmunition',
-		'checkFuel',
 		'missionListPresenter',
 		'droneShapes',
 		'clusterShapes',
-		'testList',
-		'scriptPresenter'
+		'scriptPresenter',
+		'isRunning'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -252,24 +247,6 @@ UISimulation class >> webMercatorToLongitureLatitude: lonLatPoint [
     ^ x @ y.
 ]
 
-{ #category : 'initializing' }
-UISimulation >> + buildCheckList [
-
-	| checkListPresenter cbx |
-	checkListPresenter := SpPresenter new.
-	cbx := { #perception. #missions. #energy. #ammunitions. #hull }
-		       with:
-			       { #showPerceptionRadius:. #showMissionPaths:.
-			       #showEnergyBars:. #showAmmoBars:. #showClusterHull: }
-		       do: [ :aSymbol :aMessage |
-				       | aCheckBox |
-				       aCheckBox := self newCheckBox
-					                    label: aSymbol;
-					                    yourself.
-				       aCheckBox whenChangedDo: [
-					       self perform: aMessage with: aCheckBox status ] ]
-]
-
 { #category : 'presenters' }
 UISimulation >> addBaseShape: aShape [
     baseShapes ifNil: [ baseShapes := OrderedCollection new ].
@@ -435,33 +412,33 @@ UISimulation >> buildCanvasWidget [
     ^ SpLabelPresenter new label: 'Pas de presenter Roassal'
 ]
 
-{ #category : 'initializing' }
+{ #category : 'presenters-building' }
 UISimulation >> buildCheckList [
 
 	| cbx collection checkBoxesLayout |
 	collection := OrderedCollection new.
 
-	cbx := { #perception. #missions. #energy. #ammunitions. #hull }
+	cbx := { #perception. #energy. #ammunitions. #missions. #hull }
 		       with:
-			       { #showPerceptionRadius:. #showMissionPaths:.
-			       #showEnergyBars:. #showAmmoBars:. #showClusterHull: }
+			       { #showPerceptionRadius:.
+			       #showEnergyBars:. #showAmmoBars:. #showMissionPaths: .#showClusterHull: }
 		       do: [ :aSymbol :aMessage |
 				       | aCheckBox |
 				       aCheckBox := self newCheckBox
 					                    label: aSymbol;
+					                    state: true;
 					                    yourself.
 				       aCheckBox whenChangedDo: [
-					       self overlayModel
-						       perform: aMessage
-						       with: aCheckBox state ].
-				       collection add: aCheckBox ].
+					       self overlayModel perform: aMessage with: aCheckBox state. self refreshDrones  ].
+				       collection add: aCheckBox.
+				       ].
 
 	checkBoxesLayout := SpBoxLayout newLeftToRight.
 	collection do: [ :aCheckBox |
 			checkBoxesLayout add: aCheckBox withConstraints: [ :constraints |
 					constraints
 						height: 20;
-						width: 60 ] ].
+						width: 80 ] ].
 
 	^ self newPresenter
 		  layout: checkBoxesLayout;
@@ -491,71 +468,6 @@ UISimulation >> buildDevMenu [
 ]
 
 { #category : 'presenters-building' }
-UISimulation >> buildDroneFilterPanel [
-
-	| panel title allBtn selBtn radioClass groupClass group |
-	panel := self newPresenter.
-	title := SpLabelPresenter new
-		         label: 'Drones';
-		         yourself.
-
-	radioClass := Smalltalk at: #SpRadioButtonPresenter ifAbsent: [ nil ].
-	radioClass notNil
-		ifTrue: [
-				groupClass := Smalltalk at: #SpRadioButtonGroup ifAbsent: [ nil ].
-				group := groupClass ifNotNil: [ groupClass new ].
-
-				allBtn := radioClass new
-					          label: 'All';
-					          yourself.
-				selBtn := radioClass new
-					          label: 'Selected';
-					          yourself.
-
-				(group notNil and: [ allBtn respondsTo: #group: ]) ifTrue: [
-						allBtn group: group.
-						selBtn group: group ].
-
-				"Init via le groupe (meilleure mise à jour graphique)"
-				(group notNil and: [ group respondsTo: #select: ])
-					ifTrue: [
-							group select: (self showAllDrones
-									 ifTrue: [ allBtn ]
-									 ifFalse: [ selBtn ]) ]
-					ifFalse: [
-							allBtn state: self showAllDrones.
-							selBtn state: self showAllDrones not ].
-
-				"Callbacks"
-				(allBtn respondsTo: #whenActivatedDo:)
-					ifTrue: [
-							allBtn whenActivatedDo: [ self showAllDrones: true ].
-							selBtn whenActivatedDo: [ self showAllDrones: false ] ]
-					ifFalse: [
-							allBtn whenChangedDo: [ self showAllDrones: true ].
-							selBtn whenChangedDo: [ self showAllDrones: false ] ] ]
-		ifFalse: [ "Fallback: deux toggles exclusifs"
-				allBtn := SpToggleButtonPresenter new
-					          label: 'All';
-					          yourself.
-				selBtn := SpToggleButtonPresenter new
-					          label: 'Selected';
-					          yourself.
-				allBtn state: self showAllDrones.
-				selBtn state: self showAllDrones not.
-				allBtn action: [ self showAllDrones: true ].
-				selBtn action: [ self showAllDrones: false ] ].
-
-	panel layout: (SpBoxLayout newTopToBottom
-			 spacing: 2;
-			 add: title;
-			 add: allBtn;
-			 add: selBtn;
-			 yourself).
-	^ panel
-]
-
-{ #category : 'presenters-building' }
 UISimulation >> buildDroneListPresenter [
 
 	^ droneListPresenter
@@ -568,7 +480,7 @@ UISimulation >> buildDroneListPresenter [
 { #category : 'presenters-building' }
 UISimulation >> buildDroneModePanel [
     "Panel radio Drones (All | Selected)"
-    dronesAllButton ifNil: [ dronesAllButton := self newRadioButton ].
+    dronesAllButton ifNil: [ dronesAllButton := self   newRadioButton ]. dronesAllButton inspect.
     dronesSelectedButton ifNil: [ dronesSelectedButton := self newRadioButton ].
     dronesModeLabel ifNil: [ dronesModeLabel := self newLabel ].
 
@@ -668,67 +580,6 @@ UISimulation >> buildMissionListPresenter [
 ]
 
 { #category : 'presenters-building' }
-UISimulation >> buildOverlayChecksPanel [
-	"Cases à cocher Missions / Hull / Ammunition / Fuel"
-
-	checkPerception ifNil: [ checkPerception := self newCheckBox ].
-	checkMissions ifNil: [ checkMissions := self newCheckBox ].
-	checkHull ifNil: [ checkHull := self newCheckBox ].
-	checkAmmunition ifNil: [ checkAmmunition := self newCheckBox ].
-	checkFuel ifNil: [ checkFuel := self newCheckBox ].
-	overlayChecksLabel ifNil: [ overlayChecksLabel := self newLabel ].
-
-
-	checkPerception label: 'Perception'.
-	checkMissions label: 'Missions'.
-	checkHull label: 'Hull'.
-	checkAmmunition label: 'Ammunition'.
-	checkFuel label: 'Fuel'.
-
-	overlayChecks ifNil: [ overlayChecks := Dictionary new ].
-	checkPerception state:
-		(overlayChecks at: #perception ifAbsentPut: [ false ]).
-
-	checkMissions state:
-		(overlayChecks at: #missions ifAbsentPut: [ false ]).
-	checkHull state: (overlayChecks at: #hull ifAbsentPut: [ false ]).
-	checkAmmunition state:
-		(overlayChecks at: #ammunition ifAbsentPut: [ false ]).
-	checkFuel state: (overlayChecks at: #fuel ifAbsentPut: [ false ]).
-
-	self connectOverlayChecks.
-	self updateOverlayChecksLabel.
-
-	^ self newPresenter
-		  layout: (SpBoxLayout newTopToBottom
-				   add: (SpBoxLayout newLeftToRight
-						    spacing: 6;
-						    add: checkPerception expand: false;
-						    add: checkMissions expand: false;
-						    add: checkHull expand: false;
-						    add: checkAmmunition expand: false;
-						    add: checkFuel expand: false;
-						    yourself)
-				   expand: false;
-				   add: overlayChecksLabel expand: false;
-				   yourself);
-		  yourself
-]
-
-{ #category : 'presenters-building' }
-UISimulation >> buildOverlayPanel [
-    | checksPanel |
-    "checksPanel = ton panneau existant avec 'Perception', 'Missions', etc."
-    checksPanel := self buildOverlayChecksPanel.
-    overlayPanelPresenter := self newPresenter.
-    overlayPanelPresenter layout: (SpBoxLayout newLeftToRight
-        spacing: 10;
-        add: (self buildDroneFilterPanel);   "<<< A GAUCHE"
-        add: checksPanel;                    "<<< À DROITE : tes cases à cocher"
-        yourself)
-]
-
-{ #category : 'presenters-building' }
 UISimulation >> buildScriptPresenter [
 
  
@@ -771,22 +622,35 @@ UISimulation >> buildSimulationMenu [
 				  it
 					  name: 'Start';
 					  icon: (self iconNamed: #smallForward);
-					  action: [ self startSimulationLoop ] ];
+					  action: [ self runSimulationLoop ] ];
+						  addItem: [ :it |
+				  it
+					  name: 'Stop';
+					  icon: (self iconNamed: #smallStop);
+					  action: [ self stopSimulationLoop ] ];
 		  addItem: [ :it |
 				  it
-					  name: 'Step';
+					  name: 'Run steps';
 					  icon: (self iconNamed: #smallDoIt);
-					  action: [ self jump:1 ] ];
+					  action: [
+						  self
+							  simulationMenuItem: 'Provide nb steps'
+							  do: [ :nb | self runSimulationSteps: nb ] ] ];
 		  addItem: [ :it |
 				  it
-					  name: 'Jump…';
+					  name: 'Run to date';
 					  icon: (self iconNamed: #smallForward);
-					  action: [ self jumpDialog ] ];
+					  action: [
+							  self
+								  simulationMenuItem: 'Provide timestamp'
+								  do: [ :nb | self runSimulationLoopUntilTimestamp: nb ] ] ];
 		  addItem: [ :it |
 				  it
 					  name: 'HaltOn';
 					  icon: (self iconNamed: #smallError);
-					  action: [ haltOnError := haltOnError not ] ];
+					  action: [ self
+								  simulationMenuItem: 'Provide condition'
+								  do: [ :blk | self runSimulationLoopUntilCondition: blk ] ] ];
 		  yourself
 ]
 
@@ -795,6 +659,13 @@ UISimulation >> buildStatusLabel [
     statusLabelPresenter ifNotNil: [ ^ statusLabelPresenter ].
     statusLabelPresenter := SpLabelPresenter new label: 'Ready'.
     ^ statusLabelPresenter.
+]
+
+{ #category : 'presenters-building' }
+UISimulation >> buildTimeLabel [
+
+ timeLabelPresenter ifNil: [timeLabelPresenter :=self   instantiate: SpLabelPresenter. ].
+ ^timeLabelPresenter 
 ]
 
 { #category : 'presenters-building' }
@@ -1123,6 +994,8 @@ UISimulation >> defaultLayout [
 			 add: missionListPresenter;
 				 add: self buildScriptPresenter height:100;
 						 add: statusLabelPresenter;
+										 add: self buildScriptPresenter height:100;
+						 add: timeLabelPresenter ;
 
 			 yourself).
 	^ SpBoxLayout newTopToBottom
@@ -1161,35 +1034,19 @@ UISimulation >> defaultLayoutWithMenu [
 ]
 
 { #category : 'overlays' }
-UISimulation >> drawAmmoOverlayFor: d at: p [
+UISimulation >> drawAmmoOverlayFor:  d at: p [
 
-	| s pie ratio |
+	| s |
 	s := self ensureDroneShapes: d.
-	s ammunitions ifNil: [
-			ratio := d capabilities ammunitions / 1000 max: 0.
+	(self  overlayModel  showAmmoBars ) ifTrue:	[s ammunitions ifNil: [
+			s ammunitions: (RSBox new
+					 width: (d capabilities availablePercentage: #ammunitions) * 20 ;
+					 height: 5;
+					 color: Color transparent;
+					 yourself).
 
-
-			pie := RSPieSlice new
-				       model: d capabilities ammunitions;
-				       alphaAngle: 0;
-				       color: Color transparent;
-				       "borderColoapabilitiesr: Color transparent;"
-				       betaAngle: 360;
-				       innerRadius: 5;
-				       cornerRadii: 0;
-				       externalRadius: 10;
-				       position: 50 @ -50;
-				       yourself.
-
-			s ammunitions: pie.
-
-
-
-			self markOverlayShape: pie.
-			rsCanvas add: pie ].
-	s ammunitions
-		betaAngle: 360 * (d capabilities availablePercentage: #ammunitions);
-		translateTo: p - s ammunitions externalRadius
+			rsCanvas add: s ammunitions ].
+	s ammunitions translateTo: p x @ (p y + 10)]
 ]
 
 { #category : 'overlays' }
@@ -1208,7 +1065,7 @@ UISimulation >> drawClusterHullOverlayFor: c [
 				rsCanvas removeShape: s hull ] ].
 
 
-
+self overlayModel showClusterHull ifTrue:[
 
 
 
@@ -1225,7 +1082,7 @@ UISimulation >> drawClusterHullOverlayFor: c [
 			poly := RSPolygon new
 				        points: pts;
 				        color: (Color red alpha: 0.5);
-				        borderColor: (Color red alpha: 0.4);
+				        borderColor: (Color red alpha: 0.2);
 				        borderWidth: 1;
 				        yourself. "(Color red alpha: 0.07);
 						        borderColor: (Color red alpha: 0.4)"
@@ -1233,7 +1090,7 @@ UISimulation >> drawClusterHullOverlayFor: c [
 
 
 			s hull: poly.
-			rsCanvas addShape: poly ] "rsCanvas signalUpdate"
+			rsCanvas addShape: poly ] "rsCanvas signalUpdate"]
 ]
 
 { #category : 'presenters' }
@@ -1255,10 +1112,12 @@ UISimulation >> drawDroneIcons [
 UISimulation >> drawDroneIconsFor: d at: p [
 
 	| dot s |
+ 
+
 	s := self ensureDroneShapes: d.
-	s position ifNil: [
+	s position ifNil: [	 
 			dot := RSCircle new
-				       radius: 5;
+				       radius: 50;
 				       color: Color  red"transparent" ;
 				       yourself.
 			s position: dot. "s is a DroneShape"
@@ -1266,7 +1125,7 @@ UISimulation >> drawDroneIconsFor: d at: p [
 
 			rsCanvas add: dot ].
 	"dot is a Shape"
-	s position translateTo: p
+	s position translateTo: p   
 ]
 
 { #category : 'presenters' }
@@ -1332,12 +1191,53 @@ colorsMeaning :=[:a|
 						add: frame ] ]
 ]
 
+{ #category : 'overlay models' }
+UISimulation >> drawEnergyOverlay2 [
+
+|colorsMeaning|
+colorsMeaning :=[:a|
+	a < 0.4 ifTrue:[Color red]
+	 ifFalse:[a < 0.7 
+			ifTrue:[(Color purple alpha: 0.3)] 
+			ifFalse:[(Color purple alpha: 0.3)]
+				]].
+	((overlayModel respondsTo: #showEnergyBars) and: [
+		 overlayModel showEnergyBars ]) ifFalse: [ ^ self ].
+	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
+	self  allDrones do: [ :d |
+			(d respondsTo: #energy) ifTrue: [
+					| pos barW ratio filled fill frame |
+					pos := self pixelForDrone: d.
+					pos ifNil: [ ^ self ].
+					barW := 34.
+					ratio := (d energy max: 0) / 100.0 min: 1.0.
+					filled := barW * ratio max: 1.
+					fill := RSBox new
+						        width: filled;
+						        height: 5;
+						        color: (colorsMeaning value: ratio);
+						        yourself.
+					frame := RSBox new
+						         width: barW;
+						         height: 5; fill: (Color gray "alpha: 0.5");
+						      	  borderColor: #black;
+						         yourself.
+
+					fill translateTo: pos x - (barW *(1-ratio)/2) @ (pos y + 10).
+					frame translateTo: pos x  @ (pos y + 10).
+					self markOverlayShape: frame.
+					self markOverlayShape: fill.
+					rsCanvas
+						add: fill;
+						add: frame ] ]
+]
+
 { #category : 'overlays' }
-UISimulation >> drawEnergyOverlayFor: d at: p [
+UISimulation >> drawEnergyOverlayFor2: d at: p [
 
 	| s |
 	s := self ensureDroneShapes: d.
-	s energy ifNil: [
+	(self  overlayModel  showEnergyBars) ifTrue:	[s energy ifNil: [
 			s energy: (RSBox new
 					 width: d capabilities energy;
 					 height: 5;
@@ -1345,7 +1245,39 @@ UISimulation >> drawEnergyOverlayFor: d at: p [
 					 yourself).
 
 			rsCanvas add: s energy ].
-	s energy translateTo: p x @ (p y + 10)
+	s energy translateTo: p x @ (p y + 10)]
+]
+
+{ #category : 'overlays' }
+UISimulation >> drawEnergyOverlayFor: d at: p [
+
+	| s pie ratio |
+	s := self ensureDroneShapes: d.
+	(self  overlayModel  showEnergyBars ) ifTrue:	[s energy ifNil: [
+			ratio := d capabilities availablePercentage: #energy.
+
+
+			pie := RSPieSlice new
+				       model: d capabilities energy;
+				       alphaAngle: 180;
+				       color: Color transparent;
+				       "borderColoapabilitiesr: Color transparent;"
+				       betaAngle: 180;
+				       innerRadius: 5;
+				       cornerRadii: 0;
+				       externalRadius: 10;
+				       position: 50 @ -50;
+				       yourself.
+
+			s energy: pie.
+
+
+
+			self markOverlayShape: pie.
+			rsCanvas add: pie ].
+	s energy
+		alphaAngle:    180* (1-(d capabilities availablePercentage: #energy));
+		translateTo: p - s energy externalRadius]
 ]
 
 { #category : 'overlay models' }
@@ -1382,18 +1314,18 @@ UISimulation >> drawMissionOverlayFor: c [
 	|  poly s |
 	s := self ensureClusterShapes: c.
 
- 	s mission ifNotNil: [ rsCanvas removeShape: s mission ].
-			poly := RSPolygon new
+ 	  s mission ifNotNil: [ (rsCanvas shapes includes: s mission) ifTrue:[rsCanvas removeShape: s mission ]].
+		self overlayModel showMissionPaths ifTrue:[	poly := RSPolygon new
 				        points: 	(c missions assignedMissions first   polygon collect:[:p | self pixelForDrone: p]);
-				        color: Color transparent;
-				        borderWidth: 1;
+				        color: (Color blue alpha: 0.07);
+				        borderWidth: 3; borderColor: (Color red alpha: 0.4);
 				        yourself. "(Color red alpha: 0.07);
 						        borderColor: (Color red alpha: 0.4)"
 		"	poly moveTo: (self pixelForDrone: c drones first)."
 
 
 			s mission: poly.
-			rsCanvas addShape: poly 
+			rsCanvas addShape: poly ]
 ]
 
 { #category : 'overlay models' }
@@ -1426,7 +1358,7 @@ UISimulation >> drawPerceptionOverlayFor: d at: p [
 
 	| dot s |
 	s := self ensureDroneShapes: d.
-	s perceptionRange ifNil: [
+(self  overlayModel showPerceptionRadius) ifTrue:	[s perceptionRange ifNil: [
 			dot := RSCircle new
 				       radius: (d capabilities perceptionRange) / 2;
 				       color: Color transparent;
@@ -1438,7 +1370,7 @@ UISimulation >> drawPerceptionOverlayFor: d at: p [
  
 			rsCanvas add: dot ].
 
-	s perceptionRange translateTo: p
+	s perceptionRange translateTo: p]
 ]
 
 { #category : 'waypoints' }
@@ -1640,7 +1572,7 @@ UISimulation >> hideDrone: aDrone [
 { #category : 'presenters' }
 UISimulation >> hideShapes [
    self  droneShapes  values do:[:a| a hideAll].
-   ""
+   
 ]
 
 { #category : 'accessing' }
@@ -1769,73 +1701,30 @@ UISimulation >> initialize [
 
 { #category : 'initializing' }
 UISimulation >> initializePresenters [
-    "Build all presenters (no layout here)."
-    "Canvas"
-    self ensureCanvas.
-    self buildCanvasPresenter.
+	"Build all presenters (no layout here)."
+
+	"Canvas"
+
+	self ensureCanvas.
+	self buildCanvasPresenter.
 	self buildStatusLabel.
 	self buildScriptPresenter.
-self buildCheckList.
- 
-   
-    "Lists and status"
- self buildClusterListPresenter; buildDroneListPresenter ;buildMissionListPresenter.
+	self buildCheckList.
+	self buildTimeLabel.
 
 
-    "Link lists (refresh drones on cluster selection change)"
-clusterListPresenter whenSelectionChangedDo: [ 
-           self updateDroneListFromSelectedClusters. self refreshDrones ].
- 
-]
 
-{ #category : 'waypoints' }
-UISimulation >> initializePresentersOld [
-    "Build all presenters (no layout here)."
-    "Canvas"
-    self ensureCanvas.
-    self buildCanvasPresenter.
-testList := self instantiate: SpFilteringSelectableListPresenter.
-testList items:{#perception . #missions .#hull}.
- 
-    "Overlay checkboxes"
-     overlayPanelPresenter := self buildOverlayChecksPanel.
-   overlayChecks ifNil: [ overlayChecks := Dictionary new ].
-    overlayChecks at: #perception ifAbsentPut: [ false ].
-    overlayChecks at: #missions   ifAbsentPut: [ false ].
-    overlayChecks at: #hull ifAbsentPut: [ false ].
-    overlayChecks at: #ammunition   ifAbsentPut: [ false ].
-    overlayChecks at: #fuel   ifAbsentPut: [ false ].
+	"Lists and status"
+	self
+		buildClusterListPresenter;
+		buildDroneListPresenter;
+		buildMissionListPresenter.
 
 
-    (self respondsTo: #connectOverlayChecks) ifTrue: [ self connectOverlayChecks ].
-    (self respondsTo: #setOverlayChecksFocus) ifTrue: [ self setOverlayChecksFocus ].
-
-    "Lists and status"
-    clusterListPresenter ifNil: [self  clusterListPresenter: (self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ c id asString ] ])]; yourself.
-    droneListPresenter  ifNil: [ self droneListPresenter: ( self newList display:[ :c | c ifNil: [ '' ] ifNotNil: [ 'Drone ', c id asString ] ])]; yourself.
-   missionListPresenter  ifNil: [ self missionListPresenter: ( self newList display:[ :m | m ifNil: [ '' ] ifNotNil: [ 'Mission ', m class printString ] ])]; yourself.
-    statusLabelPresenter ifNil: [ statusLabelPresenter := self newLabel ].
-    (statusLabelPresenter respondsTo: #label:) ifTrue: [ statusLabelPresenter label: 'Ready' ].
-
-    "Link lists (refresh drones on cluster selection change)"
-    (clusterListPresenter respondsTo: #whenSelectionChangedDo:)
-        ifTrue: [ clusterListPresenter whenSelectionChangedDo: [ 
-            (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
-            (self respondsTo: #refreshDrones) ifTrue: [ self refreshDrones ] ] ]
-        ifFalse: [
-            (clusterListPresenter respondsTo: #whenChangedDo:) ifTrue: [
-                clusterListPresenter whenChangedDo: [
-                    (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
-                    (self respondsTo: #refreshDrones) ifTrue: [ self refreshDrones ] ] ] ].
-
-    "Initial refresh"
-    self updateOverlayChecksLabel.
- self updateClusterListFromFleet.
-    (self respondsTo: #updateDroneListFromSelectedClusters) ifTrue: [ self updateDroneListFromSelectedClusters ].
-    (self respondsTo: #refreshOverlays)
-        ifTrue: [ self refreshOverlays ]
-        ifFalse: [ (self respondsTo: #refreshAll) ifTrue: [ self refreshAll ] ].
-    ^ self
+	"Link lists (refresh drones on cluster selection change)"
+	clusterListPresenter whenSelectionChangedDo: [
+			self updateDroneListFromSelectedClusters.
+			self refreshDrones ]
 ]
 
 { #category : 'presenters' }
@@ -1844,49 +1733,28 @@ UISimulation >> isBaseShape: aShape [
 
 ]
 
+{ #category : 'overlays' }
+UISimulation >> isDirty: field of: aDrone [
+
+	(self droneShapes at: aDrone) reset: field
+]
+
 { #category : 'presenters' }
 UISimulation >> isOverlayShape: aShape [
     ^ overlayShapes notNil and: [ overlayShapes includes: aShape ]
 ]
 
 { #category : 'Simulation control' }
-UISimulation >> jump: nSteps [
-  
-| isRunning worker |
-isRunning := true.
-worker := [
-[ 1 to: nSteps do: [:i |
-isRunning ifFalse: [ ^ self ].
-
-    "1) Calcul hors UI (ne touche pas aux shapes ici)"
-     self  simulator step.   "=> met à jour le modèle (positions/états), pas le canvas"
-
-    "2) Application UI courte et un seul refresh"
-    UIManager default defer: [
-        self simulator model hasChanged .  "=> lit le modèle, met à jour les shapes"
-        "self canvases do: [:c | c signalUpdate ]. " "1 seul signal par canvas"
-    ].
-
-    (Delay forMilliseconds: 10) wait.
-] ] ensure: [ isRunning := false ].
-
-
-] forkAt: Processor userBackgroundPriority.
-]
-
-{ #category : 'Simulation control' }
-UISimulation >> jumpDialog [
+UISimulation >> jumpDialog: aText do: aBloc [
 | presenter n |
 	presenter := SpRequestDialog new.
 	presenter
 		title: 'Simulation';
-		label: 'How many steps?';
+		label: aText;
 		text: '1';
 		acceptLabel: 'step ahead';
 		cancelLabel: 'Cancel';
-		onAccept: [ :dialog | n :=   dialog presenter text asNumber. n > 0 ifTrue: [ self jump: n
- 
-
+		onAccept: [ :dialog | n :=   dialog presenter text  . n isEmpty ifTrue: [ aBloc value: n
  ]];
 		openDialog.
     
@@ -1972,25 +1840,6 @@ UISimulation >> open [
         withWindowDo: [ :w | w title: ('Drones Simulation— ', ("simulation" nil  ifNil: [ 'No scenario' ] ifNotNil: [ simulation class name ])) ]
 ]
 
-{ #category : 'overlay models' }
-UISimulation >> overlayCheckboxLabel: aLabel flag: setterSelector [
-    | getter cb |
-
-self halt. 
-    getter := (setterSelector allButLast) asSymbol.
-    cb := SpCheckBoxPresenter new
-        label: aLabel;
-        state: ((overlayModel respondsTo: getter)
-            ifTrue: [ overlayModel perform: getter ]
-            ifFalse: [ false ]);
-        whenChangedDo: [ :st |
-            (overlayModel respondsTo: setterSelector)
-                ifTrue: [ overlayModel perform: setterSelector with: st ].
-            self refreshOverlays ].
-    self overlayChecks at: setterSelector put: cb.
-    ^ cb.
-]
-
 { #category : 'presenters' }
 UISimulation >> overlayChecks [
 
@@ -2044,13 +1893,6 @@ UISimulation >> overlayShapes [
 
 overlayShapes ifNil:[overlayShapes := IdentityDictionary new]. "indexed by drone"
 ^overlayShapes
-]
-
-{ #category : 'Simulation control' }
-UISimulation >> pauseSimulationLoop [
-    simRunning := false.
-    simLoopProcess ifNotNil: [
-        simLoopProcess isTerminated ifFalse: [ simLoopProcess suspend ] ].
 ]
 
 { #category : 'accessing' }
@@ -2238,16 +2080,18 @@ UISimulation >> refreshAll [
 
 { #category : 'updating status' }
 UISimulation >> refreshDrones [
-    "Force uniquement la partie drones (icônes + overlays dépendants)."
-    rsCanvas ifNil: [ ^ self ].
-    "self removeOverlayShapes." self hideShapes.
-self updateShapes.
-self showShapes.
+	"Force uniquement la partie drones (icônes + overlays dépendants)."
 
-    rsCanvas signalUpdate.
+	rsCanvas ifNil: [ ^ self ].
+	"self removeOverlayShapes."
+	self hideShapes.
+	self updateShapes.
+	self showShapes.
+
+	rsCanvas signalUpdate
 ]
 
-{ #category : 'tests - test data' }
+{ #category : 'overlays' }
 UISimulation >> refreshOverlays [
     rsCanvas ifNil: [ ^ self ].
    " self removeOverlayShapes.
@@ -2297,6 +2141,95 @@ UISimulation >> runScript [
     source: self scriptPresenter selectedText;
     receiver: self simulator;
     evaluate.
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> runSimulationLoop [
+	|   worker   |
+	isRunning := true.
+ 
+	worker := [
+		          [
+		          isRunning   ]
+			          whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
+					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+
+					          "2) Application UI courte et un seul refresh"
+					          UIManager default defer: [
+						          self simulator model hasChanged ].
+
+					          (Delay forMilliseconds: 10) wait.
+					          self updateRunningState ] ] forkAt:
+		          Processor userBackgroundPriority
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> runSimulationLoopUntilCondition: aConditionText [
+
+	|   worker aCondition |
+ 
+	aCondition := OpalCompiler new
+		              source: aConditionText;
+		              receiver: self simulator;
+		              yourself.
+	isRunning := true.
+	worker := [
+		          
+			          [ isRunning & aCondition evaluate not ] whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
+					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+
+					          "2) Application UI courte et un seul refresh"
+					          UIManager default defer: [
+						          self simulator model hasChanged ].
+
+					          (Delay forMilliseconds: 10) wait.
+					          self updateRunningState ] ]  forkAt:
+		          Processor userBackgroundPriority
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> runSimulationLoopUntilTimestamp: aTimestampText [
+
+	|   worker aTimestamp |
+	isRunning := true.
+	aTimestamp := aTimestampText asNumber.
+	worker := [
+		          [
+		          isRunning & (self simulator hasCompleted: aTimestamp) not ]
+			          whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
+					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+
+					          "2) Application UI courte et un seul refresh"
+					          UIManager default defer: [
+						          self simulator model hasChanged ].
+
+					          (Delay forMilliseconds: 10) wait.
+					          self updateRunningState ] ] forkAt:
+		          Processor userBackgroundPriority
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> runSimulationSteps: nSteps [
+
+	| isRunning worker |
+	isRunning := true.
+	worker := [
+		          [
+			          1 to: nSteps asNumber  do: [ :i |
+					          isRunning ifFalse: [ ^ self ].
+
+					          "1) Calcul hors UI (ne touche pas aux shapes ici)"
+					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+
+					          "2) Application UI courte et un seul refresh"
+					          UIManager default defer: [
+							          self simulator model hasChanged "=> lit le modèle, met à jour les shapes"
+							          "self canvases do: [:c | c signalUpdate ]. " "1 seul signal par canvas" ].
+
+					          (Delay forMilliseconds: 10) wait.
+					          self simulator   isRunning ifFalse: [ ^ self ] ] ]
+			          ensure: [ isRunning := false ] ] forkAt:
+		          Processor userBackgroundPriority
 ]
 
 { #category : 'scripting' }
@@ -2399,8 +2332,10 @@ UISimulation >> showAllDrones: aBoolean [
 { #category : 'presenters' }
 UISimulation >> showShapes [
 
-	self droneShapes values do: [ :a | a showAll ].
-	 
+"Shows either all drone or selected ones"
+"keep only selected shapes"
+	self allDrones do: [ :aDrone |
+			(droneShapes at: aDrone)  showFollowing: self overlayModel ] 
 ]
 
 { #category : 'accessing' }
@@ -2432,6 +2367,22 @@ UISimulation >> simulationMenu [
 ]
 
 { #category : 'Simulation control' }
+UISimulation >> simulationMenuItem: aText do: aBloc [
+| presenter n |
+	presenter := SpRequestDialog new.
+	presenter
+		title: 'Simulation';
+		label: aText;
+		text: '1';
+		acceptLabel: 'step ahead';
+		cancelLabel: 'Cancel';
+		onAccept: [ :dialog |   n :=   dialog presenter text  . n isEmpty ifFalse: [ aBloc value: n
+ ]];
+		openDialog.
+    
+]
+
+{ #category : 'Simulation control' }
 UISimulation >> simulationStepOnce [
     (simulation respondsTo: #step) ifTrue: [
         haltOnError
@@ -2460,22 +2411,6 @@ UISimulation >> simulator: aValue [
 UISimulation >> startOrStopHandlingWaypoints [
 ]
 
-{ #category : 'Simulation control' }
-UISimulation >> startSimulationLoop [
-
-	simRunning ifTrue: [ ^ self ].
-	simRunning := true.
-	simLoopProcess isNil ifFalse: [
-			(simLoopProcess isTerminated or: [ simLoopProcess suspended ])
-				ifFalse: [ ^ self ] ].
-	simLoopProcess := [
-		                  [ simRunning ] whileTrue: [
-				                  self simulationStepOnce.
-				                  (Delay forMilliseconds: 200) wait ] ] forkAt:
-		                  Processor userInterruptPriority.
-	simLoopProcess name: 'UISimulationLoop'
-]
-
 { #category : 'waypoints' }
 UISimulation >> startWaypointCapture [
     waypointCaptureOn := true.
@@ -2500,6 +2435,13 @@ UISimulation >> statusLabelPresenter [
 UISimulation >> statusLabelPresenter: anObject [
 
 	statusLabelPresenter := anObject
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> stopSimulationLoop [
+	 
+	isRunning := false.
+  
 ]
 
 { #category : 'waypoints' }
@@ -2586,7 +2528,7 @@ UISimulation >> updateDronesModeLabel [
 { #category : 'model - updating' }
 UISimulation >> updateFrom: aSimulationState [
 
-self refreshDrones
+self refreshDrones; updateTimeLabel
 ]
 
 { #category : 'overlays' }
@@ -2600,6 +2542,12 @@ UISimulation >> updateOverlayChecksLabel [
                         << ' : ';
                         << (btn state ifTrue: [ 'V' ] ifFalse: [ 'X' ]) ]
                 separatedBy: [ s << ' - ' ] ])
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> updateRunningState [
+
+	isRunning := isRunning & self simulator isRunning
 ]
 
 { #category : 'overlays' }
@@ -2622,14 +2570,7 @@ UISimulation >> updateShapes [
 UISimulation >> updateTimeLabel [
 
 	| t |
-	timeLabelPresenter ifNil: [ ^ self ].
-
-	t := (simulation respondsTo: #currentTime)
-		     ifTrue: [ simulation currentTime ]
-		     ifFalse: [
-				     (simulation respondsTo: #time)
-					     ifTrue: [ simulation time ]
-					     ifFalse: [ nil ] ].
+	t := self simulator currentTime.
 	timeLabelPresenter label: 't=' , (t ifNil: [ '?' ]) printString
 ]
 

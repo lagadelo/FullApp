@@ -45,6 +45,12 @@ GeoPoint >> - aPoint [
 ^self class with: (Array with:  self latitude - aPoint latitude with:  self longitude - aPoint longitude with: self altitude - aPoint altitude )
 ]
 
+{ #category : 'arithmetic' }
+GeoPoint >> / aNumber [
+
+	^ self * (1 / aNumber)
+]
+
 { #category : 'visiting' }
 GeoPoint >> accept: aVisitor [
 

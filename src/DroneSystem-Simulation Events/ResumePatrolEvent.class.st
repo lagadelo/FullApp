@@ -45,7 +45,7 @@ ResumePatrolEvent >> executeOn: simulator [
 	| mission point |
 	mission := drone cluster ifNil: [ ^ self ].
 	mission := drone cluster missions assignedMissions first.
-	self halt.
+	 
 	mission ifNotNil: [
 			point := mission nextWayPointFor: drone.
 			point ifNotNil: [

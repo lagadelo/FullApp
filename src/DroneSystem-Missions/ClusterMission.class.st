@@ -185,8 +185,8 @@ ClusterMission >> assignSurveillanceBehaviorsTo: aCluster [
 { #category : 'initialization' }
 ClusterMission >> assignToCluster: aCluster [
 
-	self assignedCluster: aCluster.
-	self assignedCluster missions assignMission: self.
+	self model: aCluster.
+	aCluster missions assignMission: self.
 
 	status := #active.
 	^ self

@@ -21,6 +21,14 @@ Mission >> model: anObject [
 	model := anObject
 ]
 
+{ #category : 'simulation' }
+Mission >> startEvent [
+
+	^ MissionStartEvent new
+		  mission: self;
+		  yourself
+]
+
 { #category : 'accessing' }
 Mission >> status [
 

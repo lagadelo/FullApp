@@ -64,7 +64,7 @@ Capabilities >> consume: aValue of: aCapabilityName [
 { #category : 'consumption' }
 Capabilities >> consumePercent: aValue of: aCapabilityName [
 
-	^ self consume: (self getMaxCapability: aCapabilityName) * aValue of: aCapabilityName
+	^ self consume: (self getMaxCapability: aCapabilityName) * aValue / 100 of: aCapabilityName
 			 
 ]
 
