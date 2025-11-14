@@ -4,8 +4,8 @@ Class {
 	#instVars : [
 		'weight'
 	],
-	#category : 'DroneSystem-Missions',
-	#package : 'DroneSystem-Missions'
+	#category : 'DroneSystem-Core',
+	#package : 'DroneSystem-Core'
 }
 
 { #category : 'accessing' }
