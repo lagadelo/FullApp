@@ -47,18 +47,37 @@ DroneFleet >> addHostileCluster: aCluster [
 ]
 
 { #category : 'accessing' }
-DroneFleet >> allAlliedDrones [ 
-^self alliedClusters collectMany:[:c| c drones]
+DroneFleet >> allAlliedDrones [
+	^ self allDrones reject: [ :a | a isHostile ]
 ]
 
 { #category : 'accessing' }
-DroneFleet >> allDrones [ 
-^(self clusters reject:[:c| c isNil] )collectMany:[:c| c drones]
+DroneFleet >> allDrones [
+
+	^ self allDronesForClusters: (self clusters reject: [ :c | c isNil ])
 ]
 
 { #category : 'accessing' }
-DroneFleet >> allHostileDrones [ 
-^self hostileClusters collectMany:[:c| c drones]
+DroneFleet >> allDronesForClusters: someClusters [
+
+	| tmp |
+	tmp := OrderedCollection new.
+	^ someClusters 
+		  collect: [ :a | a drones ]
+		  thenDo: [ :c | tmp := tmp , c ].
+	^ tmp
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allDronesFromHostileClusters [
+
+	^ self allDronesForClusters: (clusters  select:[:a| a isHostile])
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allHostileDrones [
+
+	^ self allDrones select: [ :a | a isHostile ]
 ]
 
 { #category : 'as yet unclassified' }

@@ -349,7 +349,7 @@ UISimulation >> buildBaseMap [
     "Retirer anciens shapes de base (si on reconstruit)"
     baseShapes do: [ :s | (rsCanvas shapes includes: s) ifTrue: [ rsCanvas removeShape: s ] ].
     baseShapes removeAll.
-
+ 
     (Smalltalk includesKey: #OWSServiceWMS)
         ifTrue: [
             | wms img bmp |
@@ -591,7 +591,7 @@ UISimulation >> buildScriptPresenter [
 		               action: [ self clearScript ].
 	runButton := self newButton
 		               label: 'Run';
-		 iconName: #trash;
+		 iconName: #go;
 		               action: [ self runScript ].
 		  
 	saveButton := self newButton
@@ -987,16 +987,14 @@ UISimulation >> defaultLayout [
 	right layout: (SpBoxLayout newTopToBottom
 			 spacing: 6;
 			 add: self buildDroneModePanel expand: false;
-			  add: self buildCheckList height:100 ;
-"			 add: self buildOverlayChecksPanel expand: false;"
-			 "Missions/Hull/Ammunition/Fuel"add: clusterListPresenter;
+			 add: self buildCheckList height: 100;
+			 "			 add: self buildOverlayChecksPanel expand: false;""Missions/Hull/Ammunition/Fuel"
+			 add: clusterListPresenter;
 			 add: droneListPresenter;
 			 add: missionListPresenter;
-				 add: self buildScriptPresenter height:100;
-						 add: statusLabelPresenter;
-										 add: self buildScriptPresenter height:100;
-						 add: timeLabelPresenter ;
-
+			 add: statusLabelPresenter;
+			 add: self buildScriptPresenter height: 100;
+			 add: timeLabelPresenter;
 			 yourself).
 	^ SpBoxLayout newTopToBottom
 		  spacing: 2;
@@ -1069,7 +1067,7 @@ self overlayModel showClusterHull ifTrue:[
 
 
 
-	points := c drones collect: [ :d |
+	points := (c drones reject:[:d| d isDestroyed]) collect: [ :d |
 		         (self pixelForDrone: d) ].
 
 	pts := points size > 2
@@ -1112,20 +1110,32 @@ UISimulation >> drawDroneIcons [
 UISimulation >> drawDroneIconsFor: d at: p [
 
 	| dot s |
- 
-
 	s := self ensureDroneShapes: d.
-	s position ifNil: [	 
-			dot := RSCircle new
-				       radius: 50;
-				       color: Color  red"transparent" ;
-				       yourself.
+	s position ifNil: [
+			dot := RSBox new model: d;
+				       extent: 8 @ 8;
+				       color: Color black;
+				       yourself. "transparent"
 			s position: dot. "s is a DroneShape"
+			dot
+			@ (RSLabeled new text: [ :model | 'id = ' , model id asString ]).
+			dot @ RSHighlightable  color:Color yellow .
+			dot @ (RSMenuActivable new menuDo: [ :aMenuMorph :aRSNode |
+					 aMenuMorph "title:'Actions over ',aRSNode model id printString;" addLine; 
+						 add: 'Inspect'
+						 target: aRSNode
+						 selector: #inspect 
+						 argument: #(  ).
+					 aMenuMorph
+						 add: 'Destroy'
+						 target: self simulator
+						 selector: #scheduleEvent:
+						 argument: ( DestructionEvent new drone: aRSNode model ) ]).
 			self markOverlayShape: dot.
 
 			rsCanvas add: dot ].
 	"dot is a Shape"
-	s position translateTo: p   
+	s position translateTo: p
 ]
 
 { #category : 'presenters' }
@@ -1446,7 +1456,7 @@ UISimulation >> ensureCanvas [
 
 	rsCanvas ifNotNil: [ ^ rsCanvas ].
 
-	rsCanvas := RSCanvas new.
+	rsCanvas := RSCanvas new @RSScrollBarsCanvasInteraction.
 	self ensureBattleZoneFromDrones.
 	self computeBoundingBox.
 	self computeImageSize.
@@ -1693,6 +1703,8 @@ UISimulation >> initialize [
 	simLoopProcess := nil.
 	haltOnError := false.
 	showAllDrones := true.
+	self clusterListPresenter  items: self model allClusters.
+	self missionListPresenter  items: ((self model allClusters collect:[:a| a missions]) collectMany:[:b  | b assignedMissions]).
 	self
 		ensureOverlayModel;
 		ensureOverlayChecks;
@@ -1705,7 +1717,7 @@ UISimulation >> initializePresenters [
 
 	"Canvas"
 
-	self ensureCanvas.
+	 self ensureCanvas.
 	self buildCanvasPresenter.
 	self buildStatusLabel.
 	self buildScriptPresenter.
@@ -2479,23 +2491,6 @@ UISimulation >> updateClusterListFromFleet [
 	clusters := self simulation allFleets first clusters.
 	
 clusterListPresenter items: clusters
-]
-
-{ #category : 'presenters-building' }
-UISimulation >> updateDroneListFromSelectedCluster [
-    | cluster drones |
-    (clusterListPresenter isNil or: [ droneListPresenter isNil ]) ifTrue: [ ^ self ].
-    cluster := clusterListPresenter selectedItem.
-    drones := cluster
-        ifNil: [ #() ]
-        ifNotNil: [
-            (cluster respondsTo: #drones)
-                ifTrue: [ cluster drones ifNil: [ #() ] ]
-                ifFalse: [
-                    (cluster respondsTo: #droneList)
-                        ifTrue: [ cluster droneList ifNil: [ #() ] ]
-                        ifFalse: [ #() ] ] ].
-    droneListPresenter items: drones.
 ]
 
 { #category : 'debugging' }

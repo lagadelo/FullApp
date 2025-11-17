@@ -409,7 +409,7 @@ DroneScenarios class >> exampleSimpleBlock4 [
 	simulator := DroneSimulator new.
 	simulator model: sim.
 	simulator currentTime: 1.
-	simulator timeStep: 10. " A verifier par rapport a intervalMs"
+	simulator timeStep: 1. " A verifier par rapport a intervalMs"
 
 
 	simulator scheduleEvent: mission startEvent after: Set new.

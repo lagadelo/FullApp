@@ -154,9 +154,7 @@ d geoPoint: d geoPoint copy.
 
 { #category : 'testing' }
 Drone >> destroy [ 
-"Refactor with a capacilities classd" 
-   fuel := 0. 
-	speed := 0
+self capabilities destroy
 ]
 
 { #category : 'computing' }
@@ -199,6 +197,14 @@ Drone >> geoPoint [
 Drone >> geoPoint: a [
 
 geoPoint := a
+]
+
+{ #category : 'coloring' }
+Drone >> getColor [
+
+self isDestroyed ifTrue:[Color black].
+self isHostile ifTrue:[Color red].
+self isHostile ifTrue:[Color green].
 ]
 
 { #category : 'accessing' }
@@ -258,7 +264,8 @@ id :=  anID.
 
 { #category : 'testing' }
 Drone >> isDestroyed [
-    ^ fuel = 0 or: [speed = 0].
+
+	^ self capabilities isDestroyed
 ]
 
 { #category : 'accessing' }

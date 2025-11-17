@@ -99,6 +99,12 @@ Capabilities >> define: aCapabilityName  maxValue: aValue [
 	currentCapabilities at: aCapabilityName put: aValue	
 ]
 
+{ #category : 'testing' }
+Capabilities >> destroy [
+
+	currentCapabilities keys do: [ :a | self setCapability: a value: 0 ]
+]
+
 { #category : 'facilities' }
 Capabilities >> energy [ 
 ^self getCapability: #energy
@@ -137,6 +143,12 @@ Capabilities >> getMaxCapability: aCapabilityName [
 Capabilities >> initialize [ 
 maxCapabilities := IdentityDictionary new.
 currentCapabilities := IdentityDictionary new.
+]
+
+{ #category : 'testing' }
+Capabilities >> isDestroyed [
+
+	^ (currentCapabilities values inject: 0 into: [ :s :a | a + a ]) = 0
 ]
 
 { #category : 'facilities' }

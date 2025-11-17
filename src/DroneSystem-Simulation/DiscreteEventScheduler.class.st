@@ -65,6 +65,12 @@ DiscreteEventScheduler >> potentialNextEvent [
 ]
 
 { #category : 'initialization' }
+DiscreteEventScheduler >> removeAllEventsFor:target after: aTimestamp [
+    eventQueue removeAll: (eventQueue select:[:anEvent| anEvent drone = target ])
+
+]
+
+{ #category : 'initialization' }
 DiscreteEventScheduler >> scheduleEvent: anEvent [
     eventQueue add: anEvent.
 

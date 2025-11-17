@@ -158,7 +158,5 @@ self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alp
 DroneShapes >> showPosition [
 
 	 self position ifNotNil: [
-			self position color: "(self model isHostile
-					 ifTrue: [ Color red ]
-					 ifFalse: [ Color black ])" Color red ]
+			self position color: (self model color) ]
 ]

@@ -242,6 +242,7 @@ DroneSimulator >> hasCompleted: aTimestamp [
 	self currentTime > aTimestamp ifTrue: [ ^ true ]. "Alread done"
 	nextEvt := self scheduler potentialNextEvent.
 	nextEvt ifNil: [ ^ false ]. "Not done, and nothing more to do, answers no"
+	nextEvt timestamp ifNil: [ ^ false ]. "Supposed to be initial case"	
 	^ nextEvt timestamp > aTimestamp "Something to do, but noting at our timeStamp, answers yes"
 ]
 
@@ -311,6 +312,12 @@ DroneSimulator >> open [
 	^ tmp
 ]
 
+{ #category : 'events' }
+DroneSimulator >> removeAllEventsFor:target after: aTimestamp [
+
+self scheduler removeAllEventsFor:target after: aTimestamp 
+]
+
 { #category : 'removing' }
 DroneSimulator >> removeEvents: events fromEntity: entity [
     | set |
@@ -376,10 +383,11 @@ simulationStartTime := Time millisecondClockValue.
 ]
 
 { #category : 'dependencies' }
-DroneSimulator >> scheduleEvent: anEvent [  
-    scheduler scheduleEvent: anEvent.
+DroneSimulator >> scheduleEvent: anEvent [
 
-
+ 
+	anEvent timestamp ifNil:[anEvent timestamp: self currentTime.].
+	scheduler scheduleEvent: anEvent
 ]
 
 { #category : 'dependencies' }
@@ -392,7 +400,7 @@ DroneSimulator >> scheduleEvent: anEvent after: dependencyEvents [
 { #category : 'dependencies' }
 DroneSimulator >> scheduleEvent: evt at: aDate [
 
-	evt timeStampAt: aDate.
+	evt timestamp: aDate.
 	^self scheduleEvent: evt.
 ]
 
