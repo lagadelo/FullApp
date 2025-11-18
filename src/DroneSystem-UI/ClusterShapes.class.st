@@ -1,22 +1,13 @@
 Class {
 	#name : 'ClusterShapes',
-	#superclass : 'Object',
+	#superclass : 'Shapes',
 	#instVars : [
 		'mission',
-		'hull',
-		'model'
+		'hull'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
-
-{ #category : 'instance creation' }
-ClusterShapes class >> newFor: aModel [
-
-	^ self new
-		  model: aModel;
-		  yourself
-]
 
 { #category : 'accessing' }
 ClusterShapes >> hull [
@@ -40,16 +31,4 @@ ClusterShapes >> mission [
 ClusterShapes >> mission: anObject [
 
 	mission := anObject
-]
-
-{ #category : 'accessing' }
-ClusterShapes >> model [
-
-	^ model
-]
-
-{ #category : 'accessing' }
-ClusterShapes >> model: anObject [
-
-	model := anObject
 ]

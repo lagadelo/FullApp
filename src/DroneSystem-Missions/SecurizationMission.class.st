@@ -15,7 +15,7 @@ SecurizationMission >> accept: aVisitor [
 SecurizationMission >> assignment [
 
 	| drones |
-	drones := self allDrones.
+	drones := self model allDrones.
 	1 to: polygon size do: [ :i | drones at: i put: (polygon at: i) ].
 	
 ]

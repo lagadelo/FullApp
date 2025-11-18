@@ -41,7 +41,7 @@ ZoneBasedMission >> generateExtraWaypointsForDrones [
 
 	| nWaypoints segments neededWaypoints result newPoint fraction nDrones |
 	nWaypoints := wayPoints size.
-	nDrones := self assignedCluster drones size.
+	nDrones := self model drones size.
 	"Si on a déjà assez de waypoints, on retourne la liste telle quelle"
 	nWaypoints >= nDrones ifTrue: [ ^ wayPoints copy ].
 
@@ -98,7 +98,7 @@ ZoneBasedMission >> polygon [
 { #category : 'accessing' }
 ZoneBasedMission >> polygon: anObject [
 
-	polygon := anObject
+	polygon := (ConvexHullCalculator new  hullForGeoPoints: anObject)
 ]
 
 { #category : 'accessing' }

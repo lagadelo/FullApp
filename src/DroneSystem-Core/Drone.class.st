@@ -202,9 +202,10 @@ geoPoint := a
 { #category : 'coloring' }
 Drone >> getColor [
 
-self isDestroyed ifTrue:[Color black].
-self isHostile ifTrue:[Color red].
-self isHostile ifTrue:[Color green].
+self isDestroyed ifTrue:[^Color black].
+self isHostile ifTrue:[^Color red].
+self isHostile ifTrue:[^Color green].
+^Color blue 
 ]
 
 { #category : 'accessing' }

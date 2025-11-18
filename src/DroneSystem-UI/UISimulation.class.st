@@ -4,9 +4,6 @@ Class {
 	#instVars : [
 		'simulation',
 		'simulator',
-		'checkPerception',
-		'checkMissions',
-		'overlayChecksLabel',
 		'dronesAllButton',
 		'dronesSelectedButton',
 		'dronesModeLabel',
@@ -15,8 +12,6 @@ Class {
 		'rsCanvas',
 		'baseBitmap',
 		'overlayModel',
-		'toolBarPresenter',
-		'overlayPanelPresenter',
 		'clusterListPresenter',
 		'droneListPresenter',
 		'statusLabelPresenter',
@@ -31,17 +26,15 @@ Class {
 		'zoomLevel',
 		'bboxBase',
 		'overlayShapes',
-		'simRunning',
-		'simLoopProcess',
 		'timeLabelPresenter',
-		'menuBarPresenter',
 		'haltOnError',
 		'allDrones',
 		'missionListPresenter',
 		'droneShapes',
 		'clusterShapes',
 		'scriptPresenter',
-		'isRunning'
+		'isRunning',
+		'menuBarPresenter'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -448,11 +441,51 @@ UISimulation >> buildCheckList [
 { #category : 'presenters-building' }
 UISimulation >> buildClusterListPresenter [
 
-	^clusterListPresenter
-		ifNil: [
-				self clusterListPresenter: (self newList display: [ :c |
-								 c ifNil: [ '' ] ifNotNil: [ c id asString ] ]) ];
-		yourself
+	| menu |
+	^ clusterListPresenter
+		  ifNil: [
+				  menu := self buildClusterListPresenterMenu.
+				  self clusterListPresenter: (self newList display: [ :c |
+								   c ifNil: [ '' ] ifNotNil: [ c id asString ] ];actions: menu) ; yourself ] 
+		   
+]
+
+{ #category : 'presenters-building' }
+UISimulation >> buildClusterListPresenterMenu [
+^ SpActionGroup new
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Focus On';
+							          iconName: #start;
+							          description:
+								          'Focus on the selected cluster by changing the battle zone';
+							          action: [
+									          self battleZone ."self clusterListPresenter selectedItem ifNotNil: [
+												          self missionListPresenter selectedItem
+													          assignToCluster:
+														          self clusterListPresenter selectedItem" ] ];
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Focus Off';
+							          iconName: #start;
+							          description:
+								          'Focus on the selected cluster by changing the battle zone';
+							          action: [
+									          self battleZone ."self clusterListPresenter selectedItem ifNotNil: [
+												          self missionListPresenter selectedItem
+													          assignToCluster:
+														          self clusterListPresenter selectedItem" ] ] ;
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Choose color';
+							          iconName: #start;
+							          action: [
+									          SpDroneColorPickerPresenter new
+										          colorSelector: #color:;
+										          target: self clusterListPresenter selectedItem; open ] ];
+				          yourself.
+
+		 
 ]
 
 { #category : 'presenters-building' }
@@ -527,8 +560,8 @@ UISimulation >> buildFallbackBaseMap [
 { #category : 'presenters-building' }
 UISimulation >> buildMenuBar [
 
-	| menuBar simMenu zoomMenu importMenu waypointsMenu devMenu |
-	menuBarPresenter ifNotNil: [ ^ menuBarPresenter ].
+	| menuBar   simMenu zoomMenu importMenu waypointsMenu devMenu |
+ 
 	menuBar := self newMenuBar.
 
 	"Simulation"
@@ -570,13 +603,53 @@ UISimulation >> buildMenuBar [
 { #category : 'presenters-building' }
 UISimulation >> buildMissionListPresenter [
 
-	^ missionListPresenter
-		  ifNil: [
-				  self missionListPresenter: (self newList display: [ :m |
-								   m
-									   ifNil: [ '' ]
-									   ifNotNil: [ 'Mission ' , m class printString ] ]) ];
-		  yourself
+	| menu |
+	^ missionListPresenter ifNil: [
+			  menu := self buildMissionListPresenterMenu.
+
+			  self
+				  missionListPresenter: (self newList
+						   display: [ :m |
+							   m
+								   ifNil: [ '' ]
+								   ifNotNil: [   m class printString, ' id:', m id printString ] ];
+						   actions: menu);
+				  yourself ]
+]
+
+{ #category : 'presenters-building' }
+UISimulation >> buildMissionListPresenterMenu [
+
+^ SpActionGroup new
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Assign to cluster';
+							          iconName: #start;
+							          description:
+								          'Assign the current mission to the selected cluster';
+							          action: [
+									          self clusterListPresenter selectedItem ifNotNil: [
+												          self missionListPresenter selectedItem
+													          assignToCluster:
+														          self clusterListPresenter selectedItem ] ] ];
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Activate';
+							          iconName: #start;
+							          action: [
+									          simulator scheduleEvent:
+											          (MissionStartEvent model:
+													           self missionListPresenter selectedItem) ] ];
+				          addActionWith: [ :anItem |
+						          anItem
+							          name: 'Choose color';
+							          iconName: #start;
+							          action: [
+									          SpDroneColorPickerPresenter new
+										          colorSelector: #color:;
+										          target: self missionListPresenter selectedItem; open ] ];
+				          yourself.
+ 
 ]
 
 { #category : 'presenters-building' }
@@ -820,54 +893,60 @@ self halt.
 
 { #category : 'presenters' }
 UISimulation >> computeBoundingBox [
-    | points latMin latMax lonMin lonMax padLat padLon |
-    "1. Collecte des points source (battleZone sinon dérive des drones)"
-    points := (simulation respondsTo: #battleZone)
-        ifTrue: [ simulation battleZone ]
-        ifFalse: [ nil ].
-    (points isNil or: [ points isEmpty ]) ifTrue: [
-        points := (simulation allDrones collect: [ :d |
-            ((d respondsTo: #latitude) and: [ d respondsTo: #longitude ])
-                ifTrue: [ GeoPoint latitude: d latitude longitude: d longitude altitude: 0 ]
-                ifFalse: [ nil ] ]) reject: #isNil ].
-    (points isNil or: [ points isEmpty ]) ifTrue: [
-        "Fallback constant (France approx.)"
-        points := {
-            GeoPoint latitude: 51.2 longitude: -5   altitude: 0.
-            GeoPoint latitude: 41.0 longitude:  9   altitude: 0.
-            GeoPoint latitude: 41.0 longitude: -5   altitude: 0.
-            GeoPoint latitude: 51.2 longitude:  9   altitude: 0 } ].
 
-    "2. Min / Max"
-    latMin := latMax := points first latitude.
-    lonMin := lonMax := points first longitude.
-    points do: [ :gp |
-        latMin := latMin min: gp latitude.
-        latMax := latMax max: gp latitude.
-        lonMin := lonMin min: gp longitude.
-        lonMax := lonMax max: gp longitude ].
+	| points latMin latMax lonMin lonMax padLat padLon tmp |
+	  "1. Collecte des points source (battleZone sinon dérive des drones)"
+	points := (simulation respondsTo: #battleZone)
+		          ifTrue: [ simulation battleZone ]
+		          ifFalse: [ nil ].
+	(points isNil or: [ points isEmpty ]) ifTrue: [
+			points := (simulation allDrones collect: [ :d |
+					           ((d respondsTo: #latitude) and: [
+						            d respondsTo: #longitude ])
+						           ifTrue: [
+						           GeoPoint
+							           latitude: d latitude
+							           longitude: d longitude
+							           altitude: 0 ]
+						           ifFalse: [ nil ] ]) reject: #isNil ].
+	(points isNil or: [ points isEmpty ]) ifTrue: [ "Fallback constant (France approx.)"
+			points := {
+				          (GeoPoint latitude: 51.2 longitude: -5 altitude: 0).
+				          (GeoPoint latitude: 41.0 longitude: 9 altitude: 0).
+				          (GeoPoint latitude: 41.0 longitude: -5 altitude: 0).
+				          (GeoPoint latitude: 51.2 longitude: 9 altitude: 0) } ].
 
-    "3. Padding 5% (évite bords collés); si delta nul, impose petite aire."
-    (latMax = latMin) ifTrue: [
-        latMax := latMax + 0.05.
-        latMin := latMin - 0.05 ].
-    (lonMax = lonMin) ifTrue: [
-        lonMax := lonMax + 0.05.
-        lonMin := lonMin - 0.05 ].
-    padLat := (latMax - latMin) * 0.05.
-    padLon := (lonMax - lonMin) * 0.05.
-    latMax := latMax + padLat.
-    latMin := latMin - padLat.
-    lonMax := lonMax + padLon.
-    lonMin := lonMin - padLon.
+	"2. Min / Max"
+	latMin := latMax := points first latitude.
+	lonMin := lonMax := points first longitude.
+	points do: [ :gp |
+			latMin := latMin min: gp latitude.
+			latMax := latMax max: gp latitude.
+			lonMin := lonMin min: gp longitude.
+			lonMax := lonMax max: gp longitude ].
 
-    "4. Conversion WebMercator -> bboxBase"
-    bboxBase := (self class lonLatToWebMercator: (lonMin @ latMax))
-        corner: (self class lonLatToWebMercator: (lonMax @ latMin)).
+	"3. Padding 5% (évite bords collés); si delta nul, impose petite aire."
+	latMax = latMin ifTrue: [
+			latMax := latMax + 0.05.
+			latMin := latMin - 0.05 ].
+	lonMax = lonMin ifTrue: [
+			lonMax := lonMax + 0.05.
+			lonMin := lonMin - 0.05 ].
+	padLat := latMax - latMin * 0.05.
+	padLon := lonMax - lonMin * 0.05.
+	latMax := latMax + padLat.
+	latMin := latMin - padLat.
+	lonMax := lonMax + padLon.
+	lonMin := lonMin - padLon.
 
-    "5. Applique le zoom"
-    self updateZoomedBBox.
-    self computeImageSize  "recalcule imageSize dépendant du nouveau bbox"
+	"4. Conversion WebMercator -> bboxBase"
+	tmp := (self class lonLatToWebMercator: lonMin @ latMax) corner:
+		       (self class lonLatToWebMercator: lonMax @ latMin).
+	bboxBase = tmp ifTrue: [ ^ self ]. "beLazy"
+	bboxBase := tmp.
+	"5. Applique le zoom"
+	self updateZoomedBBox.
+	self computeImageSize "recalcule imageSize dépendant du nouveau bbox"
 ]
 
 { #category : 'canvas' }
@@ -986,15 +1065,15 @@ UISimulation >> defaultLayout [
 	right := self newPresenter.
 	right layout: (SpBoxLayout newTopToBottom
 			 spacing: 6;
-			 add: self buildDroneModePanel expand: false;
-			 add: self buildCheckList height: 100;
+			 add: self buildDroneModePanel height:50;
+			 add: self buildCheckList height:40;
 			 "			 add: self buildOverlayChecksPanel expand: false;""Missions/Hull/Ammunition/Fuel"
+			 add: missionListPresenter;
 			 add: clusterListPresenter;
 			 add: droneListPresenter;
-			 add: missionListPresenter;
-			 add: statusLabelPresenter;
-			 add: self buildScriptPresenter height: 100;
-			 add: timeLabelPresenter;
+			 add: self buildScriptPresenter height: 120;
+			 add: statusLabelPresenter height: 20;
+			 add: timeLabelPresenter height: 20;
 			 yourself).
 	^ SpBoxLayout newTopToBottom
 		  spacing: 2;
@@ -1005,30 +1084,6 @@ UISimulation >> defaultLayout [
 				   add: right;
 				   yourself);
 		  yourself
-]
-
-{ #category : 'presenters' }
-UISimulation >> defaultLayoutWithMenu [
-    "Menu en haut, puis layout existant."
-    | right main |
-    right := SpBoxLayout newTopToBottom
-        spacing: 6;
-        add: overlayPanelPresenter;
-        add: clusterListPresenter;
-        add: droneListPresenter;
-        add: missionListPresenter;
-        add: statusLabelPresenter;
-        yourself.
-    main := SpBoxLayout newTopToBottom
-        spacing: 2;
-        add: menuBarPresenter;
-        add: (SpBoxLayout newLeftToRight
-            spacing: 10;
-            add: canvasPresenter;
-            add: (self newPresenter layout: right; yourself);
-            yourself);
-        yourself.
-    ^ main
 ]
 
 { #category : 'overlays' }
@@ -1079,7 +1134,7 @@ self overlayModel showClusterHull ifTrue:[
 	pts size > 2 ifTrue: [
 			poly := RSPolygon new
 				        points: pts;
-				        color: (Color red alpha: 0.5);
+				        color: c color;
 				        borderColor: (Color red alpha: 0.2);
 				        borderWidth: 1;
 				        yourself. "(Color red alpha: 0.07);
@@ -1319,22 +1374,20 @@ UISimulation >> drawMissionOverlay [
 ]
 
 { #category : 'overlays' }
-UISimulation >> drawMissionOverlayFor: c [
+UISimulation >> drawMissionOverlayFor: m [
 
 	|  poly s |
-	s := self ensureClusterShapes: c.
+	s := self ensureMissionShapes: m.
 
- 	  s mission ifNotNil: [ (rsCanvas shapes includes: s mission) ifTrue:[rsCanvas removeShape: s mission ]].
+ 	  s hull ifNotNil: [ (rsCanvas shapes includes: s hull) ifTrue:[rsCanvas removeShape: s hull ]].
 		self overlayModel showMissionPaths ifTrue:[	poly := RSPolygon new
-				        points: 	(c missions assignedMissions first   polygon collect:[:p | self pixelForDrone: p]);
-				        color: (Color blue alpha: 0.07);
-				        borderWidth: 3; borderColor: (Color red alpha: 0.4);
-				        yourself. "(Color red alpha: 0.07);
-						        borderColor: (Color red alpha: 0.4)"
-		"	poly moveTo: (self pixelForDrone: c drones first)."
+				        points: 	(m   polygon collect:[:p | self pixelForDrone: p]);
+				        color: (m getColor);
+				        borderWidth: 3; borderColor: (m getBorderColor);
+				        yourself.  
 
 
-			s mission: poly.
+			s hull: poly.
 			rsCanvas addShape: poly ]
 ]
 
@@ -1454,7 +1507,7 @@ UISimulation >> ensureBattleZoneFromDrones [
 { #category : 'canvas' }
 UISimulation >> ensureCanvas [
 
-	rsCanvas ifNotNil: [ ^ rsCanvas ].
+  	rsCanvas ifNotNil: [ ^ rsCanvas ].
 
 	rsCanvas := RSCanvas new @RSScrollBarsCanvasInteraction.
 	self ensureBattleZoneFromDrones.
@@ -1468,14 +1521,20 @@ UISimulation >> ensureCanvas [
 ]
 
 { #category : 'overlays' }
-UISimulation >> ensureClusterShapes: d [  
-	 ^self clusterShapes at: d ifAbsentPut: [ ClusterShapes newFor: d ].
+UISimulation >> ensureClusterShapes: c [  
+	 ^self clusterShapes at: c ifAbsentPut: [ ClusterShapes newFor: c ].
 	 
 ]
 
 { #category : 'overlays' }
 UISimulation >> ensureDroneShapes: d [  
 	 ^self droneShapes at: d ifAbsentPut: [ DroneShapes newFor: d ].
+	 
+]
+
+{ #category : 'overlays' }
+UISimulation >> ensureMissionShapes: m [  
+	 ^self clusterShapes at: m ifAbsentPut: [ MissionShapes newFor: m ].
 	 
 ]
 
@@ -1612,34 +1671,39 @@ UISimulation >> imageWidth: anObject [
 
 { #category : 'CSV' }
 UISimulation >> importClustersFromCSV: aFileRef [
-    | rows groups clusters |
-    rows := self readCSVLinesFrom: aFileRef.
-    rows isEmpty ifTrue: [ ^ self ].
-    groups := Dictionary new.
-   ( rows reject:[:a| a first ='clusterId']) do: [ :cols |
-        | cid |
-        cid := cols first asNumber.
-        (groups at: cid ifAbsentPut: [ OrderedCollection new ]) add: cols ].
-    clusters := groups keys collect: [ :cid |
-        | lines cluster droneClass |
-        lines := groups at: cid.
-        cluster :=  DroneCluster new clusterId: cid.
-            lines do: [ :cols |
-                | id lat lon alt d |
-                id := cols second. lat := cols third asNumber.
-                lon := (cols at:4) asNumber.
-                alt := (cols at: 5 ifAbsent: [ 100 ]) asNumber.
-                d := Drone new initializeWithId: id
-            latitude: lat
-            longitude: lon 
-        altitude: alt.
-                  cluster addDrone: d ] .
-            (cluster respondsTo: #clusterId:) ifTrue: [ cluster clusterId: cid ].
-            cluster ] .
-    self attachImportedClusters: (clusters reject: #isNil).
-    self updateClusterListFromFleet.
-    self updateDroneListFromSelectedClusters.
-    self refreshDrones
+
+	| rows groups clusters |
+	rows := self readCSVLinesFrom: aFileRef.
+	rows isEmpty ifTrue: [ ^ self ].
+	groups := Dictionary new.
+	(rows reject: [ :a | a first = 'clusterId' ]) do: [ :cols |
+			| cid |
+			cid := cols first asNumber.
+			(groups at: cid ifAbsentPut: [ OrderedCollection new ]) add: cols ].
+	clusters := groups keys collect: [ :cid |
+			            | lines cluster droneClass |
+			            lines := groups at: cid.
+			            cluster := DroneCluster new id: cid.
+			            lines do: [ :cols |
+					            | id lat lon alt d |
+					            id := cols second.
+					            lat := cols third asNumber.
+					            lon := (cols at: 4) asNumber.
+					            alt := (cols at: 5 ifAbsent: [ 100 ]) asNumber.
+					            d := Drone new
+						                 initializeWithId: id
+						                 latitude: lat
+						                 longitude: lon
+						                 altitude: alt.
+					            cluster addDrone: d ].
+			            (cluster respondsTo: #clusterId:) ifTrue: [
+				            cluster clusterId: cid ].
+			            cluster ].
+	self attachImportedClusters: (clusters reject: #isNil).
+	self updateClusterListFromFleet.
+	self updateDroneListFromSelectedClusters.
+	self computeBoundingBox. "update map"
+	self refreshDrones
 ]
 
 { #category : 'CSV' }
@@ -1661,22 +1725,20 @@ UISimulation >> importMenu [
 
 { #category : 'CSV' }
 UISimulation >> importMissionsFromCSV: aFileRef [
-    | rows missionClass waypointClass missions |
-    rows := self readCSVLinesFrom: aFileRef.
-    rows isEmpty ifTrue: [ ^ self ].
-    missionClass := Smalltalk at: #Mission ifAbsent: [ nil ].
-    waypointClass := Smalltalk at: #Waypoint ifAbsent: [ nil ].
-    missions := rows collect: [ :cols |
-        (missionClass isNil or: [ waypointClass isNil ]) ifTrue: [ nil ] ifFalse: [
-            | lat lon alt m wp |
-            lat := cols second asNumber.
-            lon := cols third asNumber.
-            alt := (cols at: 4 ifAbsent: [ 100 ]) asNumber.
-            m := missionClass new.
-            (wp := (waypointClass latitude: lat longitude: lon altitude: alt)) ifNotNil: [
-                (m respondsTo: #addWaypoint:) ifTrue: [ m addWaypoint: wp ] ].m]].
-    self attachImportedMissions: (missions reject: #isNil).
-    self refreshOverlays.
+
+	| rows missionClass p mission |
+	rows := self readCSVLinesFrom: aFileRef.
+	rows isEmpty ifTrue: [ ^ self ].
+	missionClass := Smalltalk at: rows first first asSymbol.
+
+	mission := missionClass new id: rows first second.
+	p := OrderedCollection new.
+	rows allButFirstDo: [ :cols |
+		p add: (Waypoint with: (cols collect: [ :v | v asNumber ])) ].
+	mission polygon: p.
+	simulator model addMission: mission.
+	missionListPresenter items: missionListPresenter items "force refresh".
+	self computeBoundingBox "update map"
 ]
 
 { #category : 'CSV' }
@@ -1699,12 +1761,11 @@ UISimulation >> initialize [
 	zoomLevel := 1.
 	baseShapes := OrderedCollection new.
 	overlayShapes := OrderedCollection new.
-	simRunning := false.
-	simLoopProcess := nil.
+ 
 	haltOnError := false.
 	showAllDrones := true.
 	self clusterListPresenter  items: self model allClusters.
-	self missionListPresenter  items: ((self model allClusters collect:[:a| a missions]) collectMany:[:b  | b assignedMissions]).
+	self missionListPresenter  items: self model missions.
 	self
 		ensureOverlayModel;
 		ensureOverlayChecks;
@@ -2006,7 +2067,7 @@ UISimulation >> readCSVLinesFrom: aFileRef [
 UISimulation >> readCSVWithNeoFrom: aFileRef [
     | allLines headerLine headerTokens reader stream rows fieldAdder |
     "1) Lire toutes les lignes (simple) pour détecter un header sans utiliser #peek."
-self halt.     allLines := aFileRef readStream contents lines.
+     allLines := aFileRef readStream contents lines.
     "Filtrer commentaires (#...) et vides pour trouver une éventuelle première ligne d'en-tête."
     headerLine := allLines
         detect: [ :ln | ln notEmpty and: [ ln first ~= $# ] ]
@@ -2548,6 +2609,7 @@ UISimulation >> updateRunningState [
 { #category : 'overlays' }
 UISimulation >> updateShapes [
 
+	| m |
 	self allDrones do: [ :d |
 			| p |
 			p := self pixelForDrone: d.
@@ -2556,9 +2618,9 @@ UISimulation >> updateShapes [
 
 			self drawEnergyOverlayFor: d at: p.
 			self drawAmmoOverlayFor: d at: p ].
-	self allClusters do: [ :c |
-			self drawClusterHullOverlayFor: c.
-			self drawMissionOverlayFor: c ]
+	self allClusters do: [ :c | self drawClusterHullOverlayFor: c ].
+	m := self missionListPresenter selectedItem.
+	m ifNotNil: [ self drawMissionOverlayFor: m ]
 ]
 
 { #category : 'overlays' }

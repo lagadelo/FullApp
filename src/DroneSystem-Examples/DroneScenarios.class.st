@@ -386,7 +386,7 @@ DroneScenarios class >> exampleSimpleBlock4 [
 
 	cluster1 := DroneCluster new
 		            initializeWithDrones: drones
-		            clusterId: 'Cluster for Surveillance'.
+		            clusterId: 'Cluster #1'.
 
 
 	fleet := DroneFleet new.
@@ -404,15 +404,15 @@ DroneScenarios class >> exampleSimpleBlock4 [
 		           Waypoint with: a ].
 
 	mission := (SecurizationMission new polygon: polygon)
-		           assignToCluster: cluster1.
-
+		           "assignToCluster: cluster1".
+"sim addMission: mission."
 	simulator := DroneSimulator new.
 	simulator model: sim.
 	simulator currentTime: 1.
 	simulator timeStep: 1. " A verifier par rapport a intervalMs"
 
 
-	simulator scheduleEvent: mission startEvent after: Set new.
+	"simulator scheduleEvent: mission startEvent after: Set new."
 
 	^ simulator
 ]
