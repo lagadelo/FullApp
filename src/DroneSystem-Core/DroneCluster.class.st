@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'drones',
 		'coverage',
-		'droneRoles'
+		'droneRoles',
+		'color'
 	],
 	#category : 'DroneSystem-Core',
 	#package : 'DroneSystem-Core'
@@ -74,6 +75,19 @@ DroneCluster >> clusterCenter [
     lats := coverage collect: [:p | p at: 1 ].
     lons := coverage collect: [:p | p at: 2 ].
     ^ Point x: ( (lons sum) / lons size ) y: ( (lats sum) / lats size ).
+]
+
+{ #category : 'coloring' }
+DroneCluster >> color [
+
+	color ifNil: [ color := Color red alpha: 0.5 ].
+	^ color
+]
+
+{ #category : 'coloring' }
+DroneCluster >> color: aValue [
+
+	color := (aValue alpha:0.4)
 ]
 
 { #category : 'accessing' }

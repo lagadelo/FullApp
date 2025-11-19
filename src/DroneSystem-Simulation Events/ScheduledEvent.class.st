@@ -6,11 +6,18 @@ Class {
 		'simulationState',
 		'id',
 		'duration',
-		'executed'
+		'executed',
+		'model'
 	],
 	#category : 'DroneSystem-Simulation Events',
 	#package : 'DroneSystem-Simulation Events'
 }
+
+{ #category : 'accessing' }
+ScheduledEvent class >> model: aModel [
+
+^self new model: aModel; yourself
+]
 
 { #category : 'as yet unclassified' }
 ScheduledEvent >> affectedEntities [
@@ -96,6 +103,18 @@ executed  := false
 { #category : 'executing' }
 ScheduledEvent >> markAsExecuted [
     executed := true
+]
+
+{ #category : 'accessing' }
+ScheduledEvent >> model [
+
+	^ model
+]
+
+{ #category : 'accessing' }
+ScheduledEvent >> model:anObject [
+
+	 model := anObject
 ]
 
 { #category : 'accessing' }

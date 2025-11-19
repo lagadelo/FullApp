@@ -1,24 +1,15 @@
 Class {
 	#name : 'DroneShapes',
-	#superclass : 'Object',
+	#superclass : 'Shapes',
 	#instVars : [
 		'position',
 		'ammunitions',
 		'perceptionRange',
-		'energy',
-		'model'
+		'energy'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
-
-{ #category : 'instance creation' }
-DroneShapes class >> newFor: aModel [
-
-	^ self new
-		  model: aModel;
-		  yourself
-]
 
 { #category : 'accessing' }
 DroneShapes >> ammunitions [
@@ -60,18 +51,6 @@ DroneShapes >> hideAll [
 	self perceptionRange ifNotNil:[ self perceptionRange color: Color transparent ].
 	self position ifNotNil:[   self position color: Color transparent ].
 		
-]
-
-{ #category : 'accessing' }
-DroneShapes >> model [
-
-	^ model
-]
-
-{ #category : 'accessing' }
-DroneShapes >> model: aModel [
-
-	 model := aModel
 ]
 
 { #category : 'accessing' }
@@ -158,5 +137,5 @@ self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alp
 DroneShapes >> showPosition [
 
 	 self position ifNotNil: [
-			self position color: (self model color) ]
+			self position color: (self model getColor)  ]
 ]
