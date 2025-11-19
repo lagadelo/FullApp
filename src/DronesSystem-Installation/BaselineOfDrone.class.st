@@ -28,20 +28,23 @@ BaselineOfDrone >> baseline: spec [
 		baseline: 'Roassal'
 		with: [ spec repository: 'github://pharo-graphics/Roassal/src' ].
 	spec
+		baseline: 'Roassal3Exporters';
+		repository: 'github://ObjectProfile/Roassal3Exporters';
+		load.
+	spec
 		repository: 'git@github.com:lagadelo/FullApp.git/src';
 		package: 'DroneSystem-Core';
+		package: 'DroneSystem-Demo';
+		package: 'DroneSystem-Examples';
 		package: 'DroneSystem-Missions';
 		package: 'DroneSystem-Simulation';
-		package: 'DroneSystem-Demo';
-		package: 'DroneSystem-Eval';
-		package: 'DroneSystem-Examples';
-		package: 'DroneSystem-Heuristics';
 		package: 'DroneSystem-Simulation Events';
 		package: 'DroneSystem-Simulation Strategy';
+		package: 'DroneSystem-Strategies';
 		package: 'DroneSystem-UI';
 		package: 'DroneSystem-Utils';
 		package: 'DroneSystem-Verification';
-		package: 'DroneSystem-Visualization'
+		package: 'DroneSystem-Installation'
 ]
 
 { #category : 'information' }
