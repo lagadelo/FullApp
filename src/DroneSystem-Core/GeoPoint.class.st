@@ -134,9 +134,10 @@ GeoPoint >> normalize [
 
 | r |
 r := self radius.
+r = 0 ifFalse:[
 latitude := latitude / r.
 longitude := longitude /r.
-altitude := altitude /r
+altitude := altitude /r]
 
 ]
 

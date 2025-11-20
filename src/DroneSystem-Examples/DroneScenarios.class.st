@@ -390,8 +390,8 @@ DroneScenarios class >> exampleSimpleBlock4 [
 
 
 	fleet := DroneFleet new.
-
-	fleet addCluster: cluster1.
+"
+	fleet addCluster: cluster1."
 	sim addFleet: fleet.
 
 	polygon := {

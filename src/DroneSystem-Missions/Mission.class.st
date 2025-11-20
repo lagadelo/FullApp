@@ -80,6 +80,12 @@ Mission >> model: anObject [
 	model := anObject
 ]
 
+{ #category : 'accessing' }
+Mission >> points: aValue [
+
+^self subclassResponsibility 
+]
+
 { #category : 'printing' }
 Mission >> printOn: aStream [
 

@@ -297,6 +297,12 @@ ClusterMission >> missionType [
 	^ self className
 ]
 
+{ #category : 'accessing' }
+ClusterMission >> points: aValue [
+
+^self polygon: aValue
+]
+
 { #category : 'strategy' }
 ClusterMission >> responseStrategy [
    ^self subclassResponsibility 

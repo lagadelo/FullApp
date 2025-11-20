@@ -117,6 +117,11 @@ ScheduledEvent >> model:anObject [
 	 model := anObject
 ]
 
+{ #category : 'printing' }
+ScheduledEvent >> printOn:aStream [
+aStream nextPutAll: self className ,' ', self timestamp printing,' for ',self id printString;cr
+]
+
 { #category : 'accessing' }
 ScheduledEvent >> simulationState [
 

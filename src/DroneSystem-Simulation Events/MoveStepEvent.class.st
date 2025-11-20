@@ -40,7 +40,8 @@ MoveStepEvent >> executeOn: simulator [
 	distanceRemaining := drone position distanceTo: wayPoint.
 	direction := (wayPoint - drone position) normalize.
 	distanceToMove := speed * simulator timeStep.
-	ratio := distanceToMove / distanceRemaining.
+	distanceRemaining = 0 ifTrue:[ ratio :=2 "Ca ne devrait jamais arriver"] ifFalse:[
+	ratio := distanceToMove / distanceRemaining.].
 	self duration: simulator timeStep. "*ratio"
 	"Calcul de nouvelle position"
 	ratio > 1
@@ -48,7 +49,7 @@ MoveStepEvent >> executeOn: simulator [
 				drone position: wayPoint.
 		 
 	^ simulator scheduleEvent: (WayPointReachedEvent new
-		                timestamp:  self timestamp ;
+		                timestamp:  self timestamp +1 ;
 		                drone: drone;
 		                wayPoint: wayPoint;
 		                yourself) after: (Set with: self) ]
@@ -67,8 +68,7 @@ MoveStepEvent >> executeOn: simulator [
 
 { #category : 'printing' }
 MoveStepEvent >> printOn: aStream [
-
-"aStream nextPutAll: 'Drone ', drone printString,' moves towards ',self wayPoint printString,' at speed ', self speed printString,'  ... reached :', drone position printString;cr"
+aStream nextPutAll: 'Drone ', drone id printString,' moves towards ',self wayPoint printString,' at speed ', self speed printString,'  ... reached :', drone position printString;cr
 ]
 
 { #category : 'accessing' }

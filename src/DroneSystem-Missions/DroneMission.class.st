@@ -16,6 +16,12 @@ DroneMission >> nextWayPointFor: aDrone [
 ]
 
 { #category : 'accessing' }
+DroneMission >> points: aValue [
+
+	self wayPoints: aValue
+]
+
+{ #category : 'accessing' }
 DroneMission >> wayPoints [
 
 	^ wayPoints

@@ -20,15 +20,3 @@ ClusterShapes >> hull: anObject [
 
 	hull := anObject
 ]
-
-{ #category : 'accessing' }
-ClusterShapes >> mission [
-
-	^ mission
-]
-
-{ #category : 'accessing' }
-ClusterShapes >> mission: anObject [
-
-	mission := anObject
-]

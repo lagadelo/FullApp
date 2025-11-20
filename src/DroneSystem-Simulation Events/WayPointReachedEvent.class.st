@@ -33,6 +33,12 @@ WayPointReachedEvent >> executeOn: aSimulator [
     ) after: (Set with: self).
 ]
 
+{ #category : 'printing' }
+WayPointReachedEvent >> printOn:aStream [
+
+aStream nextPutAll: self timestamp printString,': Drone ', drone id printString, ' reached ', wayPoint printString;cr  
+]
+
 { #category : 'accessing' }
 WayPointReachedEvent >> wayPoint [
 

@@ -34,7 +34,8 @@ Class {
 		'clusterShapes',
 		'scriptPresenter',
 		'isRunning',
-		'menuBarPresenter'
+		'menuBarPresenter',
+		'selectionRectangle'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -182,12 +183,27 @@ clusterId,droneId,latitude,longitude,altitude
 
 { #category : 'GoeReferencing' }
 UISimulation class >> lonLatToWebMercator: lonLatPoint [
+"lonLatPoint in degrees"
     | lon lat x y |
     lon := lonLatPoint x.
     lat := lonLatPoint y.
     x := lon * 20037508.34 / 180.
     y := ((lat + 90) * Float pi / 360) tan ln * 6378137.
     ^ x @ y.
+]
+
+{ #category : 'GoeReferencing' }
+UISimulation class >> normalizedPixel: pixel inBbox: aBbox width: w height: h [
+	"Approx inverse WebMercator (lat reconstruction simplifiée)."
+
+	| xMin yMin xMax yMax px py |
+	xMin := aBbox origin x.
+	yMin := aBbox origin y.
+	xMax := aBbox corner x.
+	yMax := aBbox corner y.
+	px := xMax - xMin * (pixel x / w) + xMin.
+	py := yMax - (yMax - yMin * (pixel y / h)).
+	^    px @ py
 ]
 
 { #category : 'instance creation' }
@@ -205,15 +221,11 @@ UISimulation class >> openOn: aSimulation [
 UISimulation class >> physicalLonLatFromPixel: pixel inBbox: aBbox width: w height: h [
 	"Approx inverse WebMercator (lat reconstruction simplifiée)."
 
-	| xMin yMin xMax yMax lon lat |
-	xMin := aBbox origin x.
-	yMin := aBbox origin y.
-	xMax := aBbox corner x.
-	yMax := aBbox corner y.
-	lon := xMax - xMin * (pixel x / w) + xMin.
-	lat := yMax - (yMax - yMin * (pixel y /h )).
-	lat := (lat / 6378137) exp arcTan * 360 / Float pi - 90.
-	^ lon @ lat
+	^ self webMercatorToLongitureLatitude: (self
+			   normalizedPixel: pixel
+			   inBbox: aBbox
+			   width: w
+			   height: h)
 ]
 
 { #category : 'GoeReferencing' }
@@ -232,12 +244,13 @@ UISimulation class >> pixelForLon: lon lat: lat inBbox: aBbox width: w height: h
 
 { #category : 'GoeReferencing' }
 UISimulation class >> webMercatorToLongitureLatitude: lonLatPoint [
+"returns a value in degrees based on mercator input"
     | lon lat x y |
     lon := lonLatPoint x.
     lat := lonLatPoint y.
     x := lon / 20037508.34 * 180.
     y :=  ((lat / 6378137) exp arcTan * 360 / Float pi) - 90.
-    ^ x @ y.
+    ^GeoPoint latitude: y longitude:  x altitude: 0.
 ]
 
 { #category : 'presenters' }
@@ -319,7 +332,7 @@ UISimulation >> baseMapDirty: anObject [
 { #category : 'accessing' }
 UISimulation >> bbox [
 
-	bbox ifNil: [ bbox := self computeBoundingBox ].
+	bbox ifNil: [  self computeBoundingBox ].
 	^ bbox
 ]
 
@@ -331,33 +344,38 @@ UISimulation >> bbox: anObject [
 
 { #category : 'canvas' }
 UISimulation >> boundingBox [
-    bbox ifNil: [ bbox := self computeBoundingBox ].
-    ^ bbox.
+^self bbox
 ]
 
 { #category : 'presenters-building' }
 UISimulation >> buildBaseMap [
-    rsCanvas ifNil: [ ^ self ].
-    baseMapDirty := false.
-    "Retirer anciens shapes de base (si on reconstruit)"
-    baseShapes do: [ :s | (rsCanvas shapes includes: s) ifTrue: [ rsCanvas removeShape: s ] ].
-    baseShapes removeAll.
- 
-    (Smalltalk includesKey: #OWSServiceWMS)
-        ifTrue: [
-            | wms img bmp |
-            [ wms := OWSServiceWMS new ] on: Error do: [ ^ self buildFallbackBaseMap ].
-            wms url: 'https://data.geopf.fr/wms-r'.
-            [ img := wms
-                map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
-                bbox: self boundingBox
-                size: self imageSize
-                epsg: '3857'
-                format: 'image/png' ]
-                on: Error do: [ ^ self buildFallbackBaseMap ].
-            bmp := RSBitmap newFrom: img.
-            self addBaseShape: bmp ]
-        ifFalse: [ self buildFallbackBaseMap ]
+
+	rsCanvas ifNil: [ ^ self ].
+	baseMapDirty := false.
+	"Retirer anciens shapes de base (si on reconstruit)"
+	"baseShapes ifNotNil:[baseShapes do: [ :s | (rsCanvas shapes includes: s) ifTrue: [ rsCanvas removeShape: s ] ].
+    baseShapes removeAll.]."
+	rsCanvas shapes do: [ :a | a remove ].
+
+	(Smalltalk includesKey: #OWSServiceWMS)
+		ifTrue: [
+				| wms img bmp |
+				[ wms := OWSServiceWMS new ]
+					on: Error
+					do: [ ^ self buildFallbackBaseMap ].
+				wms url: 'https://data.geopf.fr/wms-r'.
+				[
+					img := wms
+						       map: { 'EL.GridCoverage'. 'FORETS.PUBLIQUES' }
+						       bbox: self boundingBox
+						       size: self imageSize
+						       epsg: '3857'
+						       format: 'image/png' ]
+					on: Error
+					do: [ ^ self buildFallbackBaseMap ].
+				bmp := RSBitmap newFrom: img.
+				self addBaseShape: bmp ]
+		ifFalse: [ self buildFallbackBaseMap ]
 ]
 
 { #category : 'presenters-building' }
@@ -896,7 +914,35 @@ UISimulation >> computeBoundingBox [
 
 	| points latMin latMax lonMin lonMax padLat padLon tmp |
 	  "1. Collecte des points source (battleZone sinon dérive des drones)"
-	points := (simulation respondsTo: #battleZone)
+	points := "(simulation respondsTo: #battleZone)   
+		          ifTrue: [ simulation battleZone ]
+		          ifFalse: [ nil ]." nil.
+	(points isNil or: [ points isEmpty ]) ifTrue: [
+			points := (simulation allDrones collect: [ :d |
+					           ((d respondsTo: #latitude) and: [
+						            d respondsTo: #longitude ])
+						           ifTrue: [
+						           GeoPoint
+							           latitude: d latitude
+							           longitude: d longitude
+							           altitude: 0 ]
+						           ifFalse: [ nil ] ]) reject: #isNil ]. self model missions do:[:m| points addAll: m polygon].
+	 (points isNil or: [ points isEmpty ])  ifTrue: [ "Fallback constant (France approx.)"
+			points := {
+				          (GeoPoint latitude: 51.2 longitude: -5 altitude: 0).
+				          (GeoPoint latitude: 41.0 longitude: 9 altitude: 0).
+				          (GeoPoint latitude: 41.0 longitude: -5 altitude: 0).
+				          (GeoPoint latitude: 51.2 longitude: 9 altitude: 0) } ].
+
+	self forceBoundingBox: points
+]
+
+{ #category : 'presenters' }
+UISimulation >> computeBoundingBoxOld [
+
+	| points latMin latMax lonMin lonMax padLat padLon tmp |
+	  "1. Collecte des points source (battleZone sinon dérive des drones)"
+	points := "(simulation respondsTo: #battleZone)" false
 		          ifTrue: [ simulation battleZone ]
 		          ifFalse: [ nil ].
 	(points isNil or: [ points isEmpty ]) ifTrue: [
@@ -909,7 +955,7 @@ UISimulation >> computeBoundingBox [
 							           longitude: d longitude
 							           altitude: 0 ]
 						           ifFalse: [ nil ] ]) reject: #isNil ].
-	(points isNil or: [ points isEmpty ]) ifTrue: [ "Fallback constant (France approx.)"
+	"(points isNil or: [ points isEmpty ])" true ifTrue: [ "Fallback constant (France approx.)"
 			points := {
 				          (GeoPoint latitude: 51.2 longitude: -5 altitude: 0).
 				          (GeoPoint latitude: 41.0 longitude: 9 altitude: 0).
@@ -985,46 +1031,6 @@ UISimulation >> connectDroneModePresenters [
 			self refreshDrones ]
 ]
 
-{ #category : 'layout' }
-UISimulation >> connectOverlayChecks [
-
-	checkPerception ifNotNil: [
-			checkPerception whenChangedDo: [
-					"overlayChecks at: #perception put: checkPerception state."
-					(overlayModel respondsTo: #showPerceptionRadius:) ifTrue: [
-						overlayModel showPerceptionRadius: checkPerception state ].
-				"	self updateOverlayChecksLabel."
-					self refreshOverlays ] ].
-	checkMissions ifNotNil: [
-			checkMissions whenChangedDo: [
-				"	overlayChecks at: #missions put: checkMissions state."
-					(overlayModel respondsTo: #showMissionPaths:) ifTrue: [
-						overlayModel showMissionPaths: checkMissions state ].
-				"	self updateOverlayChecksLabel."
-					self refreshOverlays ] ].
-	checkHull ifNotNil: [
-			checkHull whenChangedDo: [
-					"overlayChecks at: #hull put: checkHull state."
-					(overlayModel respondsTo: #showClusterHull:) ifTrue: [
-						overlayModel showClusterHull: checkHull state ].
-				"	self updateOverlayChecksLabel."
-					self refreshOverlays ] ].
-	checkAmmunition ifNotNil: [
-			checkAmmunition whenChangedDo: [
-				"	overlayChecks at: #ammunition put: checkAmmunition state."
-					(overlayModel respondsTo: #showAmmoBars:) ifTrue: [
-						overlayModel showAmmoBars: checkAmmunition state ].
-					"self updateOverlayChecksLabel."
-					self refreshOverlays ] ].
-	checkFuel ifNotNil: [
-			checkFuel whenChangedDo: [
-					"overlayChecks at: #fuel put: checkFuel state."
-					(overlayModel respondsTo: #showEnergyBars:) ifTrue: [
-						overlayModel showEnergyBars: checkFuel state ].
-				"	self updateOverlayChecksLabel."
-					self refreshOverlays ] ]
-]
-
 { #category : 'zoom animation' }
 UISimulation >> customZoom [
 
@@ -1039,15 +1045,6 @@ UISimulation >> customZoom [
 		onAccept: [ :dialog |   self zoomLevel: dialog presenter text asNumber ];
 		openDialog
 		 
-]
-
-{ #category : 'debugging' }
-UISimulation >> debugBaseShapes [
-    Transcript
-        show: 'Base shapes count: ', baseShapes size printString; cr;
-        show: 'Canvas shapes total: ', (rsCanvas ifNil: [ 0 ] ifNotNil: [ rsCanvas shapes size ]) printString; cr;
-        show: 'Base shapes still present: ',
-            (baseShapes count: [ :s | rsCanvas shapes includes: s ]) printString; cr.
 ]
 
 { #category : 'accessing' }
@@ -1103,20 +1100,10 @@ UISimulation >> drawAmmoOverlayFor:  d at: p [
 ]
 
 { #category : 'overlays' }
-UISimulation >> drawClusterHullOverlay [
-
-self allClusters do: [ :cluster | self drawClusterHullOverlayFor:cluster]
-]
-
-{ #category : 'overlays' }
-UISimulation >> drawClusterHullOverlayFor: c [
+UISimulation >> drawClusterOverlayFor: c [
 
 	| points pts poly s |
-	s := self ensureClusterShapes: c.
-	s hull ifNotNil: [
-			(rsCanvas shapes includes: s hull) ifTrue: [
-				rsCanvas removeShape: s hull ] ].
-
+	s := self undrawClusterOverlayFor: c.
 
 self overlayModel showClusterHull ifTrue:[
 
@@ -1193,28 +1180,6 @@ UISimulation >> drawDroneIconsFor: d at: p [
 	s position translateTo: p
 ]
 
-{ #category : 'presenters' }
-UISimulation >> drawDroneIconsTextFor: d at: p [
-
-	| lbl s |
-	s := self droneShapes at: d ifAbsentPut: [ DroneShapes new ].
-	s label ifNil: [
-			lbl := RSLabel new
-				       text: ((d respondsTo: #uniqueId)
-						        ifTrue: [ d uniqueId printString ]
-						        ifFalse: [
-								        (d respondsTo: #name)
-									        ifTrue: [ d name ]
-									        ifFalse: [ 'D' ] ]);
-				       color: Color black;
-				       yourself.
-			self hideShape: lbl.
-			self markOverlayShape: lbl.
-			rsCanvas add: lbl ].
-
-	lbl position: p x + 6 @ (p y - 6)
-]
-
 { #category : 'overlay models' }
 UISimulation >> drawEnergyOverlay [
 
@@ -1256,63 +1221,6 @@ colorsMeaning :=[:a|
 						add: frame ] ]
 ]
 
-{ #category : 'overlay models' }
-UISimulation >> drawEnergyOverlay2 [
-
-|colorsMeaning|
-colorsMeaning :=[:a|
-	a < 0.4 ifTrue:[Color red]
-	 ifFalse:[a < 0.7 
-			ifTrue:[(Color purple alpha: 0.3)] 
-			ifFalse:[(Color purple alpha: 0.3)]
-				]].
-	((overlayModel respondsTo: #showEnergyBars) and: [
-		 overlayModel showEnergyBars ]) ifFalse: [ ^ self ].
-	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
-	self  allDrones do: [ :d |
-			(d respondsTo: #energy) ifTrue: [
-					| pos barW ratio filled fill frame |
-					pos := self pixelForDrone: d.
-					pos ifNil: [ ^ self ].
-					barW := 34.
-					ratio := (d energy max: 0) / 100.0 min: 1.0.
-					filled := barW * ratio max: 1.
-					fill := RSBox new
-						        width: filled;
-						        height: 5;
-						        color: (colorsMeaning value: ratio);
-						        yourself.
-					frame := RSBox new
-						         width: barW;
-						         height: 5; fill: (Color gray "alpha: 0.5");
-						      	  borderColor: #black;
-						         yourself.
-
-					fill translateTo: pos x - (barW *(1-ratio)/2) @ (pos y + 10).
-					frame translateTo: pos x  @ (pos y + 10).
-					self markOverlayShape: frame.
-					self markOverlayShape: fill.
-					rsCanvas
-						add: fill;
-						add: frame ] ]
-]
-
-{ #category : 'overlays' }
-UISimulation >> drawEnergyOverlayFor2: d at: p [
-
-	| s |
-	s := self ensureDroneShapes: d.
-	(self  overlayModel  showEnergyBars) ifTrue:	[s energy ifNil: [
-			s energy: (RSBox new
-					 width: d capabilities energy;
-					 height: 5;
-					 color: Color transparent;
-					 yourself).
-
-			rsCanvas add: s energy ].
-	s energy translateTo: p x @ (p y + 10)]
-]
-
 { #category : 'overlays' }
 UISimulation >> drawEnergyOverlayFor: d at: p [
 
@@ -1345,41 +1253,11 @@ UISimulation >> drawEnergyOverlayFor: d at: p [
 		translateTo: p - s energy externalRadius]
 ]
 
-{ #category : 'overlay models' }
-UISimulation >> drawMissionOverlay [
-
-	| pts poly assignedMissions |
-	self halt.
-		((overlayModel respondsTo: #showMissionPaths) and: [
-		 overlayModel showMissionPaths ]) ifFalse: [ ^ self ].
-	self allClusters do:[:c| 	assignedMissions := c missions  assignedMissions . 
-				assignedMissions ifNotNil:[assignedMissions do:[:m||points hull |
-					points := m   polygon.
-						       
-					points size > 2 ifTrue: [
-							hull := ConvexHullCalculator new hullForGeoPoints: points.
-							pts := hull
-								       collect: [ :gp | self graphicalPixelOf: gp ]
-								       thenSelect: #notNil.
-							pts size > 2 ifTrue: [
-									poly := RSPolygon new
-										        points: pts;
-										        color: (Color yellow alpha: 0.07);
-										        borderColor: (Color black  );
-										        borderWidth: 1;
-										        yourself.			 
-							 
-							self markOverlayShape: poly.
-							rsCanvas add: poly ] ]]]]
-]
-
 { #category : 'overlays' }
 UISimulation >> drawMissionOverlayFor: m [
 
 	|  poly s |
-	s := self ensureMissionShapes: m.
-
- 	  s hull ifNotNil: [ (rsCanvas shapes includes: s hull) ifTrue:[rsCanvas removeShape: s hull ]].
+	s := self undrawMissionOverlayFor: m.
 		self overlayModel showMissionPaths ifTrue:[	poly := RSPolygon new
 				        points: 	(m   polygon collect:[:p | self pixelForDrone: p]);
 				        color: (m getColor);
@@ -1389,31 +1267,6 @@ UISimulation >> drawMissionOverlayFor: m [
 
 			s hull: poly.
 			rsCanvas addShape: poly ]
-]
-
-{ #category : 'overlay models' }
-UISimulation >> drawPerceptionOverlay [
-
- 
-	((overlayModel respondsTo: #showPerceptionRadius) and: [
-		 overlayModel showPerceptionRadius ]) ifFalse: [ ^ self ].
-	
-	
-	 self allDrones do: [ :d |
-			(d respondsTo: #detectionRange) ifTrue: [
-					| pos range circle |
-					range := d detectionRange.
-					pos := self pixelForDrone: d.
-					(pos isNil or: [ range isNil ]) ifFalse: [
-							circle := RSCircle new
-								          radius: (range / 2  );
-								          color: (Color lightBlue alpha: 0.15);
-								          borderColor: (Color lightBlue alpha: 0.4);
-								          yourself.
-					 
-							circle translateTo: pos.
-							self markOverlayShape: circle.
-							rsCanvas add: circle ] ] ]
 ]
 
 { #category : 'overlays' }
@@ -1507,16 +1360,19 @@ UISimulation >> ensureBattleZoneFromDrones [
 { #category : 'canvas' }
 UISimulation >> ensureCanvas [
 
-  	rsCanvas ifNotNil: [ ^ rsCanvas ].
+	rsCanvas ifNotNil: [ ^ rsCanvas ].
 
-	rsCanvas := RSCanvas new @RSScrollBarsCanvasInteraction.
+	rsCanvas := RSCanvas new @ RSScrollBarsCanvasInteraction.
 	self ensureBattleZoneFromDrones.
-	self computeBoundingBox.
+	 
+	self bbox.
 	self computeImageSize.
 
 	self ensureBaseShapes.
 	self buildBaseMap.
 	self connectCanvasEvents.
+	self installSelectionZoomOn: rsCanvas.
+
 	^ rsCanvas
 ]
 
@@ -1587,10 +1443,81 @@ UISimulation >> fetchBitmapFromWMS [
 
 { #category : 'Menu Bar' }
 UISimulation >> fitZoom [
-    self computeBoundingBox.
-    zoomLevel := 1.0.
-    self markBaseMapDirty.
-    self refreshAll.
+
+	bbox := nil.
+	self computeBoundingBox.
+	zoomLevel := 1.0.
+	self markBaseMapDirty.
+	self refreshAll
+]
+
+{ #category : 'presenters' }
+UISimulation >> forceBoundingBox: points [
+
+	| latMin latMax lonMin lonMax padLat padLon tmp |
+	"2. Min / Max"
+	latMin := latMax := points first latitude.
+	lonMin := lonMax := points first longitude.
+	points do: [ :gp |
+			latMin := latMin min: gp latitude.
+			latMax := latMax max: gp latitude.
+			lonMin := lonMin min: gp longitude.
+			lonMax := lonMax max: gp longitude ].
+
+	"3. Padding 5% (évite bords collés); si delta nul, impose petite aire."
+	latMax = latMin ifTrue: [
+			latMax := latMax + 0.05.
+			latMin := latMin - 0.05 ].
+	lonMax = lonMin ifTrue: [
+			lonMax := lonMax + 0.05.
+			lonMin := lonMin - 0.05 ].
+	padLat := latMax - latMin * 0.05.
+	padLon := lonMax - lonMin * 0.25.
+	latMax := latMax + padLat.
+	latMin := latMin - padLat.
+	lonMax := lonMax + padLon.
+	lonMin := lonMin - padLon.
+	tmp := (self class lonLatToWebMercator: lonMin @ latMax) corner:
+		       (self class lonLatToWebMercator: lonMax @ latMin).
+
+
+
+	bboxBase = tmp ifTrue: [ bbox ifNotNil: [ ^ self ] ]. "beLazy"
+	bboxBase := tmp.
+	"5. Applique le zoom"
+	self updateZoomedBBox.
+	self computeImageSize. "recalcule imageSize dépendant du nouveau bbox"
+	self markBaseMapDirty.
+	self refreshAll
+]
+
+{ #category : 'presenters' }
+UISimulation >> forceRawBoundingBox: points [
+
+	| latMin latMax lonMin lonMax     tmp |
+	"2. Min / Max"
+	latMin := latMax := points first y.
+	lonMin := lonMax := points first x.
+	points do: [ :gp |
+			latMin := latMin min: gp y.
+			latMax := latMax max: gp y.
+			lonMin := lonMin min: gp x.
+			lonMax := lonMax max: gp x ].
+
+	"3. Padding 5% (évite bords collés); si delta nul, impose petite aire."
+	 
+	tmp := Rectangle origin: lonMin @ latMax corner:
+		        lonMax @ latMin.
+
+
+
+	bboxBase = tmp ifTrue: [ bbox ifNotNil: [ ^ self ] ]. "beLazy"
+	bboxBase := tmp.
+	"5. Applique le zoom"
+	self updateZoomedBBox.
+	self computeImageSize. "recalcule imageSize dépendant du nouveau bbox"
+	self markBaseMapDirty.
+	self refreshAll
 ]
 
 { #category : 'updating status' }
@@ -1735,7 +1662,7 @@ UISimulation >> importMissionsFromCSV: aFileRef [
 	p := OrderedCollection new.
 	rows allButFirstDo: [ :cols |
 		p add: (Waypoint with: (cols collect: [ :v | v asNumber ])) ].
-	mission polygon: p.
+	mission points: p.
 	simulator model addMission: mission.
 	missionListPresenter items: missionListPresenter items "force refresh".
 	self computeBoundingBox "update map"
@@ -1798,6 +1725,55 @@ UISimulation >> initializePresenters [
 	clusterListPresenter whenSelectionChangedDo: [
 			self updateDroneListFromSelectedClusters.
 			self refreshDrones ]
+]
+
+{ #category : 'canvas' }
+UISimulation >> installSelectionZoomOn: canvas [
+	"Mouse down: création du rectangle"
+
+	canvas
+		when: RSKeyDown 
+		do: [ :evt | evt keyName=#C ifTrue:[selectionRectangle ifNotNil:[  selectionRectangle remove. selectionRectangle := nil ]]]
+		for: self.
+
+	canvas
+		when: RSMouseClick
+		do: [ :evt |
+				| selectionStartPoint |
+				selectionStartPoint := evt position.
+				selectionRectangle ifNotNil: [  selectionRectangle remove. self zoomOn: selectionRectangle. selectionRectangle := nil]
+				ifNil:[selectionRectangle := RSBox new
+					                      position: selectionStartPoint;
+					                      size: 1 @ 1;
+					                      color: (Color blue alpha: 0.15);
+					                      border: (RSBorder new
+							                       color: Color blue;
+							                       width: 1);
+					                      yourself.
+
+				canvas add: selectionRectangle.].
+
+				canvas signalUpdate ]
+		for: self.
+
+ 
+	canvas
+		when: RSMouseMove
+		do: [ :evt |
+				| endPoint minX minY maxX maxY selectionStartPoint selectionExtent|
+				selectionRectangle ifNotNil:[selectionStartPoint := selectionRectangle position -( selectionRectangle extent/2).
+				endPoint := evt position   .
+				minX := selectionStartPoint x min: endPoint x.
+				minY := selectionStartPoint y min: endPoint y.
+				maxX := selectionStartPoint x max: endPoint x.
+				maxY := selectionStartPoint y max: endPoint y.
+				selectionExtent := maxX - minX @ (maxY - minY).
+	
+				selectionRectangle size: selectionExtent.
+							selectionRectangle position: minX @ minY + (selectionExtent /2) .
+
+				canvas signalUpdate] ]
+		for: self
 ]
 
 { #category : 'presenters' }
@@ -1949,18 +1925,6 @@ UISimulation >> overlayModel: anObject [
 	overlayModel := anObject
 ]
 
-{ #category : 'accessing' }
-UISimulation >> overlayPanelPresenter [
-
-	^ overlayPanelPresenter
-]
-
-{ #category : 'accessing' }
-UISimulation >> overlayPanelPresenter: anObject [
-
-	overlayPanelPresenter := anObject
-]
-
 { #category : 'presenters' }
 UISimulation >> overlayShapes [ 
 
@@ -2042,8 +2006,10 @@ UISimulation >> pixelFromCanvasPoint: pixelPoint [
     "Roassal: on centre => x' = x - w/2 ; y' = (h/2) - y (inversion verticale)."
   "  ^ pixelPoint x +(h/2) @ ( (h/2)- pixelPoint y)"
 
-p := pixelPoint -   baseShapes first  encompassingRectangle origin.
-^ p x +(h/2) @ ( (h/2)- p y)
+ 
+p :=  pixelPoint x +(h/2) @ ( (h/2)+ pixelPoint y).
+ 
+^p
 ]
 
 { #category : 'CSV' }
@@ -2139,7 +2105,7 @@ UISimulation >> readCSVWithNeoFrom: aFileRef [
 { #category : 'overlay models' }
 UISimulation >> rebuildBaseMap [
     rsCanvas ifNil: [ ^ self ].
-    self buildBaseMap.
+   self buildBaseMap.
 
 ]
 
@@ -2423,22 +2389,6 @@ UISimulation >> simulation: aSim [
     ^ self.
 ]
 
-{ #category : 'presenters-building' }
-UISimulation >> simulationMenu [
-    | m |
-    m := SpMenuPresenter new.
-    m addItem: [ :it | it name: 'Start'; action: [ self startSimulationLoop ] ].
-    m addItem: [ :it | it name: 'Step'; action: [ self simulationStepOnce ] ].
-    m addItem: [ :it | it name: 'Jump…'; action: [ self jumpDialog ] ].
-    m addItem: [ :it | it name: (haltOnError ifTrue: ['HaltOn Errors ✓'] ifFalse: ['HaltOn Errors']);
-        action: [ haltOnError := haltOnError not ] ].
-    "m addSeparator."
-    m addItem: [ :it | it name: 'Save'; action: [ self saveSimulationDialog ] ].
-    m addItem: [ :it | it name: 'Load'; action: [ self loadSimulationDialog ] ].
-    ^ m
-
-]
-
 { #category : 'Simulation control' }
 UISimulation >> simulationMenuItem: aText do: aBloc [
 | presenter n |
@@ -2478,6 +2428,11 @@ UISimulation >> simulator [
 UISimulation >> simulator: aValue [
 
 	simulator := aValue
+]
+
+{ #category : 'load and saving' }
+UISimulation >> snapshot [ 
+ self   window adapter widget  imageForm writePNGFileNamed: 'UISimulation.png'
 ]
 
 { #category : 'waypoints' }
@@ -2532,16 +2487,28 @@ UISimulation >> syncOverlayCheckboxStates [
             cb state: (overlayModel perform: getter) ] ]
 ]
 
-{ #category : 'presenters' }
-UISimulation >> toolBarPresenter [
+{ #category : 'overlays' }
+UISimulation >> undrawClusterOverlayFor: c [
 
-	^ toolBarPresenter
+	| s |
+	s := self ensureClusterShapes: c.
+
+	s hull ifNotNil: [
+			(rsCanvas shapes includes: s hull) ifTrue: [
+				rsCanvas removeShape: s hull ] ].
+	^ s
 ]
 
-{ #category : 'presenters' }
-UISimulation >> toolBarPresenter: anObject [
+{ #category : 'overlays' }
+UISimulation >> undrawMissionOverlayFor: m [
 
-	toolBarPresenter := anObject
+	| s |
+	s := self ensureMissionShapes: m.
+
+	s hull ifNotNil: [
+			(rsCanvas shapes includes: s hull) ifTrue: [
+				rsCanvas removeShape: s hull ] ].
+	^ s
 ]
 
 { #category : 'CSV' }
@@ -2587,19 +2554,6 @@ UISimulation >> updateFrom: aSimulationState [
 self refreshDrones; updateTimeLabel
 ]
 
-{ #category : 'overlays' }
-UISimulation >> updateOverlayChecksLabel [
-    overlayChecksLabel
-        label: (String streamContents: [ :s |
-            { checkPerception . checkMissions   . checkHull  . checkAmmunition  .checkFuel}
-                do: [ :btn |
-                    s
-                        << btn label;
-                        << ' : ';
-                        << (btn state ifTrue: [ 'V' ] ifFalse: [ 'X' ]) ]
-                separatedBy: [ s << ' - ' ] ])
-]
-
 { #category : 'Simulation control' }
 UISimulation >> updateRunningState [
 
@@ -2618,9 +2572,15 @@ UISimulation >> updateShapes [
 
 			self drawEnergyOverlayFor: d at: p.
 			self drawAmmoOverlayFor: d at: p ].
-	self allClusters do: [ :c | self drawClusterHullOverlayFor: c ].
-	m := self missionListPresenter selectedItem.
-	m ifNotNil: [ self drawMissionOverlayFor: m ]
+		
+		self clustersFromSimulation do:[:c| self undrawClusterOverlayFor: c].
+	self allClusters do: [ :c | self drawClusterOverlayFor: c ].
+	self missionListPresenter ifNotNil: [ "remove allMissions"
+			self missionListPresenter items do: [ :aMission |
+				self undrawMissionOverlayFor: aMission ].
+			m := self missionListPresenter selectedItem.
+			m ifNotNil: [ "draw selected mission on demand"
+				self drawMissionOverlayFor: m ] ]
 ]
 
 { #category : 'overlays' }
@@ -2712,6 +2672,24 @@ UISimulation >> zoomMenu [
     m addItem: [ :it | it name: 'Zoom +'; action: [ self zoomIn ] ].
     m addItem: [ :it | it name: 'Zoom -'; action: [ self zoomOut ] ].
     ^ m
+]
+
+{ #category : 'zoom animation' }
+UISimulation >> zoomOn: aRsBox [
+
+	self forceBoundingBox: {
+			(self class
+				 physicalLonLatFromPixel:  
+				 (self pixelFromCanvasPoint: aRsBox encompassingRectangle origin)
+				 inBbox: self boundingBox
+				 width: self imageSize x
+				 height: self imageSize y).
+			(self class
+				 physicalLonLatFromPixel:  
+				 (self pixelFromCanvasPoint: aRsBox encompassingRectangle corner)
+				 inBbox: self boundingBox
+				 width: self imageSize x
+				 height: self imageSize y) }
 ]
 
 { #category : 'zoom animation' }

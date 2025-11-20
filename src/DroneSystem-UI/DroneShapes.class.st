@@ -46,11 +46,15 @@ DroneShapes >> hide: aField [
 { #category : 'coloring' }
 DroneShapes >> hideAll [
 
-	self ammunitions ifNotNil:[ self ammunitions color: Color transparent ].
-	self energy ifNotNil:[ self energy color: Color transparent ].
-	self perceptionRange ifNotNil:[ self perceptionRange color: Color transparent ].
-	self position ifNotNil:[   self position color: Color transparent ].
-		
+	self ammunitions ifNotNil: [
+		self ammunitions color: Color transparent ].
+	self energy ifNotNil: [ self energy color: Color transparent ].
+	self perceptionRange ifNotNil: [
+		self perceptionRange color: Color transparent.
+		self perceptionRange borderColor: Color transparent ].
+	self position ifNotNil: [
+			position color: Color transparent.
+			(position propertyAt: #RSLabeled) paint: Color transparent ]
 ]
 
 { #category : 'accessing' }
@@ -130,12 +134,14 @@ DroneShapes >> showFollowing: anOverlayModel [
 { #category : 'coloring' }
 DroneShapes >> showPerceptionRange [
 
-self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alpha: 0.15)]
+self perceptionRange ifNotNil:[ self perceptionRange color: (Color lightBlue alpha: 0.15).
+		self perceptionRange borderColor: (Color lightBlue alpha: 0.5)]
 ]
 
 { #category : 'coloring' }
 DroneShapes >> showPosition [
 
-	 self position ifNotNil: [
-			self position color: (self model getColor)  ]
+	self position ifNotNil: [
+			self position color: self model getColor.
+			(position propertyAt: #RSLabeled) paint: Color black ]
 ]
