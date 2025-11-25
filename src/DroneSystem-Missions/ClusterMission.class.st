@@ -203,6 +203,11 @@ copy status: self status.
 ^copy 
 ]
 
+{ #category : 'accessing' }
+ClusterMission >> drones [ 
+^self  model drones 
+]
+
 { #category : 'strategy' }
 ClusterMission >> generateOrdersFor: aCluster threatAt: aPoint timestamp: aTimestamp [
     ^ self responseStrategy

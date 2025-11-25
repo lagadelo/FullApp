@@ -318,18 +318,6 @@ UISimulation >> baseBitmap: anObject [
 ]
 
 { #category : 'accessing' }
-UISimulation >> baseMapDirty [
-
-	^ baseMapDirty
-]
-
-{ #category : 'accessing' }
-UISimulation >> baseMapDirty: anObject [
-
-	baseMapDirty := anObject
-]
-
-{ #category : 'accessing' }
 UISimulation >> bbox [
 
 	bbox ifNil: [  self computeBoundingBox ].
@@ -1180,47 +1168,6 @@ UISimulation >> drawDroneIconsFor: d at: p [
 	s position translateTo: p
 ]
 
-{ #category : 'overlay models' }
-UISimulation >> drawEnergyOverlay [
-
-|colorsMeaning|
-colorsMeaning :=[:a|
-	a < 0.4 ifTrue:[Color red]
-	 ifFalse:[a < 0.7 
-			ifTrue:[(Color purple alpha: 0.3)] 
-			ifFalse:[(Color purple alpha: 0.3)]
-				]].
-	((overlayModel respondsTo: #showEnergyBars) and: [
-		 overlayModel showEnergyBars ]) ifFalse: [ ^ self ].
-	(simulation respondsTo: #allDrones) ifFalse: [ ^ self ].
-	self  allDrones do: [ :d |
-			(d respondsTo: #energy) ifTrue: [
-					| pos barW ratio filled fill frame |
-					pos := self pixelForDrone: d.
-					pos ifNil: [ ^ self ].
-					barW := 34.
-					ratio := (d energy max: 0) / 100.0 min: 1.0.
-					filled := barW * ratio max: 1.
-					fill := RSBox new
-						        width: filled;
-						        height: 5;
-						        color: (colorsMeaning value: ratio);
-						        yourself.
-					frame := RSBox new
-						         width: barW;
-						         height: 5; fill: (Color gray "alpha: 0.5");
-						      	  borderColor: #black;
-						         yourself.
-
-					fill translateTo: pos x - (barW *(1-ratio)/2) @ (pos y + 10).
-					frame translateTo: pos x  @ (pos y + 10).
-					self markOverlayShape: frame.
-					self markOverlayShape: fill.
-					rsCanvas
-						add: fill;
-						add: frame ] ]
-]
-
 { #category : 'overlays' }
 UISimulation >> drawEnergyOverlayFor: d at: p [
 
@@ -1327,10 +1274,11 @@ droneShapes ifNil:[droneShapes := Dictionary new].
 ^droneShapes
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'overlay models' }
 UISimulation >> ensureBaseShapes [
-    baseShapes ifNil: [ baseShapes := OrderedCollection new ].
-    ^ baseShapes
+
+	baseShapes ifNil: [ baseShapes := OrderedCollection new ].
+	^ baseShapes
 ]
 
 { #category : 'tests - test data' }
@@ -1733,7 +1681,8 @@ UISimulation >> installSelectionZoomOn: canvas [
 
 	canvas
 		when: RSKeyDown 
-		do: [ :evt | evt keyName=#C ifTrue:[selectionRectangle ifNotNil:[  selectionRectangle remove. selectionRectangle := nil ]]]
+		do: [ :evt | evt keyName=#ESCAPE ifTrue:[selectionRectangle ifNotNil:[  selectionRectangle remove. selectionRectangle := nil . 
+				canvas signalUpdate]]]
 		for: self.
 
 	canvas
@@ -1849,18 +1798,6 @@ UISimulation >> markOverlayShape: aShape [
     overlayShapes ifNil: [ overlayShapes := OrderedCollection new ].
     (overlayShapes includes: aShape) ifFalse: [ overlayShapes add: aShape ].
     ^ aShape
-]
-
-{ #category : 'overlay models' }
-UISimulation >> migrateMarkExistingBase [
-
-	| guess |
-	rsCanvas ifNil: [ ^ self ].
-
-	guess := rsCanvas shapes copy.
-	guess do: [ :s |
-			(self shape: s hasAttribute: #base equals: true) ifTrue: [
-				baseShapes addIfAbsent: s ] ]
 ]
 
 { #category : 'accessing' }
@@ -2012,6 +1949,14 @@ p :=  pixelPoint x +(h/2) @ ( (h/2)+ pixelPoint y).
 ^p
 ]
 
+{ #category : 'zoom animation' }
+UISimulation >> postZoomRefresh [
+
+	self resetDroneShapes.
+	self markBaseMapDirty.
+	self refreshAll
+]
+
 { #category : 'CSV' }
 UISimulation >> readCSVLinesFrom: aFileRef [
     | rows |
@@ -2111,10 +2056,12 @@ UISimulation >> rebuildBaseMap [
 
 { #category : 'overlays' }
 UISimulation >> refreshAll [
-    rsCanvas ifNil: [ ^ self ].
-    baseMapDirty ifTrue: [ self rebuildBaseMap ].
-    self refreshOverlays.
-    rsCanvas signalUpdate.
+
+	rsCanvas ifNil: [ ^ self ].
+	baseMapDirty ifTrue: [ self rebuildBaseMap ].
+	self resetDroneShapes.
+	self refreshOverlays.
+	rsCanvas signalUpdate
 ]
 
 { #category : 'updating status' }
@@ -2572,8 +2519,9 @@ UISimulation >> updateShapes [
 
 			self drawEnergyOverlayFor: d at: p.
 			self drawAmmoOverlayFor: d at: p ].
-		
-		self clustersFromSimulation do:[:c| self undrawClusterOverlayFor: c].
+
+	self clustersFromSimulation do: [ :c |
+		self undrawClusterOverlayFor: c ].
 	self allClusters do: [ :c | self drawClusterOverlayFor: c ].
 	self missionListPresenter ifNotNil: [ "remove allMissions"
 			self missionListPresenter items do: [ :aMission |
@@ -2654,14 +2602,12 @@ UISimulation >> zoomLevel [
 	^ zoomLevel
 ]
 
-{ #category : 'presenters' }
+{ #category : 'zoom animation' }
 UISimulation >> zoomLevel: aNumber [
 
 	zoomLevel := (aNumber asFloat max: 0.1) min: 50.
 	self updateZoomedBBox.
-	self resetDroneShapes.
-	self markBaseMapDirty.
-	self refreshAll
+	self postZoomRefresh 
 ]
 
 { #category : 'zoom animation' }
