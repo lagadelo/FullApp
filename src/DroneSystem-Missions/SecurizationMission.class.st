@@ -1,6 +1,9 @@
 Class {
 	#name : 'SecurizationMission',
 	#superclass : 'ZoneBasedMission',
+	#instVars : [
+		'counter'
+	],
 	#category : 'DroneSystem-Missions',
 	#package : 'DroneSystem-Missions'
 }
@@ -23,43 +26,53 @@ SecurizationMission >> assignment [
 { #category : 'characterization' }
 SecurizationMission >> computePositions [
 
-	| p nb sort howMany tmp |
-	self wayPoints: self polygon.
-	p := wayPoints size.
+	| p nb sort balancing tmp |
+	p := polygon size.
 	"how many additional waypoints do i need"
-	nb := p < self drones size
-		      ifTrue: [ self drones size - p ]
-		      ifFalse: [ p \\ self drones size ].
+	nb := self howManyAdditionalVertices.
+nb = 0 ifTrue:[self wayPoints: self polygon. ^self].
+ 
+	"I assign an initial number of segments to 1 per edge"
+	balancing := (1 to: p) collect: [ :i |
+			             Array
+				             with:
+				             ((self polygon at: i) distanceTo:
+					              (self polygon at: i % p + 1))
+				             with: i
+				             with: 1 ].
+	" I want to split the longuest edge"
+	sort := SortedCollection sortBlock: [ :a :b |
+		        a first / a last > (b first / b last) ].
+	sort addAll: balancing.
+	nb timesRepeat: [ " I split the longuest edge; its weight is lowered, as its number of segments is goes up"
+			sort first at:3 put: sort first last + 1.
+			"I need to update my list to reflect my new weight"
+			sort reSort  ]. 
 
 
+	tmp := OrderedCollection new.
 
-	" I want to split the longuest edges"
-	sort := SortedCollection sortBlock: [ :i :j |
-			        ((self wayPoints at: i) distanceTo:
-				         (self wayPoints at: i % p + 1))
-			        <
-			        ((self wayPoints at: j) distanceTo:
-				         (self wayPoints at: j % p + 1)) ].
+	"Now, I consider the edges"
+	balancing do: [ :elt |
+			| i |
+			"I first add the source vertice"
+			i := elt at: 2.
+			tmp add: (self polygon at: i).
+			"I find the number of vectices to be added on this edge"
+			nb := elt last.
+			1 to: nb - 1 do: [ :j | " I add a vertice based on a barycenter nb -1, 1 till 1, n-1"
+					tmp add:
+						(self polygon at: i) * (nb - j)
+						+ ((self polygon at: i % p + 1) * j) / nb ].
 
-	"I add an extra point in the middle of the proper edges"
-	[ nb = 0 ] whileFalse: [
-			sort addAll: (1 to: wayPoints size).
-			"how many point to be added at thi turn"
-			howMany := nb min: p.
-			tmp := OrderedCollection new.
-			1 to: howMany do: [ :a |
-				tmp add: (self wayPoints at: a) + (self wayPoints at: a % p + 1) / 2 ].
-			"forget sort as this should be recomputed based on the several new points."
-			sort removeAll.
-			nb := nb - howMany.
-			tmp addAll: wayPoints.
-			"I ensure I have a convex hull"
-			self wayPoints: (ConvexHullCalculator new hullForGeoPoints: tmp) ]
+			"I cannot recompute a hull as the vertices   are now partially aligned"
+			self wayPoints: tmp ]
 ]
 
 { #category : 'characterization' }
 SecurizationMission >> events [
 	| drones tmp ratio |
+	counter := self model drones size.
 	self computePositions. 
 	tmp := OrderedCollection new.
 	" should consider already placed drones on the polygon to prevent extra reoganization"
@@ -75,19 +88,15 @@ SecurizationMission >> events [
 ]
 
 { #category : 'characterization' }
-SecurizationMission >> generateWaypoints [
-	| p nb sort |
-	p := polygon size.
-	nb := p < self drones size ifTrue:[ self drones size - p] ifFalse:[ p - (p \\ self model size)].
+SecurizationMission >> howManyAdditionalVertices [
 
-sort := SortedCollection sort:[:i :j| ((self polygon at:i) dist: (self polygon at: i%p+1)) < ((self polygon at:j) dist: (self polygon at: i+1))].
-sort addAll: (1 to:p).
-1 to: nb do:[:a| wayPoints add: (self polygon at:a) + (self polygon at: a%p +1) /2].
-wayPoints addAll: polygon.
-self wayPoints: (ConvexHullCalculator new  hullForGeoPoints: self wayPoints)
-	
- 
-	 
+	| p |
+	p := polygon size.
+	"how many additional waypoints do i need"
+	^ p < self drones size
+		  ifTrue: [ "ensure two slots per drone" self drones size * 2 - p ]
+		  ifFalse: [ "get a multiple"
+		  self drones size - (p \\ self drones size) ]
 ]
 
 { #category : 'characterization' }
@@ -98,8 +107,24 @@ SecurizationMission >> isSecurizationMission [
 
 { #category : 'as yet unclassified' }
 SecurizationMission >> nextWayPointFor: drone [
+ 
 
-^nil
+	 
+	counter > 1 ifTrue: [
+			counter := counter - 1.
+			^ nil ].
+	counter = 1 ifTrue: [
+			counter := counter - 1.
+			self model drones do: [ :aDrone |
+					DroneSimulator uniqueInstance scheduleEvent: ((MoveStepEvent
+							  drone: aDrone
+							  wayPoint: (self nextWayPointFor: aDrone)
+							  speed: 20000 / 3600)) at: DroneSimulator uniqueInstance currentTime "20km/h" ].
+			^ nil ].
+	counter = 0 ifTrue: [
+			^ self wayPoints at:
+				  (self wayPoints indexOf: drone position) % self wayPoints size
+				  + 1 ]
 ]
 
 { #category : 'strategy' }

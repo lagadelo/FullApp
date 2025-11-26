@@ -74,8 +74,8 @@ ConvexHullCalculator >> hullForGeoPoints: points [
     
     | sorted lower upper epsilon |
 
-    epsilon := 0.0.
-    sorted := points sort: [:a :b | (a longitude) <= (b longitude)].
+    epsilon := 0.
+    sorted := points asSet asOrderedCollection  sort: [:a :b | (a longitude) < (b longitude) | (a longitude = b longitude & (a latitude < b latitude))].
  
     lower := OrderedCollection new.
      sorted do: [:p | 
@@ -108,7 +108,7 @@ ConvexHullCalculator >> hullForPoints: points [
     | sorted lower upper epsilon |
 
     epsilon := 0.0.
-    sorted := points sort: [:a :b | (a x) <= (b x)].
+    sorted := points asSet asOrderedCollection sort: [:a :b | (a x) < (b x) | (a x = b x & (a y < b y))].
  
     lower := OrderedCollection new.
      sorted do: [:p | 

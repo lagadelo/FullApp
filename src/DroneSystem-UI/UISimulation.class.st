@@ -2,6 +2,8 @@ Class {
 	#name : 'UISimulation',
 	#superclass : 'SpToggleSplitPresenter',
 	#instVars : [
+		'currentTime',
+		'generateVideo',
 		'simulation',
 		'simulator',
 		'dronesAllButton',
@@ -335,7 +337,7 @@ UISimulation >> boundingBox [
 ^self bbox
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildBaseMap [
 
 	rsCanvas ifNil: [ ^ self ].
@@ -366,7 +368,7 @@ UISimulation >> buildBaseMap [
 		ifFalse: [ self buildFallbackBaseMap ]
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildCSVMenu [
 
 	^ SpMenuPresenter new
@@ -456,7 +458,7 @@ UISimulation >> buildClusterListPresenter [
 		   
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildClusterListPresenterMenu [
 ^ SpActionGroup new
 				          addActionWith: [ :anItem |
@@ -494,7 +496,7 @@ UISimulation >> buildClusterListPresenterMenu [
 		 
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildDevMenu [
 
 	^ SpMenuPresenter new
@@ -563,7 +565,7 @@ UISimulation >> buildFallbackBaseMap [
     self addBaseShape: rect.
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildMenuBar [
 
 	| menuBar   simMenu zoomMenu importMenu waypointsMenu devMenu |
@@ -623,7 +625,7 @@ UISimulation >> buildMissionListPresenter [
 				  yourself ]
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildMissionListPresenterMenu [
 
 ^ SpActionGroup new
@@ -693,32 +695,32 @@ UISimulation >> buildScriptPresenter [
 			   yourself)
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildSimulationMenu [
 
 	^ SpMenuPresenter new
 		  addItem: [ :it |
 				  it
 					  name: 'Start';
-					  icon: (self iconNamed: #smallForward);
+					  icon: (self iconNamed: #play);
 					  action: [ self runSimulationLoop ] ];
-						  addItem: [ :it |
+		  addItem: [ :it |
 				  it
 					  name: 'Stop';
-					  icon: (self iconNamed: #smallStop);
+					  icon: (self iconNamed: #pause);
 					  action: [ self stopSimulationLoop ] ];
 		  addItem: [ :it |
 				  it
 					  name: 'Run steps';
 					  icon: (self iconNamed: #smallDoIt);
 					  action: [
-						  self
-							  simulationMenuItem: 'Provide nb steps'
-							  do: [ :nb | self runSimulationSteps: nb ] ] ];
+							  self
+								  simulationMenuItem: 'Provide nb steps'
+								  do: [ :nb | self runSimulationSteps: nb ] ] ];
 		  addItem: [ :it |
 				  it
 					  name: 'Run to date';
-					  icon: (self iconNamed: #smallForward);
+					  icon: (self iconNamed: #smallProfile);
 					  action: [
 							  self
 								  simulationMenuItem: 'Provide timestamp'
@@ -726,10 +728,27 @@ UISimulation >> buildSimulationMenu [
 		  addItem: [ :it |
 				  it
 					  name: 'HaltOn';
-					  icon: (self iconNamed: #smallError);
-					  action: [ self
+					  icon: (self iconNamed: #breakpoint);
+					  action: [
+							  self
 								  simulationMenuItem: 'Provide condition'
 								  do: [ :blk | self runSimulationLoopUntilCondition: blk ] ] ];
+		    
+		  addItem: [ :it |
+				  it
+					  name: 'Save frames';
+					  icon: (self iconNamed: #enable);
+					  action: [ self generateVideo: true ] ];
+		  addItem: [ :it |
+				  it
+					  name: 'Neglect frames';
+					  icon: (self iconNamed: #disable);
+					  action: [ self generateVideo: false ] ];
+						  addItem: [ :it |
+				  it
+					  name: 'Generate video from frames';
+					  icon: (self iconNamed: #window);
+					  action: [ self saveVideo  ] ];
 		  yourself
 ]
 
@@ -747,7 +766,7 @@ UISimulation >> buildTimeLabel [
  ^timeLabelPresenter 
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildWaypointsMenu [
 
 	^ SpMenuPresenter new
@@ -770,7 +789,7 @@ UISimulation >> buildWaypointsMenu [
 		  yourself
 ]
 
-{ #category : 'presenters-building' }
+{ #category : 'Menus' }
 UISimulation >> buildZoomMenu [
 
 	^ SpMenuPresenter new
@@ -843,6 +862,13 @@ UISimulation >> clearPendingWaypoints [
 UISimulation >> clearScript [
 
 scriptPresenter text:''
+
+]
+
+{ #category : 'closing' }
+UISimulation >> close [ 
+self isRunning: false.
+^ super close 
 
 ]
 
@@ -1019,6 +1045,19 @@ UISimulation >> connectDroneModePresenters [
 			self refreshDrones ]
 ]
 
+{ #category : 'Simulation control' }
+UISimulation >> currentTime [
+
+	currentTime ifNil: [ currentTime := 0 ].
+	^ currentTime
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> currentTime: aValue [
+
+	currentTime := aValue
+]
+
 { #category : 'zoom animation' }
 UISimulation >> customZoom [
 
@@ -1069,6 +1108,13 @@ UISimulation >> defaultLayout [
 				   add: right;
 				   yourself);
 		  yourself
+]
+
+{ #category : 'accessing' }
+UISimulation >> dirForVideos [
+
+
+^	(FileSystem workingDirectory / 'frames')
 ]
 
 { #category : 'overlays' }
@@ -1389,7 +1435,7 @@ UISimulation >> fetchBitmapFromWMS [
 	rsCanvas add: bmp
 ]
 
-{ #category : 'Menu Bar' }
+{ #category : 'Menus' }
 UISimulation >> fitZoom [
 
 	bbox := nil.
@@ -1473,6 +1519,20 @@ UISimulation >> fullDroneRefresh [
     self computeBoundingBox.
     self markBaseMapDirty.
     self refreshAll.
+]
+
+{ #category : 'accessing' }
+UISimulation >> generateVideo [
+
+	generateVideo ifNil: [ self generateVideo: false ].
+	^ generateVideo
+]
+
+{ #category : 'accessing' }
+UISimulation >> generateVideo: aBool [
+
+	self dirForVideos ensureCreateDirectory.
+	generateVideo := aBool
 ]
 
 { #category : 'presenters' }
@@ -1675,6 +1735,13 @@ UISimulation >> initializePresenters [
 			self refreshDrones ]
 ]
 
+{ #category : 'Simulation control' }
+UISimulation >> initializeSimulation [
+
+	self isRunning: true.
+	self refreshUIDuringSimulation
+]
+
 { #category : 'canvas' }
 UISimulation >> installSelectionZoomOn: canvas [
 	"Mouse down: création du rectangle"
@@ -1740,6 +1807,18 @@ UISimulation >> isDirty: field of: aDrone [
 { #category : 'presenters' }
 UISimulation >> isOverlayShape: aShape [
     ^ overlayShapes notNil and: [ overlayShapes includes: aShape ]
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> isRunning [
+
+	^ self simulator isRunning
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> isRunning: aBool [
+
+	^ self simulator isRunning: aBool
 ]
 
 { #category : 'Simulation control' }
@@ -2091,6 +2170,17 @@ UISimulation >> refreshOverlays [
 self updateShapes 
 ]
 
+{ #category : 'Simulation control' }
+UISimulation >> refreshUIDuringSimulation [
+	"Application UI courte et un seul refresh"
+ 
+	self simulator currentTime = self currentTime ifFalse: [
+			self currentTime: self simulator currentTime.
+			UIManager default defer: [
+					self simulator model hasChanged.
+					self saveFrames ] ]
+]
+
 { #category : 'presenters' }
 UISimulation >> removeOverlayShapes [
     self clearOverlayShapes.
@@ -2131,91 +2221,97 @@ UISimulation >> runScript [
 
 { #category : 'Simulation control' }
 UISimulation >> runSimulationLoop [
-	|   worker   |
-	isRunning := true.
- 
+
+	| worker |
+	self initializeSimulation.
+
 	worker := [
-		          [
-		          isRunning   ]
-			          whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
-					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+		          [ self isRunning ] whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
+				          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
 
-					          "2) Application UI courte et un seul refresh"
-					          UIManager default defer: [
-						          self simulator model hasChanged ].
+				          "2) Application UI courte et un seul refresh"
+				          self refreshUIDuringSimulation.
 
-					          (Delay forMilliseconds: 10) wait.
-					          self updateRunningState ] ] forkAt:
+				          (Delay forMilliseconds: 10) wait
+				          "self updateRunningState" ] ] forkAt:
 		          Processor userBackgroundPriority
 ]
 
 { #category : 'Simulation control' }
 UISimulation >> runSimulationLoopUntilCondition: aConditionText [
 
-	|   worker aCondition |
- 
+	| worker aCondition |
 	aCondition := OpalCompiler new
 		              source: aConditionText;
 		              receiver: self simulator;
 		              yourself.
-	isRunning := true.
+	self initializeSimulation.
 	worker := [
-		          
-			          [ isRunning & aCondition evaluate not ] whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
-					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+		          [ self isRunning & aCondition evaluate not ] whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
+				          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
 
-					          "2) Application UI courte et un seul refresh"
-					          UIManager default defer: [
-						          self simulator model hasChanged ].
-
-					          (Delay forMilliseconds: 10) wait.
-					          self updateRunningState ] ]  forkAt:
+				          "2) Application UI courte et un seul refresh"
+				          self refreshUIDuringSimulation.
+				          (Delay forMilliseconds: 10) wait
+				          "self updateRunningState" ].
+		          self isRunning: false ] forkAt:
 		          Processor userBackgroundPriority
 ]
 
 { #category : 'Simulation control' }
 UISimulation >> runSimulationLoopUntilTimestamp: aTimestampText [
 
-	|   worker aTimestamp |
-	isRunning := true.
+	| worker aTimestamp |
+	self initializeSimulation.
 	aTimestamp := aTimestampText asNumber.
 	worker := [
 		          [
-		          isRunning & (self simulator hasCompleted: aTimestamp) not ]
+		          self isRunning
+		          & (self simulator hasCompleted: aTimestamp) not ]
 			          whileTrue: [ "1) Calcul hors UI (ne touche pas aux shapes ici)"
 					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
 
 					          "2) Application UI courte et un seul refresh"
-					          UIManager default defer: [
-						          self simulator model hasChanged ].
+					          self refreshUIDuringSimulation.
 
-					          (Delay forMilliseconds: 10) wait.
-					          self updateRunningState ] ] forkAt:
+					          (Delay forMilliseconds: 10) wait
+					          "self updateRunningState" ].
+		          self isRunning: false ] forkAt:
 		          Processor userBackgroundPriority
 ]
 
 { #category : 'Simulation control' }
 UISimulation >> runSimulationSteps: nSteps [
 
-	| isRunning worker |
-	isRunning := true.
+	| worker |
+	self initializeSimulation.
 	worker := [
 		          [
-			          1 to: nSteps asNumber  do: [ :i |
-					          isRunning ifFalse: [ ^ self ].
+			          1 to: nSteps asNumber do: [ :i |
+					          self isRunning ifFalse: [ ^ self ].
 
 					          "1) Calcul hors UI (ne touche pas aux shapes ici)"
 					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
 
 					          "2) Application UI courte et un seul refresh"
-					          UIManager default defer: [
-							          self simulator model hasChanged "=> lit le modèle, met à jour les shapes"
-							          "self canvases do: [:c | c signalUpdate ]. " "1 seul signal par canvas" ].
-
-					          (Delay forMilliseconds: 10) wait.
-					          self simulator   isRunning ifFalse: [ ^ self ] ] ]
-			          ensure: [ isRunning := false ] ] forkAt:
+					          self refreshUIDuringSimulation.
+					          (Delay forMilliseconds: 20) wait.
+					          self isRunning ifFalse: [ ^ self ] ] ] ensure: [
+			          self isRunning: false ] ] forkAt:
 		          Processor userBackgroundPriority
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> saveFrames [
+
+	self generateVideo ifTrue: [Transcript show: self simulator currentTime printString;cr.
+			PNGReadWriter
+				putForm: rsCanvas morph imageForm
+				onFileNamed: (self dirForVideos
+					 /
+						 ('frame-'
+						  , (self simulator currentTime printPaddedWith: $0 to: 5)
+						  , '.png')) fullName ]
 ]
 
 { #category : 'scripting' }
@@ -2242,6 +2338,14 @@ UISimulation >> saveSimulationTo: aFileRef [
     [ FLSerializer serialize: simulation toFileNamed: aFileRef fullName.
       Transcript show: 'Simulation sauvegardée: ', aFileRef fullName; cr ]
         on: Error do: [ :ex | Transcript show: 'Save error: ', ex messageText; cr ].
+]
+
+{ #category : 'Simulation control' }
+UISimulation >> saveVideo [
+ 
+	LibC system: 'cd ' , self dirForVideos fullName
+		,
+		' && ffmpeg -framerate 30 -i frame-%05d.png -vf ''scale=ceil(iw/2)*2:ceil(ih/2)*2'' -c:v libx264 -pix_fmt yuv420p video.mp4'
 ]
 
 { #category : 'presenters' }
@@ -2415,7 +2519,7 @@ UISimulation >> statusLabelPresenter: anObject [
 { #category : 'Simulation control' }
 UISimulation >> stopSimulationLoop [
 	 
-	isRunning := false.
+	self isRunning: false.
   
 ]
 

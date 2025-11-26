@@ -9,11 +9,35 @@ Class {
 		'entityEventMap',
 		'eventGraph',
 		'electionSessions',
-		'autoResume'
+		'autoResume',
+		'isRunning'
+	],
+	#classInstVars : [
+		'Singleton'
 	],
 	#category : 'DroneSystem-Simulation',
 	#package : 'DroneSystem-Simulation'
 }
+
+{ #category : 'instance creation' }
+DroneSimulator class >> destroySingleton [
+
+	Singleton := nil
+]
+
+{ #category : 'instance creation' }
+DroneSimulator class >> new [ 
+
+Singleton := super new.
+^Singleton
+
+]
+
+{ #category : 'instance creation' }
+DroneSimulator class >> uniqueInstance [
+
+	^ Singleton
+]
 
 { #category : 'accessing' }
 DroneSimulator >> autoResume [
@@ -277,10 +301,17 @@ self removeEvents: eventsToRemove fromEntity: anEntity
  
 ]
 
-{ #category : 'testing' }
-DroneSimulator >> isRunning [ 
+{ #category : 'accessing' }
+DroneSimulator >> isRunning [
 
-	^ self hasEvents
+	isRunning ifNil: [ self isRunning: false ].
+	^ isRunning
+]
+
+{ #category : 'accessing' }
+DroneSimulator >> isRunning: aBool [
+
+	isRunning := aBool
 ]
 
 { #category : 'as yet unclassified' }
@@ -306,7 +337,6 @@ DroneSimulator >> open [
 
 	| tmp |
 	tmp := self model open.
-
 	tmp simulator: self.
 
 	^ tmp
@@ -332,54 +362,6 @@ DroneSimulator >> requeueEvent: anEvent delay: aDelay [
     delayedEvent := anEvent copy.
     delayedEvent timestamp: anEvent timestamp + aDelay.
     self addEvent: delayedEvent.
-]
-
-{ #category : 'instance creation' }
-DroneSimulator >> runSimulation [
-    [ scheduler hasEvents ] whileTrue: [
-        | event |
-        event := scheduler nextEvent.
-
-        (eventGraph isReady: event) ifTrue: [
-            currentTime := event timestamp.
-            event simulationState: self.
-            event execute.
-            "self updateGUI."
-        ] ifFalse: [
-            "⚠️ L'événement n'est pas prêt : on le replanifie temporairement à +ε"
-            scheduler requeueEvent: event delay: 0.1.
-        ].
-    ].
-]
-
-{ #category : 'instance creation' }
-DroneSimulator >> runSimulationWithRealTime [
-    | simulationStartTime timeScale |
-simulationStartTime := Time millisecondClockValue.
-    timeScale := 1.0.
-
-    [ scheduler hasEvents ] whileTrue: [
-        | event simTime realElapsed realExpected realDelay |
-
-        event := scheduler nextEvent.
-        currentTime := event timestamp.
-
-        "Calcule le temps attendu en millisecondes depuis le début"
-        simTime := currentTime asFloat.
-        realExpected := (simTime / timeScale * 1000) asInteger.
-        realElapsed := Time millisecondClockValue - simulationStartTime.
-        realDelay := realExpected - realElapsed.
-
-        "Attend si nécessaire pour synchroniser"
-        realDelay > 0 ifTrue: [ (Delay forMilliseconds: realDelay) wait ].
-
-        "Exécute l’événement"
-        event simulationState: self.
-        event execute.
-
-        self updateGUI.
-    ].
-
 ]
 
 { #category : 'dependencies' }
@@ -431,15 +413,18 @@ DroneSimulator >> scheduler: anObject [
 DroneSimulator >> step [
 
 	| event |
-	self hasEvents ifFalse: [ ^ self ].
-
+	 
+	self hasEvents ifFalse: [ "Stopping simulation is critic as the GUI loops over while the simulation isRunning"
+			self isRunning: false.
+			^ self ].
+	self isRunning ifFalse: [ ^ self ].
 	event := scheduler nextEvent.
 
 	(entityEventMap isReady: event)
 		ifTrue: [ "Met à jour le temps courant de la simulation"
-			event timestamp ifNil:[event timestamp: currentTime ].
+				event timestamp ifNil: [ event timestamp: currentTime ].
 				currentTime = event timestamp ifFalse: [ "Only refresh once when several events share timestamp"
-					 	self model ifNotNil: [ self model hasChanged ].  "This should now be delegated in jump: method of UISimulator"
+						self model ifNotNil: [ self model hasChanged ]. "This should now be delegated in jump: method of UISimulator"
 						currentTime := event timestamp ].
 
 				event simulationState: self.
@@ -447,10 +432,10 @@ DroneSimulator >> step [
 				"Exécute l'événement et le marque comme terminé"
 				event executeOn: self.
 
-				self markAsExecuted: event.
+				self markAsExecuted: event
 
 				"Log optionnel"
-"				Transcript
+				"				Transcript
 					show:
 						'[' , currentTime printString , '] Executed: '
 						, event class name;

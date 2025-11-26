@@ -3,7 +3,8 @@ Class {
 	#superclass : 'ClusterMission',
 	#instVars : [
 		'wayPoints',
-		'polygon'
+		'polygon',
+		'hasDeployed'
 	],
 	#category : 'DroneSystem-Missions',
 	#package : 'DroneSystem-Missions'
@@ -81,6 +82,19 @@ ZoneBasedMission >> generateExtraWaypointsForDrones [
 		result add: newPoint ].
 
 	^ result
+]
+
+{ #category : 'accessing' }
+ZoneBasedMission >> hasDeployed [
+
+hasDeployed 	ifNil:[hasDeployed := false].
+	^ hasDeployed
+]
+
+{ #category : 'accessing' }
+ZoneBasedMission >> hasDeployed: anObject [
+
+	hasDeployed := anObject
 ]
 
 { #category : 'characterization' }
