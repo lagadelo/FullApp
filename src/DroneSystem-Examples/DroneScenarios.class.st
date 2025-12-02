@@ -11,6 +11,113 @@ Class {
 	#package : 'DroneSystem-Examples'
 }
 
+{ #category : 'as yet unclassified' }
+DroneScenarios class >> ExampleBlock4KerML [
+ | simulator polygon drones sim cluster1 mission fleet exporter kermlFile |
+
+
+"Paramètres"
+kermlFile := 'generated_example_block4.kerml'.
+
+"SimulationState"
+sim := SimulationState new.
+
+"Drones (30 exemples)"
+drones := (1 to: 30) collect: [ :i |
+    | d gp |
+    d := Drone example.  "suppose que Drone example crée un Drone cohérent"
+    "Optionnel: assure un GeoPoint si absent"
+    (d geoPoint isNil) ifTrue: [
+        gp := GeoPoint new latitude: 48.0 + (i * 0.01); longitude: 2.0 + (i * 0.01); altitude: 100; yourself.
+        d geoPoint: gp
+    ].
+    d
+].
+
+"Cluster avec API custom: initializeWithDrones:clusterId:"
+cluster1 := DroneCluster new
+    initializeWithDrones: drones
+    clusterId: 'Cluster #1'.
+
+"Fleet et ajout du cluster"
+fleet := DroneFleet new.
+(sim respondsTo: #addFleet:) 
+    ifTrue: [ sim addFleet: fleet ]
+    ifFalse: [ sim allFleets: (OrderedCollection with: fleet) ].
+
+"Si votre Fleet a addCluster:, l'utiliser; sinon affecter directement"
+(fleet respondsTo: #addCluster:)
+    ifTrue: [ fleet addCluster: cluster1 ]
+    ifFalse: [ fleet clusters: (OrderedCollection with: cluster1) ].
+
+"Polygon: transformer triplets en GeoPoint"
+polygon := {
+    { 48.3904. -4.4947. 100 }.  "Brest"
+    { 43.2965. 5.3698. 100 }.   "Marseille"
+    { 50.6292. 3.0573. 100 }.   "Lille"
+    { 51.5074. -0.1276. 100 }   "Londres"
+} collect: [ :triple |
+    GeoPoint new
+        latitude: triple first;
+        longitude: triple second;
+        altitude: triple third;
+        yourself
+].
+
+"Mission Securization avec polygon (optionnel: wayPoints)"
+mission := SecurizationMission new.
+mission
+    id: 'SECUR-BLOCK4';
+    model: 'SecurizationScenario';
+    status: #planned;
+    borderColor: '#FF8800';
+    color: '#FFCC99';
+    polygon: 'POLYGON((Brest,Marseille,Lille,Londres))'.  "placeholder WKT or label"
+"Si vous voulez aussi les wayPoints"
+(mission respondsTo: #wayPoints) ifTrue: [
+    mission wayPoints: polygon
+].
+
+"Assigner mission au cluster/fleet/sim (selon votre API)"
+(cluster1 respondsTo: #addMission:)
+    ifTrue: [ cluster1 addMission: mission ]
+    ifFalse: [ 
+        (cluster1 missions isNil) ifTrue: [ cluster1 missions: OrderedCollection new ].
+        cluster1 missions add: mission
+    ].
+
+(fleet respondsTo: #addMission:)
+    ifTrue: [ fleet addMission: mission ]
+    ifFalse: [
+        (fleet missions isNil) ifTrue: [ fleet missions: OrderedCollection new ].
+        fleet missions add: mission
+    ].
+
+(sim respondsTo: #addMission:)
+    ifTrue: [ sim addMission: mission ]
+    ifFalse: [
+        (sim missions isNil) ifTrue: [ sim missions: OrderedCollection new ].
+        sim missions add: mission
+    ].
+
+"DroneSimulator"
+simulator := DroneSimulator new.
+simulator
+    model: sim;
+    currentTime: 1;
+    timeStep: 1.
+
+"Exporter KerML"
+exporter := KerMLExporter new.
+exporter exportSimulationState: sim toFile: kermlFile.
+
+"Afficher où le fichier est écrit et retourner le simulateur"
+Transcript
+    show: 'KerML écrit: ', kermlFile;
+    cr.
+simulator
+]
+
 { #category : 'to be refactored' }
 DroneScenarios class >> example10 [ 
 
