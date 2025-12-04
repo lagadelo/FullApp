@@ -64,7 +64,8 @@ ClusterAlertEvent >> enemyPosition: anObject [
 	enemyPosition := anObject
 ]
 
-{ #category : 'as yet unclassified' }
-ClusterAlertEvent >> executeOn: simulator [
-    simulator handleClusterAlert: self.
+{ #category : 'executing' }
+ClusterAlertEvent >> executeOn: aSimulator [
+
+
 ]

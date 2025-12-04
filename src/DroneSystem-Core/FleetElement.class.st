@@ -4,7 +4,7 @@ Class {
 	#instVars : [
 		'id',
 		'capabilities',
-		'hostile',
+		'status',
 		'missions'
 	],
 	#category : 'DroneSystem-Core',
@@ -20,13 +20,13 @@ FleetElement >> asTarget [
 { #category : 'initialization' }
 FleetElement >> beAlly [
 
-	hostile := false
+	self status set:#role to: #allied
 ]
 
 { #category : 'initialization' }
 FleetElement >> beHostile [
 
-	hostile := true
+	self status set:#role to: #hostile
 ]
 
 { #category : 'accessing' }
@@ -52,17 +52,36 @@ FleetElement >> initialize [
 
 	super initialize.
 	missions := MissionsList new.
-	capabilities := Capabilities new
+	capabilities := Capabilities new.
+	status  := Status new.
+]
+
+{ #category : 'testing' }
+FleetElement >> isAlly [
+
+^	(self status get:#role) = #ally
 ]
 
 { #category : 'testing' }
 FleetElement >> isHostile [
 
-	^ hostile
+^	(self status get:#role) = #ennemy
 ]
 
 { #category : 'accessing' }
 FleetElement >> missions [
 
 	^ missions
+]
+
+{ #category : 'accessing' }
+FleetElement >> status [
+
+	^ status
+]
+
+{ #category : 'accessing' }
+FleetElement >> status: aStatus [
+
+	status := aStatus
 ]

@@ -2,9 +2,9 @@ Class {
 	#name : 'MoveToWaypointEvent',
 	#superclass : 'ScheduledEvent',
 	#instVars : [
-		'drone',
 		'wayPoint',
-		'speed'
+		'speed',
+		'startPoint'
 	],
 	#category : 'DroneSystem-Simulation Events',
 	#package : 'DroneSystem-Simulation Events'
@@ -36,53 +36,38 @@ MoveToWaypointEvent >> affectedEntities [
     ^ Set withAll: { #cluster. #toDrone }.
 ]
 
-{ #category : 'accessing' }
-MoveToWaypointEvent >> drone [
-
-	^ drone
-]
-
-{ #category : 'accessing' }
-MoveToWaypointEvent >> drone: anObject [
-
-	drone := anObject
-]
-
-{ #category : 'executing' }
-MoveToWaypointEvent >> execute [
-    drone moveTo: wayPoint.
-    (drone hasMoreWaypoints) ifTrue: [
-        | nextWaypoint timeToReach |
-        nextWaypoint := drone nextWaypoint.
-        timeToReach := (drone distanceTo: nextWaypoint) / drone speed.
-        simulationState scheduler scheduleEvent: (
-            self class 
-                for: drone
-                to: nextWaypoint
-                at: simulationState currentTime + timeToReach)
-    ].
-
-]
-
 { #category : 'executing' }
 MoveToWaypointEvent >> executeOn: simulator [
 
-	| arrivalEvent |
+	| arrivalEvent directionChange position |
 	"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
-	drone position distanceTo: wayPoint.
-	duration := ((drone position distanceTo: wayPoint) /   speed)
-		            ceiling.
+	
+	self startPoint. "Force lazy initialization"
+
+	directionChange := SetDroneStatusEvent new
+		                   timestamp: self timestamp;
+		                   model: self model;
+		                   orientation: (	self startPoint bearingTo: wayPoint);
+		                   yourself.
+
+
+	duration := ((	self startPoint distanceTo: wayPoint) / self speed) ceiling.
 
 	arrivalEvent := WayPointReachedEvent new
 		                timestamp: self endTimestamp;
-		                drone: drone;
+		                model: self model;
 		                wayPoint: wayPoint;
 		                yourself.
-	^ simulator scheduleEvent: arrivalEvent after: (Set with: self)
+	simulator scheduleEvent: directionChange after: (Set with: self).
+	^ simulator
+		  scheduleEvent: arrivalEvent
+		  after: (Set with: directionChange with: self)
 ]
 
 { #category : 'accessing' }
 MoveToWaypointEvent >> speed [
+
+	speed ifNil: [ speed := self model status get: #speed ].
 
 	^ speed
 ]
@@ -91,6 +76,13 @@ MoveToWaypointEvent >> speed [
 MoveToWaypointEvent >> speed: anObject [
 
 	speed := anObject
+]
+
+{ #category : 'accessing' }
+MoveToWaypointEvent >> startPoint [
+
+	startPoint ifNil: [ startPoint := self model status get: #position ].
+	^ startPoint
 ]
 
 { #category : 'accessing' }

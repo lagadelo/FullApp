@@ -75,3 +75,12 @@ DiscreteEventScheduler >> scheduleEvent: anEvent [
     eventQueue add: anEvent.
 
 ]
+
+{ #category : 'initialization' }
+DiscreteEventScheduler >> synchonizeAllEvents: kindOfEvent after: aTimestamp [
+
+	(eventQueue select: [ :anEvent |
+		 anEvent endTimestamp >= aTimestamp
+		 & (anEvent isKindOf: kindOfEvent) ]) do: [ :anEvent |
+		anEvent synchronizeAt: aTimestamp ]
+]

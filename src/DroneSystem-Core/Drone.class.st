@@ -2,7 +2,6 @@ Class {
 	#name : 'Drone',
 	#superclass : 'AbstractDrone',
 	#instVars : [
-		'geoPoint',
 		'behavior',
 		'type',
 		'cluster'
@@ -269,39 +268,28 @@ Drone >> isDestroyed [
 	^ self capabilities isDestroyed
 ]
 
-{ #category : 'accessing' }
-Drone >> isHostile: anObject [
-
-	isHostile := anObject
-]
-
-{ #category : 'testing' }
-Drone >> isInDanger [
-    ^ (health < 50) or: [ fuel < 20 ].
-]
-
 { #category : 'facilities' }
 Drone >> latitude [
 
-	^ self geoPoint latitude
+	^ self position latitude
 ]
 
 { #category : 'facilities' }
 Drone >> latitude: anObject [
 
-	self geoPoint latitude: anObject
+	self position latitude: anObject
 ]
 
 { #category : 'facilities' }
 Drone >> longitude [
 
-	^ self geoPoint longitude
+	^ self position longitude
 ]
 
 { #category : 'facilities' }
 Drone >> longitude: anObject [
 
-	self geoPoint longitude: anObject
+	self position longitude: anObject
 ]
 
 { #category : 'moving' }
@@ -375,16 +363,16 @@ Drone >> perceivedElemnts [
 
 { #category : 'accessing' }
 Drone >> position [
-	"Also appears as a capability"
+	 
 
-	^ self geoPoint
+	^ self status get:#geoPoint
 ]
 
 { #category : 'accessing' }
 Drone >> position: aValue [
-	"Also appears as a capability"
+	 
 
-	^ self geoPoint: aValue
+	^ self status set:#geoPoint to: aValue
 ]
 
 { #category : 'facilities' }

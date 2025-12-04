@@ -1,5 +1,5 @@
 Class {
-	#name : 'RequestDroneStatusEvent',
+	#name : 'RequestDroneCapabilitiesEvent',
 	#superclass : 'ScheduledEvent',
 	#instVars : [
 		'toDrone',
@@ -9,12 +9,12 @@ Class {
 	#package : 'DroneSystem-Simulation Events'
 }
 
-{ #category : 'as yet unclassified' }
-RequestDroneStatusEvent >> affectedEntities [
+{ #category : 'executing' }
+RequestDroneCapabilitiesEvent >> affectedEntities [
     ^ Set with: self model
 ]
 
 { #category : 'executing' }
-RequestDroneStatusEvent >> executeOn: aSimulator [
-    ^self model status
+RequestDroneCapabilitiesEvent >> executeOn: aSimulator [
+    ^self model capabilities
 ]

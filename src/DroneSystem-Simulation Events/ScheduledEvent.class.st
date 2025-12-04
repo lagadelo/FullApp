@@ -60,12 +60,6 @@ ScheduledEvent >> endTimestamp [
 ]
 
 { #category : 'executing' }
-ScheduledEvent >> execute [
-    self subclassResponsibility.
-
-]
-
-{ #category : 'executing' }
 ScheduledEvent >> executeOn: aSimulator [
 
     self subclassResponsibility.
