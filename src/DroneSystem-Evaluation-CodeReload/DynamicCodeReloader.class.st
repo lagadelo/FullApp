@@ -117,33 +117,3 @@ DynamicCodeReloader >> logRollback: strategyName from: oldVersion to: newVersion
 		yourself.
 	deploymentLog add: log
 ]
-
-{ #category : 'printing' }
-DynamicCodeReloader >> printOn: aStream [
-	aStream nextPutAll: 'DynamicCodeReloader(';
-		nextPutAll: versionHistory size asString;
-		nextPutAll: ' versions deployed)')
-]
-
-{ #category : 'rollback' }
-DynamicCodeReloader >> rollbackStrategy: aStrategyName [
-	"Revenir à la version précédente d'une stratégie"
-	| currentVersion previousVersion |
-	currentVersion := activeVersions at: aStrategyName ifAbsent: [ nil ].
-	currentVersion notNil ifTrue: [
-		previousVersion := currentVersion previousVersion.
-		previousVersion notNil ifTrue: [
-			self deployStrategy: previousVersion methodBlock 
-				forDroneIds: previousVersion droneIds 
-				named: aStrategyName.
-			self logRollback: aStrategyName from: currentVersion to: previousVersion.
-			^ true
-		]
-	].
-	^ false
-]
-
-{ #category : 'accessing' }
-DynamicCodeReloader >> versionHistory [
-	^ versionHistory
-]
