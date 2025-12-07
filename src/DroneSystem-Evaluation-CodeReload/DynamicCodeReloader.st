@@ -1,0 +1,149 @@
+Class {
+	#name : 'DynamicCodeReloader',
+	#superclass : 'Object',
+	#instVars : [
+		'simulator',
+		'activeVersions',
+		'versionHistory',
+		'nextVersionId',
+		'deploymentLog'
+	],
+	#category : 'DroneSystem-Evaluation-CodeReload',
+	#package : 'DroneSystem-Evaluation-CodeReload'
+}
+
+{ #category : 'initialization' }
+DynamicCodeReloader >> initialize [
+	super initialize.
+	simulator := nil.
+	activeVersions := Dictionary new.
+	versionHistory := OrderedCollection new.
+	nextVersionId := 1.
+	deploymentLog := OrderedCollection new
+]
+
+{ #category : 'accessing' }
+DynamicCodeReloader >> bindSimulator: aSimulator [
+	simulator := aSimulator.
+	^ self
+]
+
+{ #category : 'deployment' }
+DynamicCodeReloader >> deployStrategy: aBlockOrSelector 
+	forDroneIds: droneIdCollection 
+	named: aStrategyName [
+	"Déploie une nouvelle stratégie à des drones spécifiques"
+	| version drone |
+	version := CodeVersion new
+		versionId: nextVersionId;
+		strategyName: aStrategyName;
+		methodBlock: aBlockOrSelector;
+		description: ('Deployed at ' , DateAndTime now asString).
+	
+	droneIdCollection = #all 
+		ifTrue: [ version forAllDrones ]
+		ifFalse: [ version forDroneIds: droneIdCollection ].
+	
+	"Récupérer la version précédente si elle existe"
+	(activeVersions at: aStrategyName ifAbsent: [ nil ]) notNil ifTrue: [
+		version linkedToPrevious: (activeVersions at: aStrategyName)
+	].
+	
+	"Enregistrer la nouvelle version"
+	activeVersions at: aStrategyName put: version.
+	versionHistory add: version.
+	
+	"Appliquer la stratégie aux drones"
+	droneIdCollection = #all 
+		ifTrue: [ 
+			simulator allDrones do: [ :d | 
+				self installStrategyOnDrone: d strategy: aBlockOrSelector name: aStrategyName 
+			]
+		]
+		ifFalse: [
+			droneIdCollection do: [ :droneId |
+				drone := simulator findDroneWithId: droneId.
+				drone notNil ifTrue: [ 
+					self installStrategyOnDrone: drone strategy: aBlockOrSelector name: aStrategyName
+				]
+			]
+		].
+	
+	nextVersionId := nextVersionId + 1.
+	self logDeployment: version.
+	^ version
+]
+
+{ #category : 'private' }
+DynamicCodeReloader >> installStrategyOnDrone: aDrone strategy: aBlockOrSelector name: aStrategyName [
+	"Installe dynamiquement la stratégie sur un drone"
+	aDrone strategies notNil ifTrue: [
+		aDrone strategies at: aStrategyName put: aBlockOrSelector
+	] ifFalse: [
+		aDrone strategies: (Dictionary with: aStrategyName -> aBlockOrSelector)
+	]
+]
+
+{ #category : 'rollback' }
+DynamicCodeReloader >> rollbackStrategy: aStrategyName [
+	"Revenir à la version précédente d'une stratégie"
+	| currentVersion previousVersion |
+	currentVersion := activeVersions at: aStrategyName ifAbsent: [ nil ].
+	currentVersion notNil ifTrue: [
+		previousVersion := currentVersion previousVersion.
+		previousVersion notNil ifTrue: [
+			self deployStrategy: previousVersion methodBlock 
+				forDroneIds: previousVersion droneIds 
+				named: aStrategyName.
+			self logRollback: aStrategyName from: currentVersion to: previousVersion.
+			^ true
+		]
+	].
+	^ false
+]
+
+{ #category : 'accessing' }
+DynamicCodeReloader >> currentVersionOf: aStrategyName [
+	^ activeVersions at: aStrategyName ifAbsent: [ nil ]
+]
+
+{ #category : 'accessing' }
+DynamicCodeReloader >> versionHistory [
+	^ versionHistory
+]
+
+{ #category : 'logging' }
+DynamicCodeReloader >> logDeployment: aCodeVersion [
+	| log |
+	log := Dictionary new
+		at: #timestamp put: DateAndTime now;
+		at: #event put: #deployment;
+		at: #version put: aCodeVersion;
+		yourself.
+	deploymentLog add: log
+]
+
+{ #category : 'logging' }
+DynamicCodeReloader >> logRollback: strategyName from: oldVersion to: newVersion [
+	| log |
+	log := Dictionary new
+		at: #timestamp put: DateAndTime now;
+		at: #event put: #rollback;
+		at: #strategy put: strategyName;
+		at: #from put: oldVersion;
+		at: #to put: newVersion;
+		yourself.
+	deploymentLog add: log
+]
+
+{ #category : 'accessing' }
+DynamicCodeReloader >> deploymentLog [
+	^ deploymentLog
+]
+
+{ #category : 'printing' }
+DynamicCodeReloader >> printOn: aStream [
+	aStream nextPutAll: 'DynamicCodeReloader(';
+		nextPutAll: versionHistory size asString;
+		nextPutAll: ' versions deployed)')
+]
