@@ -15,15 +15,6 @@ SecurizationMission >> accept: aVisitor [
 ]
 
 { #category : 'characterization' }
-SecurizationMission >> assignment [
-
-	| drones |
-	drones := self model allDrones.
-	1 to: polygon size do: [ :i | drones at: i put: (polygon at: i) ].
-	
-]
-
-{ #category : 'characterization' }
 SecurizationMission >> computePositions [
 
 	| p nb sort balancing tmp |
@@ -71,20 +62,27 @@ nb = 0 ifTrue:[self wayPoints: self polygon. ^self].
 
 { #category : 'characterization' }
 SecurizationMission >> events [
+
 	| drones tmp ratio |
 	counter := self model drones size.
-	self computePositions. 
+	self computePositions.
 	tmp := OrderedCollection new.
 	" should consider already placed drones on the polygon to prevent extra reoganization"
 	drones := self model drones.
- 
-	ratio := (wayPoints size/ drones size).
-	
-	1 to: drones size  do:   [ :i | tmp add: (MoveStepEvent 
+
+	ratio := wayPoints size / drones size.
+
+	1 to: drones size do: [ :i | " tmp add: (MoveStepEvent 
 		      drone: (drones at: i)
-		       wayPoint: (wayPoints at: 1 + ((i-1)* ratio)) speed:20000 / 3600 "20km/h"  ). ].
- 
-	^tmp 
+		       wayPoint: (wayPoints at: 1 + ((i-1)* ratio)) speed:20000 / 3600)"
+			tmp
+				add: (MoveToWaypointEvent new
+						 model: (drones at: i);
+						 wayPoint: (wayPoints at: 1 + (i - 1 * ratio));
+						 speed: 20000 / 3600;
+				yourself) ].
+
+	^ tmp
 ]
 
 { #category : 'characterization' }
@@ -107,24 +105,31 @@ SecurizationMission >> isSecurizationMission [
 
 { #category : 'as yet unclassified' }
 SecurizationMission >> nextWayPointFor: drone [
- 
+self isActive ifFalse:[ ^nil].
 
-	 
-	counter > 1 ifTrue: [
+	counter > 1 ifTrue: [ "Hold on until full deployment"
 			counter := counter - 1.
 			^ nil ].
-	counter = 1 ifTrue: [
+	counter = 1 ifTrue: [ "End on round #1; all drones on place, re-dispach"
 			counter := counter - 1.
 			self model drones do: [ :aDrone |
-					DroneSimulator uniqueInstance scheduleEvent: ((MoveStepEvent
-							  drone: aDrone
-							  wayPoint: (self nextWayPointFor: aDrone)
-							  speed: 20000 / 3600)) at: DroneSimulator uniqueInstance currentTime "20km/h" ].
+					| tmp speed |
+					speed := 20000 / 3600.
+					tmp := self nextWayPointFor: aDrone.
+
+					DroneSimulator uniqueInstance
+						scheduleEvent: (MoveToWaypointEvent new
+								 
+								 model: aDrone;
+								 wayPoint: tmp; speed: speed;
+								 yourself)
+						at: DroneSimulator uniqueInstance currentTime
+							"20km/h" ].
 			^ nil ].
-	counter = 0 ifTrue: [
+	counter = 0 ifTrue: [  "Nominal case. Next waypoint on the convex hull"
 			^ self wayPoints at:
-				  (self wayPoints indexOf: drone position) % self wayPoints size
-				  + 1 ]
+				  (self wayPoints indexOf:  drone position)
+				  % self wayPoints size + 1 ]
 ]
 
 { #category : 'strategy' }

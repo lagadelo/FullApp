@@ -1,19 +1,12 @@
 Class {
 	#name : 'SetDroneCapabilityEvent',
-	#superclass : 'ScheduledEvent',
-	#instVars : [
-		'statusData'
-	],
+	#superclass : 'SetDroneStatusOrCapabilityEvent',
 	#category : 'DroneSystem-Simulation Events',
 	#package : 'DroneSystem-Simulation Events'
 }
 
-{ #category : 'as yet unclassified' }
-SetDroneCapabilityEvent >> affectedEntities [
-    ^ Set with: self model
-]
+{ #category : 'accessing' }
+SetDroneCapabilityEvent >> target [
 
-{ #category : 'executing' }
-SetDroneCapabilityEvent >> executeOn: aSimulator [
-    self model capabilities set:statusData key to: statusData value
+	^ self model capabilities 
 ]

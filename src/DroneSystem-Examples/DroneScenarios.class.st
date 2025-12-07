@@ -531,6 +531,43 @@ DroneScenarios class >> exampleSimpleBlock4GUI [
 	self exampleSimpleBlock4 open
 ]
 
+{ #category : 'as yet unclassified' }
+DroneScenarios class >> exampleSimpleBlock5 [
+	" self exampleSimpleBlock4"
+
+	| simulator polygon drones sim cluster1 mission fleet intervalMs running |
+	intervalMs := 300. "ms entre steps"
+	running := true.
+	sim := SimulationState new.
+	drones := (1 to: 30) collect: [ :a | Drone example ].
+
+	cluster1 := DroneCluster new
+		            initializeWithDrones: drones
+		            clusterId: 'Cluster #1'.
+
+
+	fleet := DroneFleet new.
+
+	sim addFleet: fleet.
+
+	polygon := {
+		           { 48.3904. -4.4947. 100 }. "Brest"
+
+		           { 43.2965. 5.3698. 100 }. "Marseille"
+		           { 50.6292. 3.0573. 100 }. "Lille"
+
+		           { 51.5074. -0.1276. 100 } "Londres" } collect: [ :a |
+		           Waypoint with: a ].
+
+	mission := (SecurizationMission new polygon: polygon).
+
+	simulator := DroneSimulator new.
+	simulator model: sim.
+	simulator currentTime: 1.
+	
+	^ simulator
+]
+
 { #category : 'to be refactored' }
 DroneScenarios class >> exampleSurveillance [
     | sim drones cluster mission polygon   |

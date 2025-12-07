@@ -134,12 +134,6 @@ DroneSimulator >> initialize [
     currentTime := 0.
 ]
 
-{ #category : 'initialization' }
-DroneSimulator >> initializeWithState: aSimulationStep [
-
-self model: aSimulationStep
-]
-
 { #category : 'scheduling' }
 DroneSimulator >> invalidateFutureEventsFor: anEntity after: timestamp [
     | eventsToRemove       |
@@ -263,8 +257,7 @@ DroneSimulator >> scheduler: anObject [
 DroneSimulator >> step [
 
 	| event |
-	 
-	self hasEvents ifFalse: [ "Stopping simulation is critic as the GUI loops over while the simulation isRunning"
+self hasEvents ifFalse: [ "Stopping simulation is critic as the GUI loops over while the simulation isRunning"
 			self isRunning: false.
 			^ self ].
 	self isRunning ifFalse: [ ^ self ].
@@ -280,7 +273,7 @@ DroneSimulator >> step [
 				event simulationState: self.
 
 				"Exécute l'événement et le marque comme terminé"
-				event executeOn: self.
+				"Transcript show: event printString;cr." event executeOn: self.
 
 				self markAsExecuted: event
 
@@ -294,6 +287,12 @@ DroneSimulator >> step [
 					cr" ]
 		ifFalse: [ "Dépendances non satisfaites : on remet l'événement en file, légèrement décalé"
 			scheduler requeueEvent: event delay: 0.1 ]
+]
+
+{ #category : 'initialization' }
+DroneSimulator >> synchonizeAllEvents: kindOfEvent after: aTimestamp [
+
+^self scheduler synchonizeAllEvents: kindOfEvent after: aTimestamp
 ]
 
 { #category : 'accessing' }

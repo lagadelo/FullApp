@@ -69,6 +69,12 @@ Mission >> initialize [
 ]
 
 { #category : 'accessing' }
+Mission >> isActive [
+
+	^ status = #active
+]
+
+{ #category : 'accessing' }
 Mission >> model [
 
 	^ model

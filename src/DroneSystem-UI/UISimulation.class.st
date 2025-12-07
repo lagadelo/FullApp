@@ -347,7 +347,7 @@ UISimulation >> buildBaseMap [
     baseShapes removeAll.]."
 	rsCanvas shapes do: [ :a | a remove ].
 
-	(Smalltalk includesKey: #OWSServiceWMS)
+"	(Smalltalk includesKey: #OWSServiceWMS)" false
 		ifTrue: [
 				| wms img bmp |
 				[ wms := OWSServiceWMS new ]
@@ -388,7 +388,7 @@ UISimulation >> buildCSVMenu [
 { #category : 'presenters-building' }
 UISimulation >> buildCanvasPresenter [
     canvasPresenter ifNotNil: [ ^ canvasPresenter ].
-   self ensureCanvas.
+   "self ensureCanvas."
    self ensureOverlayModel.
     canvasPresenter := self newPresenter.
     canvasPresenter layout: (SpBoxLayout newTopToBottom
@@ -628,36 +628,41 @@ UISimulation >> buildMissionListPresenter [
 { #category : 'Menus' }
 UISimulation >> buildMissionListPresenterMenu [
 
-^ SpActionGroup new
-				          addActionWith: [ :anItem |
-						          anItem
-							          name: 'Assign to cluster';
-							          iconName: #start;
-							          description:
-								          'Assign the current mission to the selected cluster';
-							          action: [
-									          self clusterListPresenter selectedItem ifNotNil: [
-												          self missionListPresenter selectedItem
-													          assignToCluster:
-														          self clusterListPresenter selectedItem ] ] ];
-				          addActionWith: [ :anItem |
-						          anItem
-							          name: 'Activate';
-							          iconName: #start;
-							          action: [
-									          simulator scheduleEvent:
-											          (MissionStartEvent model:
-													           self missionListPresenter selectedItem) ] ];
-				          addActionWith: [ :anItem |
-						          anItem
-							          name: 'Choose color';
-							          iconName: #start;
-							          action: [
-									          SpDroneColorPickerPresenter new
-										          colorSelector: #color:;
-										          target: self missionListPresenter selectedItem; open ] ];
-				          yourself.
- 
+	^ SpActionGroup new
+		  addActionWith: [ :anItem |
+				  anItem
+					  name: 'Assign to cluster';
+					  iconName: #start;
+					  description:
+						  'Assign the current mission to the selected cluster';
+					  action: [
+							  self clusterListPresenter selectedItem ifNotNil: [
+										  self missionListPresenter selectedItem assignToCluster:
+												  self clusterListPresenter selectedItem ] ] ];
+		  addActionWith: [ :anItem |
+				  anItem
+					  name: 'Hold';
+					  iconName: #start;
+					  action: [ self missionListPresenter selectedItem status: #hold ] ];
+		  addActionWith: [ :anItem |
+				  anItem
+					  name: 'Activate';
+					  iconName: #start;
+					  action: [
+							  self missionListPresenter selectedItem status: #active.
+							  simulator scheduleEvent:
+									  (MissionStartEvent model:
+											   self missionListPresenter selectedItem) ] ];
+		  addActionWith: [ :anItem |
+				  anItem
+					  name: 'Choose color';
+					  iconName: #start;
+					  action: [
+							  SpDroneColorPickerPresenter new
+								  colorSelector: #color:;
+								  target: self missionListPresenter selectedItem;
+								  open ] ];
+		  yourself
 ]
 
 { #category : 'presenters-building' }
@@ -1449,6 +1454,7 @@ UISimulation >> fitZoom [
 UISimulation >> forceBoundingBox: points [
 
 	| latMin latMax lonMin lonMax padLat padLon tmp |
+
 	"2. Min / Max"
 	latMin := latMax := points first latitude.
 	lonMin := lonMax := points first longitude.
@@ -2213,10 +2219,10 @@ UISimulation >> rsCanvas: anObject [
 { #category : 'scripting' }
 UISimulation >> runScript [
 
-(OpalCompiler new)
-    source: self scriptPresenter selectedText;
-    receiver: self simulator;
-    evaluate.
+	(OpalCompiler new
+		 source: self scriptPresenter selectedText;
+		 receiver: self simulator;
+		 evaluate) inspect
 ]
 
 { #category : 'Simulation control' }
@@ -2291,7 +2297,7 @@ UISimulation >> runSimulationSteps: nSteps [
 					          self isRunning ifFalse: [ ^ self ].
 
 					          "1) Calcul hors UI (ne touche pas aux shapes ici)"
-					          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
+	self halt.				          self simulator step. "=> met à jour le modèle (positions/états), pas le canvas"
 
 					          "2) Application UI courte et un seul refresh"
 					          self refreshUIDuringSimulation.

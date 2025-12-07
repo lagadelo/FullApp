@@ -13,7 +13,7 @@ Class {
 Status >> basicGet: aField [
 
 	self doesExist: aField.
-	self currentStatus at: aField
+	^self currentStatus at: aField
 ]
 
 { #category : 'internal' }
@@ -27,7 +27,8 @@ Status >> canSet: aField to: aValue [
 
 	(self doesExist: aField) ifFalse: [ self error: 'Non existing field' ].
 
-	^ (self values at: aField) includes aValue
+	((self values at: aField) isKindOf: Collection) ifFalse:[^true]. "Should compare class instead"
+	^ (self values at: aField) includes: aValue
 ]
 
 { #category : 'accessing' }
@@ -43,10 +44,12 @@ Status >> currentStatus: anObject [
 ]
 
 { #category : 'initialization' }
-Status >> defineField: field withValues: aCollection [
+Status >> defineField: field withValues: anObject [
 
-	self values at: field put: aCollection.
-	self currentStatus at: field put: aCollection first "default value"
+	self values at: field put: anObject.
+	self currentStatus at: field put: ((anObject isKindOf: Collection)
+			 ifTrue: [ anObject first ]
+			 ifFalse: [ "default value" anObject ])
 ]
 
 { #category : 'internal' }
@@ -59,7 +62,7 @@ Status >> doesExist: aField [
 Status >> get: aField [
 
 	self doesExist: aField.
-	self basicGet: aField
+	^self basicGet: aField
 ]
 
 { #category : 'initialization' }
@@ -78,13 +81,16 @@ Status >> initializeFields [
 		{ #idle. #active. #damaged. #destroyed. #lost. #compromized }.
 	self defineField: #role withValues: { #ally. #ennemy }.
 	self defineField: #orientation withValues: (0 to: 360).
-	self defineField: #speed withValues: (0 to: 100000 / 3600)
+	self defineField: #speed withValues: (0 to: 100000 / 3600).
+		self defineField: #position withValues: GeoPoint new
 ]
 
 { #category : 'api' }
-Status >> set: aField to:   aValue [
+Status >> set: aField to: aValue [
 
- (self canSet: aField to: aValue )ifTrue:[self basicSet: aField to: aValue] ifFalse:[self error:'Impossible value']
+	(self canSet: aField to: aValue)
+		ifTrue: [ self basicSet: aField to: aValue ]
+		ifFalse: [ self error: 'Impossible value' ]
 ]
 
 { #category : 'api' }

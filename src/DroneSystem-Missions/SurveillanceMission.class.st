@@ -48,16 +48,18 @@ SurveillanceMission >> detectIntrusionAt: aPoint timestamp: aTimestamp simulator
 { #category : 'characterization' }
 SurveillanceMission >> events [
 
-	| drones mobilized   |
+	| drones mobilized |
 	drones := self model drones.
-	drones size > self polygon size
-		ifTrue: [ mobilized :=  (1 to: self polygon size) collect:[:i| drones at:i] ]
-		ifFalse: [ mobilized := drones ].
+	mobilized := drones size > self polygon size
+		             ifTrue: [
+		             (1 to: self polygon size) collect: [ :i | drones at: i ] ]
+		             ifFalse: [ drones ].
 	^ (1 to: mobilized size) collect: [ :i |
-			  MoveStepEvent
-				  drone: (drones at: i)
-				  wayPoint: (self polygon at: i)
-				  speed: 20000 / 3600 "20km/h" ]
+			  MoveToWaypointEvent new
+				  model: (drones at: i);
+				  wayPoint: (self polygon at: i);
+				  speed: 20000 / 3600;
+				  yourself "20km/h" ]
 ]
 
 { #category : 'characterization' }
@@ -70,16 +72,11 @@ SurveillanceMission >> isSurveillanceMission [
 SurveillanceMission >> nextWayPointFor: drone [
 
 	| pos potentialPos |
+	self isActive ifFalse:[^nil].
 	pos := self model drones collect: [ :b | b position ].
 	potentialPos := self polygon reject: [ :a | pos includes: a ].
 	potentialPos ifEmpty: [ ^ nil ].
 	^ potentialPos at: ((Random new next * potentialPos size) rounded max: 1)
-]
-
-{ #category : 'strategy' }
-SurveillanceMission >> nextWaypointFor: drone [
-
-	^self polygon anySatisfy: [:a| ((self model drones collect:[:b| b position]) includes: a) not].
 ]
 
 { #category : 'strategy' }

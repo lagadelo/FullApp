@@ -186,18 +186,6 @@ Drone >> emitQueryRequest: aPayload to: receivers [
 		  payload: aPayload
 ]
 
-{ #category : 'accessing' }
-Drone >> geoPoint [ 
-
- ^geoPoint 
-]
-
-{ #category : 'accessing' }
-Drone >> geoPoint: a [
-
-geoPoint := a
-]
-
 { #category : 'coloring' }
 Drone >> getColor [
 
@@ -228,38 +216,34 @@ Drone >> initialize [
 
 	| r |
 	super initialize.
-	geoPoint := self class LandingBase.
+
+	status := Status new.
 	capabilities := Capabilities new.
 	r := Random new.
 
 	capabilities define: #energy maxValue: 100.
 	capabilities define: #ammunitions maxValue: 1000.
 
-	capabilities define: #perceptionRange maxValue: 50.
+	capabilities define: #perceptionRange maxValue: 50 + (r next * 100).
 	capabilities define: #communicationRange maxValue: 50.
 
 	capabilities consumePercent: r next * 100 of: #energy.
 	capabilities consumePercent: r next * 100 of: #ammunitions.
 	capabilities consumePercent: r next * 50 of: #communicationRange.
-	 
+
 	behavior := nil.
 	id := UUID new asString.
-	type := 'standard'.
-
-	hostile := false
+ 
 ]
 
 { #category : 'initialization' }
-Drone >> initializeWithId: anID
-            latitude: aLatitude
-            longitude: aLongiture
-            altitude: anAltitude [ 
+Drone >> initializeWithId: anID latitude: aLatitude longitude: aLongiture altitude: anAltitude [
 
-  
-self latitude: aLatitude .
-self longitude: aLongiture .
-self altitude: anAltitude .
-id :=  anID.
+	self status set: #position to: (GeoPoint
+			 latitude: aLatitude
+			 longitude: aLongiture
+			 altitude: anAltitude).
+	id := anID
 ]
 
 { #category : 'testing' }
@@ -365,14 +349,14 @@ Drone >> perceivedElemnts [
 Drone >> position [
 	 
 
-	^ self status get:#geoPoint
+	^ self status get:#position
 ]
 
 { #category : 'accessing' }
 Drone >> position: aValue [
 	 
 
-	^ self status set:#geoPoint to: aValue
+	^ self status set:#position to: aValue
 ]
 
 { #category : 'facilities' }

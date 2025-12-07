@@ -34,6 +34,10 @@ ScheduledEvent >> affectsSameEntitiesAs: anotherEvent [
     ^ self affectedEntities = anotherEvent affectedEntities
 ]
 
+{ #category : 'accessing' }
+ScheduledEvent >> drone [ ^model
+]
+
 { #category : 'as yet unclassified' }
 ScheduledEvent >> duration [ 
 
@@ -113,7 +117,7 @@ ScheduledEvent >> model:anObject [
 
 { #category : 'printing' }
 ScheduledEvent >> printOn:aStream [
-aStream nextPutAll: self className ,' ', self timestamp printing,' for ',self id printString;cr
+aStream nextPutAll: self className ,' ', self timestamp printString,' for ',self drone id printString;cr
 ]
 
 { #category : 'accessing' }

@@ -11,10 +11,10 @@ Class {
 }
 
 { #category : 'instance creation' }
-MoveStepEvent class >> drone: aDrone wayPoint: aWaypoint speed: aSpeed [
+MoveStepEvent class >> model: aDrone wayPoint: aWaypoint speed: aSpeed [
 
 	^ self new
-		  drone: aDrone;
+		 model: aDrone;
 		  wayPoint: aWaypoint;
 		  speed: aSpeed;
 		  yourself

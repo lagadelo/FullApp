@@ -6,11 +6,9 @@ Class {
 		'allFleets',
 		'missions',
 		'eventLog',
-		'missionHistory',
 		'reactionLog',
 		'engagementMode',
 		'steps',
-		'verificationFunctions',
 		'observers'
 	],
 	#category : 'DroneSystem-Simulation',
@@ -193,30 +191,18 @@ self observers do:[:a| self notify: a].
 
 { #category : 'initialization' }
 SimulationState >> initialize [
- 
-    allFleets := OrderedCollection new.
-   
-    missionHistory := OrderedCollection new.
-    eventLog := OrderedCollection new.
-    reactionLog := OrderedCollection new.
-    verificationFunctions := OrderedCollection new.
-    time := 0.
-    steps := OrderedCollection new.
-	 observers := OrderedCollection new.
 
-    engagementMode := #droneLevel.  "Default mode"
-]
+	allFleets := OrderedCollection new.
 
-{ #category : 'accessing' }
-SimulationState >> missionHistory [
 
-	^ missionHistory
-]
+	eventLog := OrderedCollection new.
+	reactionLog := OrderedCollection new.
 
-{ #category : 'accessing' }
-SimulationState >> missionHistory: anObject [
+	time := 0.
+	steps := OrderedCollection new.
+	observers := OrderedCollection new.
 
-	missionHistory := anObject
+	engagementMode := #droneLevel "Default mode"
 ]
 
 { #category : 'accessing' }
@@ -453,38 +439,4 @@ SimulationState >> time [
 SimulationState >> time: anObject [
 
 	time := anObject
-]
-
-{ #category : 'event processing' }
-SimulationState >> updateDrone: aDrone with:consummable value: aValue [
-     aDrone consumables at: consummable put:    aValue.
-
-]
-
-{ #category : 'event processing' }
-SimulationState >> updateDrone: aDrone withPosition: aPosition [
-aDrone position: aPosition.
-^nil
-]
-
-{ #category : 'resolution' }
-SimulationState >> useClusterLevelEngagements [
-    engagementMode := #clusterLevel.
-]
-
-{ #category : 'resolution' }
-SimulationState >> useDroneLevelEngagements [
-    engagementMode := #droneLevel.
-]
-
-{ #category : 'accessing' }
-SimulationState >> verificationFunctions [
-
-	^ verificationFunctions
-]
-
-{ #category : 'accessing' }
-SimulationState >> verificationFunctions: anObject [
-
-	verificationFunctions := anObject
 ]

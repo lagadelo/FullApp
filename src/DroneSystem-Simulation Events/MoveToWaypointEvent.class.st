@@ -39,29 +39,29 @@ MoveToWaypointEvent >> affectedEntities [
 { #category : 'executing' }
 MoveToWaypointEvent >> executeOn: simulator [
 
-	| arrivalEvent directionChange position |
+	| arrivalEvent directionChange |
 	"evt should serve as a dependency when breaking down a global move into sub moveStepEvents"
-	
 	self startPoint. "Force lazy initialization"
 
 	directionChange := SetDroneStatusEvent new
 		                   timestamp: self timestamp;
 		                   model: self model;
-		                   orientation: (	self startPoint bearingTo: wayPoint);
+		                   set: #orientation
+		                   to: (self startPoint bearingTo: wayPoint);
 		                   yourself.
 
 
-	duration := ((	self startPoint distanceTo: wayPoint) / self speed) ceiling.
+	duration := ((self startPoint distanceTo: wayPoint) / self speed)
+		            ceiling.
 
 	arrivalEvent := WayPointReachedEvent new
-		                timestamp: self endTimestamp;
+		                initiator: self;
+		                timestamp: self timestamp + duration;
 		                model: self model;
 		                wayPoint: wayPoint;
 		                yourself.
 	simulator scheduleEvent: directionChange after: (Set with: self).
-	^ simulator
-		  scheduleEvent: arrivalEvent
-		  after: (Set with: directionChange with: self)
+	^ simulator scheduleEvent: arrivalEvent after: (Set with: self) "directionChange with:"
 ]
 
 { #category : 'accessing' }
