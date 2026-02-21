@@ -9,7 +9,7 @@ Class {
 }
 
 { #category : 'accessing' }
-MacroSimulatorBehavior >> binaryProcess [ 
+MacroSimulatorBehavior >> binaryPolicy [
 
 
 ^[:aStep |
@@ -29,6 +29,30 @@ MacroSimulatorBehavior >> binaryProcess [
 ]
 
 { #category : 'accessing' }
+MacroSimulatorBehavior >> capingPolicy [
+
+	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
+		  | sensibility pacingRate weight |
+		  sensibility := 0.01.
+		  pacingRate := 0.95.
+
+
+
+		  aStep drones do: [ :a |
+				  | ga gb ratio |
+				  ga := aStep gapAheadDrone: a.
+				  gb := aStep gapBackwardDrone: a.
+
+				  weight := (ga - gb / (ga + gb)) asFloat.
+				  ratio := weight abs < sensibility
+					           ifTrue: [ pacingRate ]
+					           ifFalse: [ 1 + weight ].
+				  a currentSpeed:
+					  (((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
+						   max: a nominalSpeed * 0.5) ] ]
+]
+
+{ #category : 'accessing' }
 MacroSimulatorBehavior >> default [
 
 	^ self perform: self defaultLabel
@@ -37,7 +61,7 @@ MacroSimulatorBehavior >> default [
 { #category : 'accessing' }
 MacroSimulatorBehavior >> defaultLabel [
 
-	^ #'binaryProcess'
+	^ #'binaryolicy'
 ]
 
 { #category : 'accessing' }
@@ -59,7 +83,7 @@ MacroSimulatorBehavior >> process: aStep [
 ]
 
 { #category : 'accessing' }
-MacroSimulatorBehavior >> weightedProcess [
+MacroSimulatorBehavior >> weightedPolicy [
 
 	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
 		  | sensibility |
@@ -69,8 +93,8 @@ MacroSimulatorBehavior >> weightedProcess [
 
 		  aStep drones do: [ :a |
 				  | ga gb ratio |
-				  ga := aStep gapAhead: a.
+				  ga := aStep gapAheadDrone: a.
 				  gb := aStep gapBackwardDrone: a.
-				  ratio := ga - gb / ga.
-				  a currentSpeed: a nominalSpeed speed * ratio ] ]
+				  ratio := 1 + ((ga - gb) / (ga +gb)) asFloat.
+				  a currentSpeed: ((((a currentSpeed   * ratio) roundUpTo: 0.1) min: a maxSpeed) max:0) ] ]
 ]

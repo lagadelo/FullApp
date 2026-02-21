@@ -43,6 +43,11 @@ MacroSimulatorStep >> drones: anObject [
 	drones := anObject
 ]
 
+{ #category : 'reporting' }
+MacroSimulatorStep >> evaluateMetrics [
+^MacroSimulatorMetrics on: self 
+]
+
 { #category : 'running' }
 MacroSimulatorStep >> gapAheadDrone: aDrone [
 
@@ -126,6 +131,18 @@ MacroSimulatorStep >> range [
 MacroSimulatorStep >> range: anObject [
 
 	range := anObject
+]
+
+{ #category : 'reporting' }
+MacroSimulatorStep >> reportGaps [
+
+^self drones collect:[:d| (self gapAheadDrone: d) @ (self gapBackwardDrone: d)]
+]
+
+{ #category : 'reporting' }
+MacroSimulatorStep >> reportSpeeds [
+
+	^ self drones collect: [ :d | d currentSpeed ]
 ]
 
 { #category : 'drones accessing' }

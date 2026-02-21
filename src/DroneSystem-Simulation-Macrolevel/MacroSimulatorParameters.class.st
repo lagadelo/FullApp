@@ -18,13 +18,13 @@ Class {
 { #category : 'examples' }
 MacroSimulatorParameters class >> example1 [
 "easy, *2 redundancy"
-^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 20 captureRadius: 20 totalDistance: 1000
+^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 20 captureRadius: 20 totalDistance: 10000
 ]
 
 { #category : 'examples' }
 MacroSimulatorParameters class >> example2 [
 "medium, *1,5 redundancy"
-^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 15 captureRadius: 15 totalDistance: 1000
+^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 15 captureRadius: 15 totalDistance: 10000
 ]
 
 { #category : 'examples' }

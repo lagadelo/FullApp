@@ -76,6 +76,13 @@ MacroSimulator >> entrances: anObject [
 	entrances := anObject
 ]
 
+{ #category : 'reporting' }
+MacroSimulator >> evaluateMetrics [
+
+	^ self history collect: [ :aMacroSimulaotStep |
+		 aMacroSimulaotStep evaluateMetrics ]
+]
+
 { #category : 'accessing' }
 MacroSimulator >> futureStep [
 
@@ -83,6 +90,7 @@ MacroSimulator >> futureStep [
 	t := self nextTimeStep.
 
 	future := self current copy. "Now currentState"
+	future timeStep:t.
 	(self lossesAt: t) do: [ :id | future loseDroneID: id ].
 	(self enterancesAt: t) do: [ :drone | future welcome: drone ].
 
@@ -150,7 +158,7 @@ MacroSimulator >> metrics: anObject [
 { #category : 'accessing' }
 MacroSimulator >> nextTimeStep [
 
-	^ self history keys last + 1
+	^ self timeStep + 1
 ]
 
 { #category : 'accessing' }
@@ -206,4 +214,10 @@ MacroSimulator >> step [
 	future update.
 	self at: self nextTimeStep put: future.
 	self 
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> timeStep [
+
+	^ self history keys last  
 ]
