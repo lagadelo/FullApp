@@ -45,7 +45,8 @@ MacroSimulatorStep >> drones: anObject [
 
 { #category : 'reporting' }
 MacroSimulatorStep >> evaluateMetrics [
-^MacroSimulatorMetrics on: self 
+
+	^ MacroSimulatorMetrics on: self
 ]
 
 { #category : 'running' }
@@ -61,9 +62,12 @@ MacroSimulatorStep >> gapBackwardDrone: aDrone [
 ]
 
 { #category : 'initialization' }
-MacroSimulatorStep >> initialize [ 
-self maxID:0.
-self drones: (SortedCollection sortBlock:[:a :b| b position > a position]).  
+MacroSimulatorStep >> initialize [
+
+	self maxID: 0.
+	self drones:
+		(SortedCollection sortBlock: [ :a :b | b position > a position ]).
+	self timeStep: 0
 ]
 
 { #category : 'running' }

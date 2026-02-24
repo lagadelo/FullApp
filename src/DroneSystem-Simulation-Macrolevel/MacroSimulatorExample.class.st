@@ -40,6 +40,23 @@ MacroSimulatorExample class >> example3 [
 	parameters policy: #capingPolicy.
 	simulator := parameters initializeSimulator.
 	simulator loose: 1 at: 20.
-	simulator run: 50.
-	^ simulator inspect
+	simulator run: 3000.
+	simulator evaluateMetrics inspect.
+	^simulator inspect
+]
+
+{ #category : 'examples' }
+MacroSimulatorExample class >> example4 [
+	"Idem example 2 : Simple case - one loss"
+
+	"Change behavior -ie. speed adjustement policy - to be smoother"
+
+	| parameters simulator |
+	parameters := MacroSimulatorParameters example1.
+"	parameters policy: #capingPolicy."
+	simulator := parameters initializeSimulator.
+	simulator loose: 1 at: 20.
+	simulator run: 3000.
+	simulator evaluateMetrics inspect.
+	^simulator inspect
 ]

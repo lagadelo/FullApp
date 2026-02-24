@@ -2,7 +2,9 @@ Class {
 	#name : 'MacroSimulatorBehavior',
 	#superclass : 'Object',
 	#instVars : [
-		'policy'
+		'policy',
+		'sensibility',
+		'pacingRate'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -32,24 +34,20 @@ MacroSimulatorBehavior >> binaryPolicy [
 MacroSimulatorBehavior >> capingPolicy [
 
 	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  | sensibility pacingRate weight |
-		  sensibility := 0.01.
-		  pacingRate := 0.95.
-
-
-
+		  | weight |
 		  aStep drones do: [ :a |
 				  | ga gb ratio |
 				  ga := aStep gapAheadDrone: a.
 				  gb := aStep gapBackwardDrone: a.
 
-				  weight := (ga - gb / (ga + gb)) asFloat.
-				  ratio := weight abs < sensibility
-					           ifTrue: [ pacingRate ]
-					           ifFalse: [ 1 + weight ].
+				  weight := (ga - gb / (ga max: gb)) asFloat.
+				  "	weight <0 ifTrue:[self halt] ."
+				  ratio := weight abs < self sensibility
+					           ifTrue: [ self pacingRate ]
+					           ifFalse: [ weight * 2 + 1 ].
 				  a currentSpeed:
 					  (((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
-						   max: a nominalSpeed * 0.5) ] ]
+						   max: a nominalSpeed) ] ]
 ]
 
 { #category : 'accessing' }
@@ -58,10 +56,36 @@ MacroSimulatorBehavior >> default [
 	^ self perform: self defaultLabel
 ]
 
-{ #category : 'accessing' }
+{ #category : 'initialize-release' }
 MacroSimulatorBehavior >> defaultLabel [
 
-	^ #'binaryolicy'
+	^ #'binaryPolicy'
+]
+
+{ #category : 'export' }
+MacroSimulatorBehavior >> exportName [
+
+	^ self policy , '_' , self sensibility printString , '_'
+	  , self pacingRate printString
+]
+
+{ #category : 'initialize-release' }
+MacroSimulatorBehavior >> initialize [ 
+
+		  sensibility := 0.005.
+		  pacingRate := 0.95.
+]
+
+{ #category : 'accessing' }
+MacroSimulatorBehavior >> pacingRate [
+
+	^ pacingRate
+]
+
+{ #category : 'accessing' }
+MacroSimulatorBehavior >> pacingRate: anObject [
+
+	pacingRate := anObject
 ]
 
 { #category : 'accessing' }
@@ -80,6 +104,18 @@ MacroSimulatorBehavior >> policy: anObject [
 MacroSimulatorBehavior >> process: aStep [  
 	(self perform: self policy) value: aStep.
 	aStep update
+]
+
+{ #category : 'accessing' }
+MacroSimulatorBehavior >> sensibility [
+
+	^ sensibility
+]
+
+{ #category : 'accessing' }
+MacroSimulatorBehavior >> sensibility: anObject [
+
+	sensibility := anObject
 ]
 
 { #category : 'accessing' }

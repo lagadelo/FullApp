@@ -48,7 +48,7 @@ MacroSimulator >> behavior: anObject [
 { #category : 'accessing' }
 MacroSimulator >> current [
 
-^self history at: self history keys last
+^self history last
 ]
 
 { #category : 'fleet updates' }
@@ -83,6 +83,36 @@ MacroSimulator >> evaluateMetrics [
 		 aMacroSimulaotStep evaluateMetrics ]
 ]
 
+{ #category : 'reporting' }
+MacroSimulator >> export [
+
+	^ self export:
+		  #( minGap maxGap avgGap stdGap minSpeed maxSpeed avgSpeed stdSpeed )
+]
+
+{ #category : 'reporting' }
+MacroSimulator >> export: fields [
+
+	| fn dir data |
+	"dir := UIManager default
+    chooseDirectory: 'Select directory of the collection'.
+
+ fn := (FileSystem disk pathFromString: dir  asString ,'/test') asFileReference."
+	fn := (self behavior exportName,'.csv') asFileReference.
+	data := self evaluateMetrics.
+
+	fn exists ifTrue: [ fn delete ].
+	fn createFile.
+
+	fn writeStreamDo: [ :stream |
+			| nw |
+			nw := NeoCSVWriter on: stream.
+			nw
+				nextPut: fields;
+				"First line = column labels"addRawFields: fields. "accessors over lines"
+			nw nextPutAll: data ]
+]
+
 { #category : 'accessing' }
 MacroSimulator >> futureStep [
 
@@ -112,7 +142,7 @@ MacroSimulator >> history: anObject [
 { #category : 'initialization' }
 MacroSimulator >> initialize [
 
-	self history: OrderedDictionary new.
+	self history: OrderedCollection new.
 	self entrances: OrderedDictionary new.
 	self losses: OrderedDictionary new.
 	self behavior: MacroSimulatorBehavior new
@@ -201,7 +231,7 @@ MacroSimulator >> start [
 MacroSimulator >> startWith: aMacroSimulatorParameters [
 
 	self parameters: aMacroSimulatorParameters.
-	self at: 0 put: (MacroSimulatorStep new applyParameters: aMacroSimulatorParameters  ).
+	self history add: (MacroSimulatorStep new applyParameters: aMacroSimulatorParameters  ).
 	behavior policy: aMacroSimulatorParameters policy
 ]
 
@@ -212,12 +242,12 @@ MacroSimulator >> step [
 	future := self futureStep.
 	self behavior process:   future.
 	future update.
-	self at: self nextTimeStep put: future.
+	self history add: future.
 	self 
 ]
 
 { #category : 'accessing' }
 MacroSimulator >> timeStep [
 
-	^ self history keys last  
+	^ self history   last  timeStep 
 ]
