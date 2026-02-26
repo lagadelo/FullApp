@@ -66,12 +66,6 @@ MacroSimulator >> enter: aMacroSimulatorDrone at: aTimeStep [
 ]
 
 { #category : 'fleet updates' }
-MacroSimulator >> enterancesAt: aTimeStep [
-
-	^ self entrances at: aTimeStep ifAbsent: [ #(  ) ]
-]
-
-{ #category : 'fleet updates' }
 MacroSimulator >> entrances [
 
 	^ entrances
@@ -81,6 +75,12 @@ MacroSimulator >> entrances [
 MacroSimulator >> entrances: anObject [
 
 	entrances := anObject
+]
+
+{ #category : 'fleet updates' }
+MacroSimulator >> entrancesAt: aTimeStep [
+
+	^ self entrances at: aTimeStep ifAbsent: [ #(  ) ]
 ]
 
 { #category : 'reporting' }
@@ -136,7 +136,7 @@ MacroSimulator >> futureStep [
 	future := self current copy. "Now currentState"
 	future timeStep:t.
 	(self lossesAt: t) do: [ :id | future loseDroneID: id ].
-	(self enterancesAt: t) do: [ :drone | future welcome: drone ].
+	(self entrancesAt: t) do: [ :drone | future welcome: drone copy].
 
 	^ future
 ]
@@ -259,8 +259,32 @@ MacroSimulator >> running [
 	| current |
 	self step. "Deepcopy of the previous state"
 	current := self history last. "Now currentState"
-	(self lossAt: current key) do: [ :id |
+	(self lossesAt: current key) do: [ :id |
 		current do: [ :elt | elt id = id ifTrue: [ elt die ] ] ]
+]
+
+{ #category : 'fleet updates' }
+MacroSimulator >> scenario [
+
+	| dates events |
+	events := OrderedCollection new.
+	dates := (self losses collect: [ :a | a key ])
+	         , (self entrances collect: [ :a | a key ]).
+	dates asSortedCollection do: [ :a |
+			(self lossesAt: a) do: [ :event |
+					| tmp |
+					tmp := OrderedCollection new.
+					tmp add: a.
+					tmp add: event.
+					events add: tmp ].
+			(self entrancesAt: a) do: [ :event |
+					| tmp |
+					tmp := OrderedCollection new.
+					tmp add: a.
+					tmp add: event.
+					events add: tmp ] ].
+			
+		^events 
 ]
 
 { #category : 'initialization' }

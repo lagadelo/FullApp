@@ -76,6 +76,53 @@ MacroExporter >> repositoryName: aString [
 ]
 
 { #category : 'visiting' }
+MacroExporter >> saveDataOf: aSimulator [
+
+	| historyFile data fields |
+	"Save Data"
+	historyFile := self createFile:
+		               aSimulator behavior exportName , '.csv'.
+	data := self visit: aSimulator evaluateMetrics.
+
+	historyFile writeStreamDo: [ :stream |
+			| nw |
+			nw := NeoCSVWriter on: stream.
+			fields := data removeFirst.
+			nw
+				nextPut: fields;
+				addRawFields: fields. "accessors over lines"
+			nw nextPutAll: data ]
+]
+
+{ #category : 'visiting' }
+MacroExporter >> saveParametersOf: aSimulator [
+
+	| parameters parametersFile |
+	"Save Meta data"
+	parametersFile := self createFile: 'parameters.csv'.
+	parameters := self visit: aSimulator parameters.
+
+	parametersFile writeStreamDo: [ :stream |
+			| nw |
+			nw := NeoCSVWriter on: stream.
+			nw nextPutAll: parameters ]
+]
+
+{ #category : 'visiting' }
+MacroExporter >> saveScenarioOf: aSimulator [
+
+	| parameters parametersFile |
+	"Save Meta data"
+	parametersFile := self createFile: 'scenario.csv'.
+	parameters := self visit: aSimulator parameters.
+
+	parametersFile writeStreamDo: [ :stream |
+			| nw |
+			nw := NeoCSVWriter on: stream.
+			nw nextPutAll: parameters ]
+]
+
+{ #category : 'visiting' }
 MacroExporter >> visit: anObject [
 
 	^ anObject accept: self
@@ -96,7 +143,7 @@ MacroExporter >> visitMacroSimulator: aSimulator [
 			fields := data removeFirst.
 			nw
 				nextPut: fields;
-				"labels""First line = column labels"addRawFields: fields. "accessors over lines"
+				addRawFields: fields. "accessors over lines"
 			nw nextPutAll: data ].
 
 	"Save Meta data"
@@ -128,16 +175,13 @@ MacroExporter >> visitMacroSimulatorBehavior: aBehavior [
 { #category : 'visiting' }
 MacroExporter >> visitMacroSimulatorDrone: aDrone [
 
-
 	| tmp |
 	tmp := OrderedCollection new.
-	aDrone class instanceVariables do: [ :aVariable |
-			| aVariableName |
-			aVariableName := aVariable name.
-			tmp
-				add: aVariableName;
-				add: (aDrone perform: aVariableName asSymbol) ].
-
+	tmp add: (aDrone class instanceVariables collect: [ :aVariable |
+				 | aVariableName |
+				 aVariableName := aVariable name ]).
+	tmp add: (aDrone class instanceVariables collect: [ :aVariable |
+			 aDrone perform: aVariable name asSymbol ]).
 	^ tmp
 ]
 
