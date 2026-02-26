@@ -10,6 +10,25 @@ Class {
 	#package : 'DroneSystem-Simulation-Macrolevel'
 }
 
+{ #category : 'instance creation' }
+MacroSimulatorBehavior class >> from: anExportFormat [
+	"self from:{#policy . #capingPolicy . #sensibility . 0.005 . #pacingRate . 0.95}"
+
+	| tmp |
+	tmp := self new.
+	1 to: anExportFormat size by: 2 do: [ :index |
+			tmp
+				perform: ((anExportFormat at: index) , ':') asSymbol 
+				with: (anExportFormat at: index + 1) ].
+	^ tmp
+]
+
+{ #category : 'visiting' }
+MacroSimulatorBehavior >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorBehavior: self
+]
+
 { #category : 'accessing' }
 MacroSimulatorBehavior >> binaryPolicy [
 
@@ -60,6 +79,20 @@ MacroSimulatorBehavior >> default [
 MacroSimulatorBehavior >> defaultLabel [
 
 	^ #'binaryPolicy'
+]
+
+{ #category : 'export' }
+MacroSimulatorBehavior >> export [
+	"Behavior description. Usefull for simulation export
+	cf. from: class method"
+
+	^ {
+		  #policy.
+		  policy.
+		  #sensibility.
+		  sensibility.
+		  #pacingRate.
+		  pacingRate }
 ]
 
 { #category : 'export' }
@@ -122,7 +155,7 @@ MacroSimulatorBehavior >> sensibility: anObject [
 MacroSimulatorBehavior >> weightedPolicy [
 
 	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  | sensibility |
+		 
 		  sensibility := 0.1.
 
 

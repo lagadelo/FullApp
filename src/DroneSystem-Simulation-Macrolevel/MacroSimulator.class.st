@@ -7,7 +7,8 @@ Class {
 		'metrics',
 		'parameters',
 		'losses',
-		'entrances'
+		'entrances',
+		'random'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -79,8 +80,9 @@ MacroSimulator >> entrances: anObject [
 { #category : 'reporting' }
 MacroSimulator >> evaluateMetrics [
 
-	^ self history collect: [ :aMacroSimulaotStep |
-		 aMacroSimulaotStep evaluateMetrics ]
+	^ MacroSimulatorMetricsHistory from:
+		  (history collect: [ :aMacroSimulaotStep |
+			   aMacroSimulaotStep evaluateMetrics ])
 ]
 
 { #category : 'reporting' }
@@ -93,20 +95,26 @@ MacroSimulator >> export [
 { #category : 'reporting' }
 MacroSimulator >> export: fields [
 
-	| fn dir data |
+	| fn dir data s b |
 	"dir := UIManager default
     chooseDirectory: 'Select directory of the collection'.
 
- fn := (FileSystem disk pathFromString: dir  asString ,'/test') asFileReference."
-	fn := (self behavior exportName,'.csv') asFileReference.
+ fn := ((UIManager default
+    chooseDirectory: 'Select directory of the collection' ) fullName , '/', 'loic') asFileReference  ."
+	fn := (self behavior exportName , '.csv') asFileReference.
 	data := self evaluateMetrics.
 
 	fn exists ifTrue: [ fn delete ].
 	fn createFile.
+	s := self random seed.
+	b := self behavior export.
 
 	fn writeStreamDo: [ :stream |
 			| nw |
 			nw := NeoCSVWriter on: stream.
+			nw nextPut: {
+					#seed.
+					s } , b. "Simulation Context"
 			nw
 				nextPut: fields;
 				"First line = column labels"addRawFields: fields. "accessors over lines"
@@ -145,7 +153,16 @@ MacroSimulator >> initialize [
 	self history: OrderedCollection new.
 	self entrances: OrderedDictionary new.
 	self losses: OrderedDictionary new.
-	self behavior: MacroSimulatorBehavior new
+	self behavior: MacroSimulatorBehavior new.
+	self random: Random new
+]
+
+{ #category : 'initialization' }
+MacroSimulator >> initializeSeed: aSeed [
+	"Usefull for exct replay"
+
+	self initialize.
+	self random: (Random seed: aSeed)
 ]
 
 { #category : 'fleet updates' }
@@ -185,6 +202,16 @@ MacroSimulator >> metrics: anObject [
 	metrics := anObject
 ]
 
+{ #category : 'fleet updates' }
+MacroSimulator >> newEntranceAt: aTimeStamp [
+
+	| newDrone |
+	newDrone := self parameter generateDrone.
+	newDrone id: self current nextID.
+	newDrone position: Random new next * parameters totalDistance.
+	self enter: newDrone at: aTimeStamp
+]
+
 { #category : 'accessing' }
 MacroSimulator >> nextTimeStep [
 
@@ -201,6 +228,18 @@ MacroSimulator >> parameters [
 MacroSimulator >> parameters: anObject [
 
 	parameters := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> random [
+
+	^ random
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> random: anObject [
+
+	random := anObject
 ]
 
 { #category : 'stepping' }

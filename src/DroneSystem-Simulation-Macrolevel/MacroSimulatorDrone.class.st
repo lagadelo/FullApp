@@ -30,6 +30,12 @@ MacroSimulatorDrone class >> id: id position: position sensingRadius: sensingRad
 		  yourself
 ]
 
+{ #category : 'visiting' }
+MacroSimulatorDrone >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorDrone: self
+]
+
 { #category : 'accessing' }
 MacroSimulatorDrone >> captureRadius [
 

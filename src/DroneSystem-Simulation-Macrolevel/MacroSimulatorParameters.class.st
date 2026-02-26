@@ -83,6 +83,12 @@ MacroSimulatorParameters class >> numberOfDrones: numberOfDrones nominalSpeed: n
 	^ tmp
 ]
 
+{ #category : 'visiting' }
+MacroSimulatorParameters >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorParameters: self
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> captureRadius [
 
@@ -97,18 +103,30 @@ MacroSimulatorParameters >> captureRadius: anObject [
 
 { #category : 'running' }
 MacroSimulatorParameters >> generate [
+	"Generate a collection of drones "
 
 	^ (1 to: self numberOfDrones) collect: [ :i |
 			  | tmp |
-			  tmp := MacroSimulatorDrone new.
-			  tmp id: i-1.
-			  tmp nominalSpeed: self nominalSpeed.
-			  tmp maxSpeed: self maxSpeed.
-			  tmp currentSpeed: self nominalSpeed.
-
-			  tmp sensingRadius: self sensingRadius.
-			  tmp captureRadius: captureRadius.
+			  tmp := self generateDrone.
+			  tmp id: i - 1.
 			  tmp position: numberOfDrones - i * self initialGap ]
+]
+
+{ #category : 'running' }
+MacroSimulatorParameters >> generateDrone [
+	"Generate a drone with no meaning id nor position"
+
+	| tmp |
+	tmp := MacroSimulatorDrone new.
+	tmp id: Float infinity.
+	tmp nominalSpeed: self nominalSpeed.
+	tmp maxSpeed: self maxSpeed.
+	tmp currentSpeed: self nominalSpeed.
+
+	tmp sensingRadius: self sensingRadius.
+	tmp captureRadius: captureRadius.
+	tmp position: Float infinity.
+	^ tmp
 ]
 
 { #category : 'accessing' }

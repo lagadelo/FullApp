@@ -45,6 +45,12 @@ MacroSimulatorMetrics class >> on: aMacroSimulationStep [
 	^ tmp
 ]
 
+{ #category : 'visiting' }
+MacroSimulatorMetrics >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorMetrics: self
+]
+
 { #category : 'accessing' }
 MacroSimulatorMetrics >> avgGap [
 
