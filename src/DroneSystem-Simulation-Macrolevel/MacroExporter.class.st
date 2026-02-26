@@ -3,11 +3,20 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'file',
-		'repository'
+		'repository',
+		'directory'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
 }
+
+{ #category : 'visiting' }
+MacroExporter class >> directoryName: aName [
+
+	^ self new
+		  directoryName: aName;
+		  yourself
+]
 
 { #category : 'visiting' }
 MacroExporter class >> visit: anObject [
@@ -18,11 +27,33 @@ MacroExporter class >> visit: anObject [
 { #category : 'actions' }
 MacroExporter >> createFile: aFileName [
 
-	self file: (self repository ifNotNil: [
-				 (self repository fullName , '/' , aFileName) asFileReference
+	self file: (self directory ifNotNil: [
+				 (self directory fullName , '/' , aFileName) asFileReference
 					 createFile ]).
 
 	^ self file
+]
+
+{ #category : 'actions' }
+MacroExporter >> directory [
+
+	directory ifNil: [
+			self repository: (UIManager default chooseDirectory:
+					 'Select directory of the collection') ].
+	^ directory
+]
+
+{ #category : 'accessing' }
+MacroExporter >> directory: anObject [
+
+	directory := anObject
+]
+
+{ #category : 'actions' }
+MacroExporter >> directoryName: aString [
+
+	self directory: aString asFileReference ensureCreateDirectory.
+	^ directory
 ]
 
 { #category : 'accessing' }
@@ -35,21 +66,6 @@ MacroExporter >> file [
 MacroExporter >> file: anObject [
 
 	file := anObject
-]
-
-{ #category : 'actions' }
-MacroExporter >> repository [
-
-	repository ifNil: [
-			self repository: (UIManager default chooseDirectory:
-					 'Select directory of the collection') ].
-	^ repository
-]
-
-{ #category : 'accessing' }
-MacroExporter >> repository: anObject [
-
-	repository := anObject
 ]
 
 { #category : 'actions' }
@@ -69,10 +85,10 @@ MacroExporter >> visit: anObject [
 MacroExporter >> visitMacroSimulator: aSimulator [
 
 	| historyFile data fields parameters parametersFile |
-	
 	"Save Data"
-	historyFile := self createFile: 'data.csv'.
-	data := self visit: aSimulator history.
+	historyFile := self createFile:
+		               aSimulator behavior exportName , '.csv'.
+	data := self visit: aSimulator evaluateMetrics.
 
 	historyFile writeStreamDo: [ :stream |
 			| nw |
@@ -157,11 +173,11 @@ MacroExporter >> visitSimulatorMetricsHistory: aHistory [
 	aHistory initial ifNotNil: [
 			tmp := OrderedCollection new.
 			tmp add:
-				(aHistory initial class instanceVariables collect: [ :aVariable |
+				(aHistory  initial class instanceVariables collect: [ :aVariable |
 						 | aVariableName |
 						 aVariableName := aVariable name ]).
 
-			tmp addAll: (aHistory history collect: [ :aMetricsAtATimeStep |
-					 aMetricsAtATimeStep accept: self ]).
+			tmp addAll: "(aHistory history collect: [ :aMetricsAtATimeStep |
+					 aMetricsAtATimeStep accept: self ]" aHistory history    .
 			^ tmp ]
 ]

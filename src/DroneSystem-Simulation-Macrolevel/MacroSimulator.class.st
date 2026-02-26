@@ -22,6 +22,12 @@ MacroSimulator class >> fromParameters: aMacroSimilatorParameters [
 		  yourself
 ]
 
+{ #category : 'visiting' }
+MacroSimulator >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulator: self
+]
+
 { #category : 'initialization' }
 MacroSimulator >> at: aTimeStep [
 
