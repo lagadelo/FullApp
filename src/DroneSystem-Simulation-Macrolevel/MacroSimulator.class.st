@@ -8,7 +8,8 @@ Class {
 		'parameters',
 		'losses',
 		'entrances',
-		'random'
+		'random',
+		'incomers'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -61,26 +62,8 @@ MacroSimulator >> current [
 { #category : 'fleet updates' }
 MacroSimulator >> enter: aMacroSimulatorDrone at: aTimeStep [
 
-	(self entrances at: aTimeStep ifAbsentPut: [ OrderedCollection new ])
+	(self incomers  at: aTimeStep ifAbsentPut: [ OrderedCollection new ])
 		add: aMacroSimulatorDrone
-]
-
-{ #category : 'fleet updates' }
-MacroSimulator >> entrances [
-
-	^ entrances
-]
-
-{ #category : 'fleet updates' }
-MacroSimulator >> entrances: anObject [
-
-	entrances := anObject
-]
-
-{ #category : 'fleet updates' }
-MacroSimulator >> entrancesAt: aTimeStep [
-
-	^ self entrances at: aTimeStep ifAbsent: [ #(  ) ]
 ]
 
 { #category : 'reporting' }
@@ -136,7 +119,7 @@ MacroSimulator >> futureStep [
 	future := self current copy. "Now currentState"
 	future timeStep:t.
 	(self lossesAt: t) do: [ :id | future loseDroneID: id ].
-	(self entrancesAt: t) do: [ :drone | future welcome: drone copy].
+	(self incomersAt: t) do: [ :drone | future welcomeDrone: drone copy].
 
 	^ future
 ]
@@ -153,11 +136,29 @@ MacroSimulator >> history: anObject [
 	history := anObject
 ]
 
+{ #category : 'fleet updates' }
+MacroSimulator >> incomers [
+
+	^ incomers
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> incomers: anObject [
+
+	incomers := anObject
+]
+
+{ #category : 'fleet updates' }
+MacroSimulator >> incomersAt: aTimeStep [
+
+	^ self incomers at: aTimeStep ifAbsent: [ #(  ) ]
+]
+
 { #category : 'initialization' }
 MacroSimulator >> initialize [
 
 	self history: OrderedCollection new.
-	self entrances: OrderedDictionary new.
+	self incomers: OrderedDictionary new.
 	self losses: OrderedDictionary new.
 	self behavior: MacroSimulatorBehavior new.
 	self random: Random new
@@ -209,10 +210,10 @@ MacroSimulator >> metrics: anObject [
 ]
 
 { #category : 'fleet updates' }
-MacroSimulator >> newEntranceAt: aTimeStamp [
+MacroSimulator >> newIncomerAt: aTimeStamp [
 
 	| newDrone |
-	newDrone := self parameter generateDrone.
+	newDrone := self parameters generateDrone.
 	newDrone id: self current nextID.
 	newDrone position: Random new next * parameters totalDistance.
 	self enter: newDrone at: aTimeStamp
@@ -268,16 +269,17 @@ MacroSimulator >> scenario [
 
 	| dates events |
 	events := OrderedCollection new.
-	dates := (self losses collect: [ :a | a key ])
-	         , (self entrances collect: [ :a | a key ]).
-	dates asSortedCollection do: [ :a |
+	dates := Set new.
+	dates addAll: self losses keys, self incomers keys.
+	 
+	dates  asSortedCollection do: [ :a |
 			(self lossesAt: a) do: [ :event |
 					| tmp |
 					tmp := OrderedCollection new.
 					tmp add: a.
-					tmp add: event.
+					tmp add: ((self history at: a+1) lostDroneWithID:  event).
 					events add: tmp ].
-			(self entrancesAt: a) do: [ :event |
+			(self incomersAt: a) do: [ :event |
 					| tmp |
 					tmp := OrderedCollection new.
 					tmp add: a.

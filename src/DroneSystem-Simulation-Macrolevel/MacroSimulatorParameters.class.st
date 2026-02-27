@@ -122,9 +122,8 @@ MacroSimulatorParameters >> generateDrone [
 	tmp nominalSpeed: self nominalSpeed.
 	tmp maxSpeed: self maxSpeed.
 	tmp currentSpeed: self nominalSpeed.
-
 	tmp sensingRadius: self sensingRadius.
-	tmp captureRadius: captureRadius.
+	tmp captureRadius: self captureRadius.
 	tmp position: Float infinity.
 	^ tmp
 ]

@@ -31,6 +31,12 @@ tmp range: self range.
 ^tmp 
 ]
 
+{ #category : 'running' }
+MacroSimulatorStep >> droneWithID: anID [
+
+	^ self drones detect: [ :a | a id = anID ] ifNone: [ nil ]
+]
+
 { #category : 'accessing' }
 MacroSimulatorStep >> drones [
 
@@ -73,8 +79,11 @@ MacroSimulatorStep >> initialize [
 { #category : 'running' }
 MacroSimulatorStep >> loseDrone: aDrone [
 
+	aDrone die.
 	self drones remove: aDrone.
 	self lostDrones add: aDrone
+
+	"new follower's successor is our own successor"
 ]
 
 { #category : 'running' }
@@ -83,6 +92,12 @@ MacroSimulatorStep >> loseDroneID: anID [
 	| aDrone |
 	aDrone := self drones detect: [ :d | d id = anID ].
 	self loseDrone: aDrone
+]
+
+{ #category : 'running' }
+MacroSimulatorStep >> lostDroneWithID: anID [
+
+	^ self lostDrones detect: [ :a | a id = anID ] ifNone: [ nil ]
 ]
 
 { #category : 'accessing' }
@@ -151,12 +166,23 @@ MacroSimulatorStep >> reportSpeeds [
 
 { #category : 'drones accessing' }
 MacroSimulatorStep >> successorOf: aDrone [
+	"refact here. store rather than compute"
 
+	| candidates c |
+	candidates := self drones copy.
+	candidates remove: self.
+	c := candidates removeFirst.
+	candidates do: [ :a |
+			self position - a position % self range
+			< (self position - c position % self range) ifTrue: [ c := a ] ].
+	^ c
+
+	"Legacy. Does not support incomers""
 	| i |
 	i := self drones indexOf: aDrone.
 	^ i = 1
 		  ifTrue: [ self drones last ]
-		  ifFalse: [ self drones at: i - 1 ]
+		  ifFalse: [ self drones at: i - 1 ]"
 ]
 
 { #category : 'accessing' }
@@ -183,6 +209,9 @@ MacroSimulatorStep >> update [
 MacroSimulatorStep >> welcomeDrone: aDrone [
 
 	self welcomeDrone: aDrone atPosition: 0
+	
+
+"We need to update the successors and followers here"
 ]
 
 { #category : 'running' }

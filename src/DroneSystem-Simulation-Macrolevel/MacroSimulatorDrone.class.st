@@ -37,6 +37,12 @@ MacroSimulatorDrone >> accept: aVisitor [
 ]
 
 { #category : 'accessing' }
+MacroSimulatorDrone >> beAlive [
+
+	isAlive := true
+]
+
+{ #category : 'accessing' }
 MacroSimulatorDrone >> captureRadius [
 
 	^ captureRadius
@@ -77,6 +83,12 @@ MacroSimulatorDrone >> id [
 MacroSimulatorDrone >> id: anObject [
 
 	id := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulatorDrone >> initialize [
+
+	self beAlive
 ]
 
 { #category : 'accessing' }

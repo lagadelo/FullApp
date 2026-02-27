@@ -24,6 +24,14 @@ MacroExporter class >> visit: anObject [
 ^self new visit: anObject 
 ]
 
+{ #category : 'visiting' }
+MacroExporter >> columnNamesFor: aClass [
+
+	^ aClass instanceVariables collect: [ :aVariable |
+			  | aVariableName |
+			  aVariableName := aVariable name ]
+]
+
 { #category : 'actions' }
 MacroExporter >> createFile: aFileName [
 
@@ -32,6 +40,13 @@ MacroExporter >> createFile: aFileName [
 					 createFile ]).
 
 	^ self file
+]
+
+{ #category : 'visiting' }
+MacroExporter >> defaultExport: anObject [
+
+	^ (self columnNamesFor: anObject class) collect: [ :aVariableName |
+		  anObject perform: aVariableName asSymbol ]
 ]
 
 { #category : 'actions' }
@@ -111,15 +126,25 @@ MacroExporter >> saveParametersOf: aSimulator [
 { #category : 'visiting' }
 MacroExporter >> saveScenarioOf: aSimulator [
 
-	| parameters parametersFile |
+	| tmp parametersFile scenario |
 	"Save Meta data"
+	
+	scenario := aSimulator scenario.
+	scenario ifEmpty:[^self].
+	
 	parametersFile := self createFile: 'scenario.csv'.
-	parameters := self visit: aSimulator parameters.
+
+	tmp := (OrderedCollection with: #'timeStamp'), (self columnNamesFor: scenario first last class).
 
 	parametersFile writeStreamDo: [ :stream |
 			| nw |
 			nw := NeoCSVWriter on: stream.
-			nw nextPutAll: parameters ]
+
+			nw nextPut: tmp.
+			aSimulator scenario do: [ :anEvent |
+					nw nextPut:
+						(OrderedCollection with: anEvent first)
+						, (self visit: anEvent last) ] ]
 ]
 
 { #category : 'visiting' }
@@ -133,27 +158,11 @@ MacroExporter >> visitMacroSimulator: aSimulator [
 
 	| historyFile data fields parameters parametersFile |
 	"Save Data"
-	historyFile := self createFile:
-		               aSimulator behavior exportName , '.csv'.
-	data := self visit: aSimulator evaluateMetrics.
-
-	historyFile writeStreamDo: [ :stream |
-			| nw |
-			nw := NeoCSVWriter on: stream.
-			fields := data removeFirst.
-			nw
-				nextPut: fields;
-				addRawFields: fields. "accessors over lines"
-			nw nextPutAll: data ].
-
+	self saveDataOf: aSimulator.
 	"Save Meta data"
-	parametersFile := self createFile: 'parameters.csv'.
-	parameters := self visit: aSimulator parameters.
-
-	parametersFile writeStreamDo: [ :stream |
-			| nw |
-			nw := NeoCSVWriter on: stream.
-			nw nextPutAll: parameters ]
+	self saveParametersOf: aSimulator.
+	"Save incoming and lost drones"
+	self saveScenarioOf: aSimulator
 ]
 
 { #category : 'visiting' }
@@ -175,24 +184,13 @@ MacroExporter >> visitMacroSimulatorBehavior: aBehavior [
 { #category : 'visiting' }
 MacroExporter >> visitMacroSimulatorDrone: aDrone [
 
-	| tmp |
-	tmp := OrderedCollection new.
-	tmp add: (aDrone class instanceVariables collect: [ :aVariable |
-				 | aVariableName |
-				 aVariableName := aVariable name ]).
-	tmp add: (aDrone class instanceVariables collect: [ :aVariable |
-			 aDrone perform: aVariable name asSymbol ]).
-	^ tmp
+	^ self defaultExport: aDrone
 ]
 
 { #category : 'visiting' }
 MacroExporter >> visitMacroSimulatorMetrics: aMetrics [
 
-	^ aMetrics class instanceVariables collect: [ :aVariable |
-			  | aVariableName |
-			  aVariableName := aVariable name.
-
-			  aMetrics perform: aVariableName asSymbol ]
+	^ self defaultExport: aMetrics
 ]
 
 { #category : 'visiting' }
@@ -200,13 +198,8 @@ MacroExporter >> visitMacroSimulatorParameters: aParameters [
 
 	| tmp |
 	tmp := OrderedCollection new.
-	tmp add:
-		(aParameters class instanceVariables collect: [ :aVariable |
-				 | aVariableName |
-				 aVariableName := aVariable name ]).
-	tmp add:
-		(aParameters class instanceVariables collect: [ :aVariable |
-			 aParameters perform: aVariable name asSymbol ]).
+	tmp add: (self columnNamesFor: aParameters class).
+	tmp add: (self defaultExport: aParameters).
 	^ tmp
 ]
 
