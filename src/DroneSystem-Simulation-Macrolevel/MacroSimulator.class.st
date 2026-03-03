@@ -118,7 +118,7 @@ MacroSimulator >> futureStep [
 
 	future := self current copy. "Now currentState"
 	future timeStep:t.
-	(self lossesAt: t) do: [ :id | future loseDroneID: id ].
+	(self lossesAt: t) do: [ :id |  future loseDroneID: id ].
 	(self incomersAt: t) do: [ :drone | future welcomeDrone: drone copy].
 
 	^ future

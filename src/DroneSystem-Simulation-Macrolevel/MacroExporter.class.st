@@ -50,6 +50,14 @@ MacroExporter >> defaultExport: anObject [
 ]
 
 { #category : 'actions' }
+MacroExporter >> deleteFile: aFileName [
+
+	self directory ifNotNil: [
+			(self directory fullName , '/' , aFileName) asFileReference
+				deleteIfAbsent: [ ] ]
+]
+
+{ #category : 'actions' }
 MacroExporter >> directory [
 
 	directory ifNil: [
@@ -71,6 +79,17 @@ MacroExporter >> directoryName: aString [
 	^ directory
 ]
 
+{ #category : 'use case specific' }
+MacroExporter >> extractMacroMetricsOutOf: data [
+
+	| s e |
+	s := (1 to: data size) detect: [ :i |
+		     ((data at: i) = (data at: i + 1)) not ].
+	e := (s to: data size - 1) detect: [ :i |
+		     (data at: i) = (data at: i + 1) ].
+	^ Array with: s with: e
+]
+
 { #category : 'accessing' }
 MacroExporter >> file [
 
@@ -81,6 +100,18 @@ MacroExporter >> file [
 MacroExporter >> file: anObject [
 
 	file := anObject
+]
+
+{ #category : 'visiting' }
+MacroExporter >> metaMetrics [ 
+	| data aSimulator s e |
+	data := self visit: aSimulator evaluateMetrics.
+	s := (1 to: data size) detect: [ :i |
+		     (data at: i) = (data at: i + 1) not ].
+	e := (s to: data size) detect: [ :i |
+		     (data at: i) = (data at: i + 1) ].
+
+ 
 ]
 
 { #category : 'actions' }
@@ -106,7 +137,19 @@ MacroExporter >> saveDataOf: aSimulator [
 			nw
 				nextPut: fields;
 				addRawFields: fields. "accessors over lines"
-			nw nextPutAll: data ]
+			nw nextPutAll: data ].
+	^ data
+]
+
+{ #category : 'visiting' }
+MacroExporter >> saveMacroMetricsOutOf: data [
+
+	| s e |
+	s := (1 to: self data size) detect: [ :i |
+		     ((self data at: i) = (self data at: i + 1)) not ].
+	e := (s to: self data size) detect: [ :i |
+		     ((self data at: i) = (self data at: i + 1)) not ].
+	^ Array with: s with: e
 ]
 
 { #category : 'visiting' }
@@ -128,13 +171,13 @@ MacroExporter >> saveScenarioOf: aSimulator [
 
 	| tmp parametersFile scenario |
 	"Save Meta data"
-	
 	scenario := aSimulator scenario.
-	scenario ifEmpty:[^self].
-	
+	scenario ifEmpty: [ ^ self ].
+	self deleteFile: 'scenario.csv'.
 	parametersFile := self createFile: 'scenario.csv'.
 
-	tmp := (OrderedCollection with: #'timeStamp'), (self columnNamesFor: scenario first last class).
+	tmp := (OrderedCollection with: #timeStamp)
+	       , (self columnNamesFor: scenario first last class).
 
 	parametersFile writeStreamDo: [ :stream |
 			| nw |
@@ -156,13 +199,15 @@ MacroExporter >> visit: anObject [
 { #category : 'visiting' }
 MacroExporter >> visitMacroSimulator: aSimulator [
 
-	| historyFile data fields parameters parametersFile |
-	"Save Data"
-	self saveDataOf: aSimulator.
+	| data |
 	"Save Meta data"
 	self saveParametersOf: aSimulator.
 	"Save incoming and lost drones"
-	self saveScenarioOf: aSimulator
+	self saveScenarioOf: aSimulator.
+	"Save Data"
+	data := self saveDataOf: aSimulator.
+
+	^ self extractMacroMetricsOutOf: data
 ]
 
 { #category : 'visiting' }

@@ -139,6 +139,17 @@ MacroSimulatorDrone >> position: anObject [
 	position := anObject
 ]
 
+{ #category : 'printing' }
+MacroSimulatorDrone >> printOn: aStream [
+aStream nextPut:$(.
+self id printOn: aStream.
+aStream nextPut:$;.
+self position printOn: aStream.
+aStream nextPut:$;.
+self isAlive printOn: aStream.
+aStream nextPut:$).
+]
+
 { #category : 'accessing' }
 MacroSimulatorDrone >> sensingRadius [
 

@@ -6,11 +6,25 @@ Class {
 		'drones',
 		'maxID',
 		'lostDrones',
-		'range'
+		'range',
+		'predecessors',
+		'successors'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
 }
+
+{ #category : 'drones accessing' }
+MacroSimulatorStep >> aheadOfPosition: p [
+
+	| d |
+	d := self drones first.
+
+	self drones do: [ :a |
+			a position - p % self range < (d position - p % self range)
+				ifTrue: [ d := a ] ].
+	^ d
+]
 
 { #category : 'initialization' }
 MacroSimulatorStep >> applyParameters: aMacroSimulatorParameters [
@@ -18,20 +32,37 @@ MacroSimulatorStep >> applyParameters: aMacroSimulatorParameters [
 	self initialize.
 	self drones addAll: aMacroSimulatorParameters generate.
 	self maxID: self drones size.
-	self range: aMacroSimulatorParameters totalDistance 
+	self range: aMacroSimulatorParameters totalDistance.
+	self setupQueue.
 ]
 
 { #category : 'copying' }
-MacroSimulatorStep >> copy [ 
-| tmp |
-tmp := self class new.
-tmp drones: (self drones collect:[:a| a copy]).
-tmp lostDrones: (self lostDrones collect:[:a| a copy]).
-tmp range: self range.
-^tmp 
+MacroSimulatorStep >> copy [
+
+	| tmp |
+	tmp := self class new.
+
+	tmp drones: (self drones collect: [ :a | a copy ]).
+	tmp lostDrones: (self lostDrones collect: [ :a | a copy ]).
+
+	tmp range: self range.
+
+	self predecessors keysAndValuesDo: [ :k :v |
+			tmp predecessors
+				at: (tmp drones at: (self drones indexOf: k))
+				put: (tmp drones at: (self drones indexOf: v)) ].
+
+	self successors keysAndValuesDo: [ :k :v |
+			tmp successors
+				at: (tmp drones at: (self drones indexOf: k))
+				put: (tmp drones at: (self drones indexOf: v)) ].
+
+	tmp maxID: self maxID.
+
+	^ tmp
 ]
 
-{ #category : 'running' }
+{ #category : 'drones accessing' }
 MacroSimulatorStep >> droneWithID: anID [
 
 	^ self drones detect: [ :a | a id = anID ] ifNone: [ nil ]
@@ -58,13 +89,13 @@ MacroSimulatorStep >> evaluateMetrics [
 { #category : 'running' }
 MacroSimulatorStep >> gapAheadDrone: aDrone [
 
-	^ ((self predecessorOf: aDrone) position - aDrone position ) % self range
+	^ ( (self predecessorOf: aDrone) position - aDrone position   ) % self range
 ]
 
 { #category : 'running' }
 MacroSimulatorStep >> gapBackwardDrone: aDrone [
 
-	^ aDrone position - (self successorOf: aDrone) position % self range 
+	^ aDrone position - (self successorOf: aDrone) position % self range
 ]
 
 { #category : 'initialization' }
@@ -72,21 +103,37 @@ MacroSimulatorStep >> initialize [
 
 	self maxID: 0.
 	self drones:
-		(SortedCollection sortBlock: [ :a :b | b position > a position ]).
+		"(SortedCollection sortBlock: [ :a :b | b position > a position ])." OrderedCollection new.
+		self successors: Dictionary new.
+		self predecessors: Dictionary new.
 	self timeStep: 0
 ]
 
 { #category : 'running' }
 MacroSimulatorStep >> loseDrone: aDrone [
+	"Update status"
 
 	aDrone die.
+
+	"Move from drones to lostDrones"
 	self drones remove: aDrone.
-	self lostDrones add: aDrone
+	self lostDrones add: aDrone.
+
 
 	"new follower's successor is our own successor"
+	self
+		register: (self predecessorOf: aDrone)
+		asPredecessorOf: (self successorOf: aDrone).
+	self
+		register: (self successorOf: aDrone)
+		asSuccessorOf: (self predecessorOf: aDrone).
+
+	"Forget the lost drone in terms of following"
+	self predecessors removeKey: aDrone.
+	self successors removeKey: aDrone
 ]
 
-{ #category : 'running' }
+{ #category : 'drones accessing' }
 MacroSimulatorStep >> loseDroneID: anID [
 
 	| aDrone |
@@ -94,7 +141,7 @@ MacroSimulatorStep >> loseDroneID: anID [
 	self loseDrone: aDrone
 ]
 
-{ #category : 'running' }
+{ #category : 'drones accessing' }
 MacroSimulatorStep >> lostDroneWithID: anID [
 
 	^ self lostDrones detect: [ :a | a id = anID ] ifNone: [ nil ]
@@ -125,7 +172,7 @@ MacroSimulatorStep >> maxID: anObject [
 	maxID := anObject
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 MacroSimulatorStep >> nextID [
 
 	self maxID: self maxID + 1.
@@ -135,9 +182,19 @@ MacroSimulatorStep >> nextID [
 { #category : 'drones accessing' }
 MacroSimulatorStep >> predecessorOf: aDrone [
 
-	| i |
-	i := self drones indexOf: aDrone.
-	^ self drones at: i % self drones size + 1 " = self drones size iftrue:[1] iffalse:[ i +1 ]"
+	^ self predecessors at: aDrone
+]
+
+{ #category : 'accessing' }
+MacroSimulatorStep >> predecessors [
+
+	^ predecessors
+]
+
+{ #category : 'accessing' }
+MacroSimulatorStep >> predecessors: anObject [
+
+	predecessors := anObject
 ]
 
 { #category : 'accessing' }
@@ -152,6 +209,49 @@ MacroSimulatorStep >> range: anObject [
 	range := anObject
 ]
 
+{ #category : 'running' }
+MacroSimulatorStep >> register: aDrone after: anotherDrone [
+
+	^ self
+		  register: aDrone
+		  between: anotherDrone
+		  and: (self successorOf: anotherDrone)
+]
+
+{ #category : 'running' }
+MacroSimulatorStep >> register: aDrone aheadOf: anotherDrone [
+
+	^ self
+		  register: aDrone
+		  between: anotherDrone
+		  and: (self successorOf: anotherDrone)
+]
+
+{ #category : 'private' }
+MacroSimulatorStep >> register: aDrone asPredecessorOf: anotherDrone [
+
+	self predecessors at: anotherDrone put: aDrone
+]
+
+{ #category : 'private' }
+MacroSimulatorStep >> register: aDrone asSuccessorOf: anotherDrone [
+
+	self successors at: anotherDrone put: aDrone
+]
+
+{ #category : 'running' }
+MacroSimulatorStep >> register: aDrone between: aSecondDrone and: aThirdDrone [
+
+	"Ensure consistency"
+	(self successorOf: aSecondDrone) == aThirdDrone ifFalse: [
+		^ self error: 'Incorrect call' ].
+	self predecessors at: aDrone put: aSecondDrone.
+	self successors at: aSecondDrone put: aDrone.
+
+	self predecessors at: aThirdDrone put: aDrone.
+	self successors at: aDrone put: aThirdDrone
+]
+
 { #category : 'reporting' }
 MacroSimulatorStep >> reportGaps [
 
@@ -164,25 +264,35 @@ MacroSimulatorStep >> reportSpeeds [
 	^ self drones collect: [ :d | d currentSpeed ]
 ]
 
+{ #category : 'private' }
+MacroSimulatorStep >> setupQueue [
+	"This relies on indexes; should only be used once, during initialization"
+
+	1 to: self drones size do: [ :index |
+			self
+				register: (self drones at: index)
+				asPredecessorOf:  (self drones at: (index   % self drones size +1)).
+			self
+				register: (self drones at: (index  % self drones size +1))
+				asSuccessorOf: (self drones at: index) ]
+]
+
 { #category : 'drones accessing' }
 MacroSimulatorStep >> successorOf: aDrone [
-	"refact here. store rather than compute"
 
-	| candidates c |
-	candidates := self drones copy.
-	candidates remove: self.
-	c := candidates removeFirst.
-	candidates do: [ :a |
-			self position - a position % self range
-			< (self position - c position % self range) ifTrue: [ c := a ] ].
-	^ c
+	^ self successors at: aDrone
+]
 
-	"Legacy. Does not support incomers""
-	| i |
-	i := self drones indexOf: aDrone.
-	^ i = 1
-		  ifTrue: [ self drones last ]
-		  ifFalse: [ self drones at: i - 1 ]"
+{ #category : 'accessing' }
+MacroSimulatorStep >> successors [
+
+	^ successors
+]
+
+{ #category : 'accessing' }
+MacroSimulatorStep >> successors: anObject [
+
+	successors := anObject
 ]
 
 { #category : 'accessing' }
@@ -208,17 +318,22 @@ MacroSimulatorStep >> update [
 { #category : 'running' }
 MacroSimulatorStep >> welcomeDrone: aDrone [
 
-	self welcomeDrone: aDrone atPosition: 0
-	
+	self welcomeDrone: aDrone atPosition: (aDrone position
+			 ifNil: [ " should not happen here" 0 ]
+			 ifNotNil: [ aDrone position ])
 
-"We need to update the successors and followers here"
+
+	"We need to update the successors and followers here"
 ]
 
 { #category : 'running' }
 MacroSimulatorStep >> welcomeDrone: aDrone atPosition: aPosition [
 	"Fine tuning for spare insertion"
 
+	| d |
 	aDrone id: self nextID.
 	aDrone position: aPosition.
-	self drones add: aDrone
+	d := (self aheadOfPosition: aPosition).
+	self drones add: aDrone.
+	self register: aDrone after: d. 
 ]

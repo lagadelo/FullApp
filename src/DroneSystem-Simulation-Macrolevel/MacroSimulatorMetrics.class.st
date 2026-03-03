@@ -10,8 +10,7 @@ Class {
 		'maxSpeed',
 		'avgSpeed',
 		'stdSpeed',
-		'fleetSize',
-		'index'
+		'fleetSize'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -23,7 +22,7 @@ MacroSimulatorMetrics class >> on: aMacroSimulationStep [
 	| tmp gaps uncovered speeds |
 	tmp := self new.  
 	tmp fleetSize: aMacroSimulationStep drones size.
-	tmp index: aMacroSimulationStep timeStep.
+	"tmp index: aMacroSimulationStep timeStep."
 
 	gaps := (aMacroSimulationStep drones collect: [ :d |
 		         (aMacroSimulationStep gapAheadDrone: d ) asFloat]) asSortedCollection.
@@ -43,6 +42,18 @@ MacroSimulatorMetrics class >> on: aMacroSimulationStep [
 	tmp avgGap: gaps average asFloat.
 	tmp stdGap: gaps standardDeviation.
 	^ tmp
+]
+
+{ #category : 'comparing' }
+MacroSimulatorMetrics >> = aValue [
+
+	self class = aValue class ifFalse: [ ^ false ].
+
+
+	self class instanceVariableNamesDo: [ :a |
+			(self perform: a asSymbol) = (aValue perform: a asSymbol) ifFalse: [
+				^ false ] ].
+	^ true
 ]
 
 { #category : 'visiting' }
@@ -85,6 +96,12 @@ MacroSimulatorMetrics >> fleetSize [
 MacroSimulatorMetrics >> fleetSize: anObject [
 
 	fleetSize := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulatorMetrics >> gapInfo [
+
+	^ self maxGap , self minGap , self avgGap , self stdGap
 ]
 
 { #category : 'accessing' }
