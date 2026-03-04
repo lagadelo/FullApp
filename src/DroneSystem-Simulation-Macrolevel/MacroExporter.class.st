@@ -1,3 +1,6 @@
+"
+MacroExport is a simple visitor, holding the current directoy as saving needs to create co-located files
+"
 Class {
 	#name : 'MacroExporter',
 	#superclass : 'Object',
@@ -86,7 +89,7 @@ MacroExporter >> extractMacroMetricsOutOf: data [
 	s := (1 to: data size) detect: [ :i |
 		     ((data at: i) = (data at: i + 1)) not ].
 	e := (s to: data size - 1) detect: [ :i |
-		     (data at: i) = (data at: i + 1) ].
+		     (data at: i) = (data at: i + 1) ] ifNone: [Float infinity].
 	^ Array with: s with: e
 ]
 
@@ -206,8 +209,8 @@ MacroExporter >> visitMacroSimulator: aSimulator [
 	self saveScenarioOf: aSimulator.
 	"Save Data"
 	data := self saveDataOf: aSimulator.
-
-	^ self extractMacroMetricsOutOf: data
+ 
+	^ data
 ]
 
 { #category : 'visiting' }
@@ -236,6 +239,36 @@ MacroExporter >> visitMacroSimulatorDrone: aDrone [
 MacroExporter >> visitMacroSimulatorMetrics: aMetrics [
 
 	^ self defaultExport: aMetrics
+]
+
+{ #category : 'visiting' }
+MacroExporter >> visitMacroSimulatorMetricsSeries: aSimulatorMetricsSerie [
+	"aSimulatorMetricsSerie parameters collect:[:p| aSimulatorMetricsSerie history collect:[:m| m perform: p]].
+"
+
+	| columnNames content summaryFile |
+	columnNames := aSimulatorMetricsSerie parameters
+	               ,
+		               (aSimulatorMetricsSerie extractors collect: [ :anAsso |
+			                anAsso key , '(' , anAsso value , ')' ]).
+
+	content := aSimulatorMetricsSerie process.
+
+
+
+	"create file"
+	summaryFile := self createFile: 'summary.csv'.
+
+
+	summaryFile writeStreamDo: [ :stream |
+			| nw |
+			nw := NeoCSVWriter on: stream.
+
+			"write header"
+			nw
+				nextPut: columnNames;
+				"write data"
+				nextPutAll: content ]
 ]
 
 { #category : 'visiting' }

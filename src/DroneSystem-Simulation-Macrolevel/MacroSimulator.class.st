@@ -1,3 +1,16 @@
+"
+MacroSimulator is the simulator.
+
+This class has 
+- behavior : a MacroSimulatorBehavior
+- metrics : a MacroSimulatorMetrics
+- history : a collection of MacroSimulatorStep
+- timeStep
+
+- random : this is used to get a common seed on demand when replaying some scenarios
+
+- incomers and losses that describe events at a given timeStep
+"
 Class {
 	#name : 'MacroSimulator',
 	#superclass : 'Object',
@@ -7,7 +20,6 @@ Class {
 		'metrics',
 		'parameters',
 		'losses',
-		'entrances',
 		'random',
 		'incomers'
 	],
@@ -77,8 +89,9 @@ MacroSimulator >> evaluateMetrics [
 { #category : 'reporting' }
 MacroSimulator >> export [
 
-	^ self export:
-		  #( minGap maxGap avgGap stdGap minSpeed maxSpeed avgSpeed stdSpeed )
+	self error:'Legacy code to be removed'
+	"^ self export:
+		  #( minGap maxGap avgGap stdGap minSpeed maxSpeed avgSpeed stdSpeed )"
 ]
 
 { #category : 'reporting' }
@@ -254,7 +267,7 @@ MacroSimulator >> run: n [
 n timesRepeat: [ self step] 
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'stepping' }
 MacroSimulator >> running [
 
 	| current |

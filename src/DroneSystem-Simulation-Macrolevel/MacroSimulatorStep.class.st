@@ -1,3 +1,16 @@
+"
+MacroSimulatorStep
+
+has 6 instance variables as:
+	- timeStep : current time, this can also serve as index
+	- drones : alive drones
+	- lostDrones : dead drones 
+	- predecessors : a dictionary of drone -> drone, used to find the drone ahead of the key
+	- successors : a dictionary of drone -> drone, used to find the drone behing   the key
+	- maxID : used for setting up an incomer
+	
+is intented to represent the fleet's state at timeStep
+"
 Class {
 	#name : 'MacroSimulatorStep',
 	#superclass : 'Object',
@@ -101,11 +114,12 @@ MacroSimulatorStep >> gapBackwardDrone: aDrone [
 { #category : 'initialization' }
 MacroSimulatorStep >> initialize [
 
+	super initialize.
 	self maxID: 0.
-	self drones:
-		"(SortedCollection sortBlock: [ :a :b | b position > a position ])." OrderedCollection new.
-		self successors: Dictionary new.
-		self predecessors: Dictionary new.
+	self drones: OrderedCollection new.
+
+	self successors: Dictionary new.
+	self predecessors: Dictionary new.
 	self timeStep: 0
 ]
 

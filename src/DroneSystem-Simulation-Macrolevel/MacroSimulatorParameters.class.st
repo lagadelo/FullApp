@@ -1,9 +1,22 @@
+"
+MacroSimulatorParametere
+
+has 6 instance variables as:
+	- totalDistance : the span of the mission
+	- numberOfDrones : an integer defining the number of drones at first  
+	- minSpeed, maxSpeed and nominalSpeed  for drones. We assume the drones share the same internal cgaracteristics
+	- captureRadius : this describes the zone under investigation. It is used at runtime to detect gaps into the border's coverage
+	- sensingRadius ; this describes the distance allowing to perceive other drones (i.e one drone further than sensingRadius is reported missing
+	
+is intented to initialize the MacroSimulator
+"
 Class {
 	#name : 'MacroSimulatorParameters',
 	#superclass : 'Object',
 	#instVars : [
 		'nominalSpeed',
 		'maxSpeed',
+		'minSpeed',
 		'sensingRadius',
 		'captureRadius',
 		'numberOfDrones',
@@ -17,69 +30,52 @@ Class {
 
 { #category : 'examples' }
 MacroSimulatorParameters class >> example1 [
-"easy, *2 redundancy"
-^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 20 captureRadius: 20 totalDistance: 10000
+	"easy, *2 redundancy"
+	"+50% max speed, non speed under nominal"
+
+	| tmp |
+	tmp := self new.
+	tmp
+		numberOfDrones: 100;
+		nominalSpeed: 10;
+		minSpeed: 10;
+		maxSpeed: 15;
+		sensingRadius: 20;
+		captureRadius: 20;
+		totalDistance: 10000.
+	^ tmp
 ]
 
 { #category : 'examples' }
 MacroSimulatorParameters class >> example2 [
 "medium, *1,5 redundancy"
-^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 15 captureRadius: 15 totalDistance: 10000
+
+	| tmp |
+	tmp := self new.
+	tmp
+		numberOfDrones: 100;
+		nominalSpeed: 10;
+		minSpeed: 10;
+		maxSpeed: 15;
+		sensingRadius: 15;
+		captureRadius: 20;
+		totalDistance: 10000.
+	^ tmp
 ]
 
 { #category : 'examples' }
 MacroSimulatorParameters class >> example3 [
 "medium, *1,5 redundancy, *2 neighbours detection"
-^self  numberOfDrones:100 nominalSpeed: 10 maxSpeed: 15 sensingRadius: 20 captureRadius: 15 totalDistance: 1000
-]
-
-{ #category : 'examples' }
-MacroSimulatorParameters class >> example4 [
-	"medium, *1,5 redundancy, *2 neighbours detection"
-
-	| tmp simulator |
-	tmp := self
-		       numberOfDrones: 100
-		       nominalSpeed: 10
-		       maxSpeed: 15
-		       sensingRadius: 20
-		       captureRadius: 15
-		       totalDistance: 1000.
-	simulator := tmp initializeSimulator.
-	simulator losses at: 10 put: 1.
-	tmp losses at: 34 put: 2.
-	^ simulator
-]
-
-{ #category : 'instance creation' }
-MacroSimulatorParameters class >> numberOfDrones: numberOfDrones nominalSpeed: nominalSpeed maxSpeed: maxSpeed sensingRadius: sensingRadius captureRadius: captureRadius totalDistance: totalDistance [
-
 	| tmp |
 	tmp := self new.
 	tmp
-		numberOfDrones: numberOfDrones;
-		nominalSpeed: nominalSpeed;
-		maxSpeed: maxSpeed;
-		sensingRadius: sensingRadius;
-		captureRadius: captureRadius;
-		totalDistance: totalDistance.
-	^ tmp
-]
-
-{ #category : 'instance creation' }
-MacroSimulatorParameters class >> numberOfDrones: numberOfDrones nominalSpeed: nominalSpeed maxSpeed: maxSpeed sensingRadius: sensingRadius captureRadius: captureRadius totalDistance: totalDistance initialGap: gap [
-
-
-"This method is used to stress non stabilized starting situations "
-	| tmp |
-	tmp := self
-		       numberOfDrones: numberOfDrones
-		       nominalSpeed: nominalSpeed
-		       maxSpeed: maxSpeed
-		       sensingRadius: sensingRadius
-		       captureRadius: captureRadius
-		       totalDistance: totalDistance.
-	tmp initialGap: gap.
+		numberOfDrones: 100;
+		nominalSpeed: 10;
+		minSpeed: 10;
+		maxSpeed: 15;
+		sensingRadius: 20;
+		captureRadius: 15;
+		totalDistance: 10000.
 	^ tmp
 ]
 
@@ -121,6 +117,7 @@ MacroSimulatorParameters >> generateDrone [
 	tmp id: Float infinity.
 	tmp nominalSpeed: self nominalSpeed.
 	tmp maxSpeed: self maxSpeed.
+	tmp minSpeed: self minSpeed.
 	tmp currentSpeed: self nominalSpeed.
 	tmp sensingRadius: self sensingRadius.
 	tmp captureRadius: self captureRadius.
@@ -159,6 +156,18 @@ MacroSimulatorParameters >> maxSpeed [
 MacroSimulatorParameters >> maxSpeed: anObject [
 
 	maxSpeed := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> minSpeed [
+
+	^ minSpeed
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> minSpeed: anObject [
+
+	minSpeed := anObject
 ]
 
 { #category : 'accessing' }

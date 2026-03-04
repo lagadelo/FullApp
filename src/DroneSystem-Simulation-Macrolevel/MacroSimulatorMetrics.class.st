@@ -1,3 +1,14 @@
+"
+MacroSimulatorMetrics
+
+has 6 instance variables as:
+	- min  
+	- max  
+	- std deviation  
+per each dimention : speed and gap
+	
+is intented to generate analysis over a MacroSimulationStep
+"
 Class {
 	#name : 'MacroSimulatorMetrics',
 	#superclass : 'Object',
@@ -102,18 +113,6 @@ MacroSimulatorMetrics >> fleetSize: anObject [
 MacroSimulatorMetrics >> gapInfo [
 
 	^ self maxGap , self minGap , self avgGap , self stdGap
-]
-
-{ #category : 'accessing' }
-MacroSimulatorMetrics >> index [
-
-	^ index
-]
-
-{ #category : 'accessing' }
-MacroSimulatorMetrics >> index: anObject [
-
-	index := anObject
 ]
 
 { #category : 'accessing' }

@@ -1,3 +1,17 @@
+"
+MacroSimulatorDrone
+
+has 9 instance variables as:
+- id : a unique identifier starting from 0
+- isAlive : a boolean value
+- position : this is used to locate the drone, modulo the total mission range (see parameters)
+- minSpeed, maxSpeed and nominalSpeed  for drones. These act as constraints. We assume the drones share the same internal characteristics
+- currentSpeed : this is bitween minSpeed and maxSpeed and should idealy converge towards nominalSpeed
+- captureRadius : this describes the zone under investigation. It is used at runtime to detect gaps into the border's coverage
+- sensingRadius ; this describes the distance allowing to perceive other drones (i.e one drone further than sensingRadius is reported missing
+
+is intented to represent drones
+"
 Class {
 	#name : 'MacroSimulatorDrone',
 	#superclass : 'Object',
@@ -9,7 +23,8 @@ Class {
 		'isAlive',
 		'nominalSpeed',
 		'currentSpeed',
-		'maxSpeed'
+		'maxSpeed',
+		'minSpeed'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -36,7 +51,7 @@ MacroSimulatorDrone >> accept: aVisitor [
 	^ aVisitor visitMacroSimulatorDrone: self
 ]
 
-{ #category : 'accessing' }
+{ #category : 'running' }
 MacroSimulatorDrone >> beAlive [
 
 	isAlive := true
@@ -106,6 +121,7 @@ MacroSimulatorDrone >> isAlive: anObject [
 { #category : 'accessing' }
 MacroSimulatorDrone >> maxSpeed [
 
+	maxSpeed ifNil: [ maxSpeed := self nominalSpeed ].
 	^ maxSpeed
 ]
 
@@ -113,6 +129,19 @@ MacroSimulatorDrone >> maxSpeed [
 MacroSimulatorDrone >> maxSpeed: anObject [
 
 	maxSpeed := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulatorDrone >> minSpeed [
+
+	minSpeed ifNil: [ minSpeed := self nominalSpeed ].
+	^ minSpeed
+]
+
+{ #category : 'accessing' }
+MacroSimulatorDrone >> minSpeed: anObject [
+
+	minSpeed := anObject
 ]
 
 { #category : 'accessing' }

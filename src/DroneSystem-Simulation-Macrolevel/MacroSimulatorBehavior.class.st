@@ -1,3 +1,11 @@
+"
+This class describes the evolution of the system. Keep in mind, this is a fully distributed architecture. Each drone only perceives its two neighbours.
+
+MacroSimulatorBehavior has 3 instance variables:
+- the policy : which is a symbol, this message returns a bloc to be process to compute the evolution
+- sensibility : which is intended to limit oscillation by accepting some non optimal values as correct ones
+- pacing rate : which is used to push current speed to nominal speed is the drone is well balanced versus its two neighbours.
+"
 Class {
 	#name : 'MacroSimulatorBehavior',
 	#superclass : 'Object',

@@ -1,3 +1,13 @@
+"
+MacroSimulatorMetricsHistory
+
+has ine instance variable :
+	- history  
+ 
+that represents a collection of MacroSimùulatorMetrics.
+This is useful for the visitor
+	 
+"
 Class {
 	#name : 'MacroSimulatorMetricsHistory',
 	#superclass : 'Object',
