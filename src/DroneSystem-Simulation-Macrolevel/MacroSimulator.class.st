@@ -21,6 +21,7 @@ Class {
 		'parameters',
 		'losses',
 		'random',
+		'seed',
 		'incomers'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
@@ -179,10 +180,9 @@ MacroSimulator >> initialize [
 
 { #category : 'initialization' }
 MacroSimulator >> initializeSeed: aSeed [
-	"Usefull for exct replay"
+	"Usefull for exact replay - ignore nil seed"
 
-	self initialize.
-	self random: (Random seed: aSeed)
+	seed ifNotNil: [ self random: (Random seed: aSeed) ]
 ]
 
 { #category : 'fleet updates' }
@@ -228,7 +228,7 @@ MacroSimulator >> newIncomerAt: aTimeStamp [
 	| newDrone |
 	newDrone := self parameters generateDrone.
 	newDrone id: self current nextID.
-	newDrone position: Random new next * parameters totalDistance.
+	newDrone position: self random next * parameters totalDistance.
 	self enter: newDrone at: aTimeStamp
 ]
 
@@ -302,6 +302,18 @@ MacroSimulator >> scenario [
 		^events 
 ]
 
+{ #category : 'accessing' }
+MacroSimulator >> seed [
+
+	^ seed
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> seed: anObject [
+
+	seed := anObject
+]
+
 { #category : 'initialization' }
 MacroSimulator >> start [ 
 	| aMacroSimuklatorParameters |
@@ -315,8 +327,10 @@ MacroSimulator >> start [
 MacroSimulator >> startWith: aMacroSimulatorParameters [
 
 	self parameters: aMacroSimulatorParameters.
-	self history add: (MacroSimulatorStep new applyParameters: aMacroSimulatorParameters  ).
-	behavior policy: aMacroSimulatorParameters policy
+	self history add:
+		(MacroSimulatorStep new applyParameters: aMacroSimulatorParameters).
+	behavior policy: aMacroSimulatorParameters policy.
+	self initializeSeed: self parameters seed
 ]
 
 { #category : 'stepping' }

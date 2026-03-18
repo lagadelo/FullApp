@@ -20,6 +20,67 @@ MacroSimulatorExample class >> example1 [
 ]
 
 { #category : 'examples' }
+MacroSimulatorExample class >> example10 [
+	"Prospection - in/out drone "
+
+	"revised capingPolicy"
+
+	" self example10 "
+
+	| macroMetricsSeries parameters simulator pacingRates sensibilities exporter minSpeeds |
+	macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries addExtractor: #average -> #stdGap.
+	macroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.
+	macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+	macroMetricsSeries addExtractor: #min -> #maxGap.
+	macroMetricsSeries addExtractor: #max -> #maxGap.
+	macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+	macroMetricsSeries addExtractor: #average -> #avgSpeed.
+	macroMetricsSeries parameters: #( pacingRate sensibilities ).
+
+	exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
+	pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.
+	               0.99 }.
+	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+	minSpeeds := { 5. 6. 7. 8. 9. 20 }.
+	parameters := MacroSimulatorParameters new
+		              numberOfDrones: 100;
+		              nominalSpeed: 10;
+		              maxSpeed: 15;
+		              sensingRadius: 20;
+		              captureRadius: 20;
+		              totalDistance: 10000;
+		              policy: #revisedCapingPolicy;
+		              seed: 3950149054165;
+		              yourself.
+
+	pacingRates do: [ :p |
+			sensibilities do: [ :s |
+					minSpeeds do: [ :ms |
+							| data |
+							parameters minSpeed: ms.
+
+							simulator := parameters initializeSimulator.
+
+							simulator behavior
+								sensibility: s;
+								pacingRate: p.
+							simulator loose: 1 at: 199.
+							"simulator loose: 30 at: 500.
+					simulator loose: 80 at: 800.
+					simulator newIncomerAt: 300.
+					simulator newIncomerAt: 400.
+					simulator newIncomerAt: 1000."
+							simulator run: 1500.
+
+
+							data := exporter visit: simulator.
+							macroMetricsSeries addToSeries:
+								(Array with: p with: s with: ms) -> data ")" ] ] ].
+	^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'examples' }
 MacroSimulatorExample class >> example2 [
 	"Simple case - one loss"
 
@@ -170,6 +231,8 @@ MacroSimulatorExample class >> example7 [
 MacroSimulatorExample class >> example8 [
 	"Prospection - in/out drone "
 
+	" self example8"
+
 	| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |
 	macroMetricsSeries := MacroSimulatorMetricsSerie new.
 	macroMetricsSeries addExtractor: #average -> #stdGap.
@@ -177,12 +240,13 @@ MacroSimulatorExample class >> example8 [
 	macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
 
 	macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
-	macroMetricsSeries addExtractor: #stabilizationTime -> #avgSpeed.
+	macroMetricsSeries addExtractor: #average -> #avgSpeed.
 	macroMetricsSeries parameters: #( pacingRate sensibilities ).
 
 	exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
-	pacingRates := { 0.9. .0.95 . 0.99 }.
-	sensibilities := {0.005. 0.01. 0.015. 0.02 }. 
+	pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.
+	               0.99 }.
+	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
 	parameters := MacroSimulatorParameters new
 		              numberOfDrones: 100;
 		              nominalSpeed: 10;
@@ -191,6 +255,7 @@ MacroSimulatorExample class >> example8 [
 		              captureRadius: 20;
 		              totalDistance: 10000;
 		              policy: #capingPolicy;
+		              seed: 3950149054165;
 		              yourself.
 
 	pacingRates do: [ :p |
@@ -201,13 +266,67 @@ MacroSimulatorExample class >> example8 [
 						sensibility: s;
 						pacingRate: p.
 					simulator loose: 1 at: 200.
-					"simulator loose: 30 at: 500.
+					simulator loose: 30 at: 500.
 					simulator loose: 80 at: 800.
 					simulator newIncomerAt: 500.
 					simulator newIncomerAt: 500.
-					simulator newIncomerAt: 1000."
+					simulator newIncomerAt: 1000.
 					simulator run: 1500.
-		 
+
+
+					data := exporter visit: simulator.
+					macroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].
+	^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'examples' }
+MacroSimulatorExample class >> example9 [
+	"Prospection - in/out drone "
+
+	"revised capingPolicy"
+
+	" self example9"
+
+	| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |
+	macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries addExtractor: #average -> #stdGap.
+	macroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.
+	macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+
+	macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+	macroMetricsSeries addExtractor: #average -> #avgSpeed.
+	macroMetricsSeries parameters: #( pacingRate sensibilities ).
+
+	exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
+	pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.
+	               0.99 }.
+	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+	parameters := MacroSimulatorParameters new
+		              numberOfDrones: 100;
+		              nominalSpeed: 10;
+		              maxSpeed: 15;
+		              sensingRadius: 20;
+		              captureRadius: 20;
+		              totalDistance: 10000;
+		              policy: #revisedCapingPolicy;
+		              seed: 3950149054165;
+		              yourself.
+
+	pacingRates do: [ :p |
+			sensibilities do: [ :s |
+					| data |
+					simulator := parameters initializeSimulator.
+					simulator behavior
+						sensibility: s;
+						pacingRate: p.
+					simulator loose: 1 at: 200.
+					simulator loose: 30 at: 500.
+					simulator loose: 80 at: 800.
+					simulator newIncomerAt: 500.
+					simulator newIncomerAt: 500.
+					simulator newIncomerAt: 1000.
+					simulator run: 1500.
+
 
 					data := exporter visit: simulator.
 					macroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].

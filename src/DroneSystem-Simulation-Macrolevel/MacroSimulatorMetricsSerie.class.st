@@ -177,8 +177,9 @@ MacroSimulatorMetricsSerie >> stabilizationDuration [
 MacroSimulatorMetricsSerie >> stabilizationFrame [
 
 	| e s |
-	s := (1 to: data size) detect: [ :i |
-		     ((data at: i) = (data at: i + 1)) not ].
+	s := (1 to: data size - 1)
+		     detect: [ :i | ((data at: i) = (data at: i + 1)) not ]
+		     ifNone: [ Float infinity ].
 	e := (s to: data size - 1)
 		     detect: [ :i | (data at: i) = (data at: i + 1) ]
 		     ifNone: [ Float infinity ].

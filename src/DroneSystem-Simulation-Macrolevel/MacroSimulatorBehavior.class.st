@@ -74,7 +74,7 @@ MacroSimulatorBehavior >> capingPolicy [
 					           ifFalse: [ weight * 2 + 1 ].
 				  a currentSpeed:
 					  (((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
-						   max: a nominalSpeed) ] ]
+						   max: a minSpeed) ] ]
 ]
 
 { #category : 'accessing' }
@@ -143,8 +143,33 @@ MacroSimulatorBehavior >> policy: anObject [
 
 { #category : 'accessing' }
 MacroSimulatorBehavior >> process: aStep [  
-	(self perform: self policy) value: aStep.
+	  (self perform: self policy) value: aStep.
 	aStep update
+]
+
+{ #category : 'accessing' }
+MacroSimulatorBehavior >> revisedCapingPolicy [
+
+	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
+		  | weight |
+		  aStep drones do: [ :a |
+				  | ga gb ratio newSpeed |
+				  ga := aStep gapAheadDrone: a.
+				  gb := aStep gapBackwardDrone: a.
+
+				  weight := (ga - gb / (ga max: gb)) asFloat.
+				  "	weight <0 ifTrue:[self halt] ."
+				  newSpeed := weight abs < self sensibility
+					              ifTrue: [ "smooth adaptation"
+						              a currentSpeed
+						              +
+						              (a nominalSpeed - a currentSpeed * self pacingRate) ]
+					              ifFalse: [  
+							              ((a currentSpeed * (weight * 2 + 1) roundUpTo:
+								                0.1) min: a maxSpeed) max: a minSpeed ].
+
+
+				  a currentSpeed: newSpeed ] ]
 ]
 
 { #category : 'accessing' }

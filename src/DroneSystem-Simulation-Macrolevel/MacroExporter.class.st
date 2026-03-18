@@ -40,6 +40,7 @@ MacroExporter >> createFile: aFileName [
 
 	self file: (self directory ifNotNil: [
 				 (self directory fullName , '/' , aFileName) asFileReference
+					 ensureDelete;
 					 createFile ]).
 
 	^ self file

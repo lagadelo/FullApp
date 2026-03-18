@@ -22,7 +22,8 @@ Class {
 		'numberOfDrones',
 		'totalDistance',
 		'initialGap',
-		'policy'
+		'policy',
+		'seed'
 	],
 	#category : 'DroneSystem-Simulation-Macrolevel',
 	#package : 'DroneSystem-Simulation-Macrolevel'
@@ -149,6 +150,8 @@ MacroSimulatorParameters >> initializeSimulator [
 { #category : 'accessing' }
 MacroSimulatorParameters >> maxSpeed [
 
+	maxSpeed ifNil: [ maxSpeed := self nominalSpeed ].
+
 	^ maxSpeed
 ]
 
@@ -161,6 +164,8 @@ MacroSimulatorParameters >> maxSpeed: anObject [
 { #category : 'accessing' }
 MacroSimulatorParameters >> minSpeed [
 
+	minSpeed ifNil: [ minSpeed := self nominalSpeed ].
+
 	^ minSpeed
 ]
 
@@ -172,6 +177,7 @@ MacroSimulatorParameters >> minSpeed: anObject [
 
 { #category : 'accessing' }
 MacroSimulatorParameters >> nominalSpeed [
+	"This is the minimal viable information, as min and max values can be derived from on demand"
 
 	^ nominalSpeed
 ]
@@ -205,6 +211,20 @@ MacroSimulatorParameters >> policy [
 MacroSimulatorParameters >> policy: anObject [
 
 	policy := anObject
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> seed [
+	"Usefull for exact replay"
+
+	seed ifNil: [ seed := Time primUTCMillisecondsClock ].
+	^ seed
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> seed: anObject [
+
+	seed := anObject
 ]
 
 { #category : 'accessing' }
