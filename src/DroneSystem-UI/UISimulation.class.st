@@ -183,6 +183,66 @@ clusterId,droneId,latitude,longitude,altitude
 30,D030,48.4800,-4.6400,190'
 ]
 
+{ #category : 'documentation' }
+UISimulation class >> layers [ 
+
+" The GeoPF WMS publishes 443 named layers. For background-map use, the accessible ones you’ll most likely care about are:
+GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2
+GEOGRAPHICALGRIDSYSTEMS.COASTALMAPS
+GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR10
+GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40
+GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950
+GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1
+Orthophoto backgrounds:
+ORTHOIMAGERY.ORTHOPHOTOS
+ORTHOIMAGERY.ORTHOPHOTOS.BDORTHO
+ORTHOIMAGERY.ORTHOPHOTOS.ORTHO-EXPRESS.2025
+ORTHOIMAGERY.ORTHOPHOTOS.ORTHO-EXPRESS.2024
+HR.ORTHOIMAGERY.ORTHOPHOTOS
+Useful overlays:
+TRANSPORTNETWORKS.ROADS
+TRANSPORTNETWORKS.ROADS.DIRECTION
+CADASTRALPARCELS.PARCELS
+CADASTRALPARCELS.PARCELLAIRE_EXPRESS
+IGNF_HYDROGRAPHY.HYDROGRAPHY
+HYDROGRAPHY.BCAE.LATEST
+Elevation / terrain:
+ELEVATION.CONTOUR.LINE
+ELEVATION.ELEVATIONGRIDCOVERAGE
+ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES
+ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW
+Historic / alternate cartography:
+AN-IGNF_GEOGRAPHICALGRIDSYSTEMS.CASSINI
+BNF-IGNF_GEOGRAPHICALGRIDSYSTEMS.CASSINI
+BDORTHOHISTORIQUE
+If your goal is a fast base layer, I’d test these first:
+GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2
+GEOGRAPHICALGRIDSYSTEMS.COASTALMAPS
+ORTHOIMAGERY.ORTHOPHOTOS.ORTHO-EXPRESS.2025
+ORTHOIMAGERY.ORTHOPHOTOS
+GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR10
+A practical example:
+img := wms
+    map: { 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2' }
+    bbox: self boundingBox
+    size: self imageSize
+    epsg: '3857'
+    format: 'image/jpeg'
+
+
+OR WITH ORTHO 
+
+
+img := wms
+    map: { 'ORTHOIMAGERY.ORTHOPHOTOS' }
+    bbox: self boundingBox
+    size: self imageSize
+    epsg: '3857'
+    format: 'image/jpeg'
+
+"
+]
+
 { #category : 'GoeReferencing' }
 UISimulation class >> lonLatToWebMercator: lonLatPoint [
 "lonLatPoint in degrees"
@@ -347,7 +407,7 @@ UISimulation >> buildBaseMap [
     baseShapes removeAll.]."
 	rsCanvas shapes do: [ :a | a remove ].
 
-"	(Smalltalk includesKey: #OWSServiceWMS)" false
+	(Smalltalk includesKey: #OWSServiceWMS) 
 		ifTrue: [
 				| wms img bmp |
 				[ wms := OWSServiceWMS new ]
