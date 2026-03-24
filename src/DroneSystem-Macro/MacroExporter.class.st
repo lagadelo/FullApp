@@ -5,13 +5,21 @@ Class {
 	#name : 'MacroExporter',
 	#superclass : 'Object',
 	#instVars : [
-		'files',
+		'file',
 		'repository',
 		'directory'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
 }
+
+{ #category : 'instance' }
+MacroExporter class >> directoryName: aName [
+
+	^ self new
+		  directoryName: aName;
+		  yourself
+]
 
 { #category : 'visit' }
 MacroExporter class >> visit: anObject [
@@ -87,15 +95,15 @@ MacroExporter >> extractMacroMetricsOutOf: data [
 ]
 
 { #category : 'accessing' }
-MacroExporter >> files [
+MacroExporter >> file [
 
-	^ files
+	^ file
 ]
 
 { #category : 'accessing' }
-MacroExporter >> files: anObject [
+MacroExporter >> file: anObject [
 
-	files := anObject
+	file := anObject
 ]
 
 { #category : 'visiting' }
@@ -184,17 +192,17 @@ MacroExporter >> saveScenarioOf: aSimulator [
 	parametersFile := self createFile: 'scenario.csv'.
 
 	tmp := (OrderedCollection with: #timeStamp)
-	       , (self columnNamesFor: scenario first last class).
+	       , (self columnNamesFor: scenario first last first class).
 
 	parametersFile writeStreamDo: [ :stream |
 			| nw |
 			nw := NeoCSVWriter on: stream.
 
 			nw nextPut: tmp.
-			aSimulator scenario do: [ :anEvent |
-					nw nextPut:
-						(OrderedCollection with: anEvent first)
-						, (self visit: anEvent last) ] ]
+			aSimulator scenario do: [ :atimeStampEvent |
+					atimeStampEvent last do: [ :aDroneEvent |
+							nw nextPut: (OrderedCollection with: atimeStampEvent first)
+								, (self visit: aDroneEvent) ] ] ]
 ]
 
 { #category : 'visiting' }
@@ -252,15 +260,15 @@ MacroExporter >> visitMacroSimulatorMetricsSeries: aSimulatorMetricsSerie [
 	| columnNames content summaryFile |
 	columnNames := aSimulatorMetricsSerie parameters
 	               ,
-		               (aSimulatorMetricsSerie extractors collect: [ :anAsso |
-			                anAsso key , '(' , anAsso value , ')' ]).
+		               (aSimulatorMetricsSerie extractors collect: [ :extractor |
+			                extractor label ]).
 
 	content := aSimulatorMetricsSerie process.
 
 
 
 	"create file"
-	summaryFile := self createFile: 'summary.csv'.
+	summaryFile := self createFile: aSimulatorMetricsSerie label,'.csv'.
 
 
 	summaryFile writeStreamDo: [ :stream |

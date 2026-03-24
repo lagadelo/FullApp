@@ -23,7 +23,8 @@ Class {
 		'losses',
 		'random',
 		'seed',
-		'incomers'
+		'incomers',
+		'timeStep'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -173,6 +174,7 @@ MacroSimulator >> incomersAt: aTimeStep [
 MacroSimulator >> initialize [
 
 	super initialize.
+	self timeStep: 0.
 	self history: OrderedCollection new.
 	self incomers: OrderedDictionary new.
 	self losses: OrderedDictionary new.
@@ -184,7 +186,9 @@ MacroSimulator >> initialize [
 MacroSimulator >> initializeSeed: aSeed [
 	"Usefull for exact replay - ignore nil seed"
 
-	seed ifNotNil: [ self random: (Random seed: aSeed) ]
+	seed ifNil: [
+			seed := aSeed.
+			self random: (Random seed: aSeed) ]
 ]
 
 { #category : 'fleet updates' }
@@ -232,13 +236,14 @@ MacroSimulator >> newIncomerAt: aTimeStamp [
 	newDrone := self parameters generateDrone.
 	newDrone id: self current nextID.
 	newDrone position: self random next * parameters totalDistance.
-	self enter: newDrone at: aTimeStamp
+	self enter: newDrone at: aTimeStamp.
+	^newDrone id
 ]
 
 { #category : 'time accessing' }
 MacroSimulator >> nextTimeStep [
 
-	^ self timeStep + 1
+	^ self history last timeStep + 1
 ]
 
 { #category : 'accessing' }
@@ -284,24 +289,25 @@ MacroSimulator >> running [
 { #category : 'fleet updates' }
 MacroSimulator >> scenario [
 
-	| dates events |
+	| dates events tmp |
 	events := OrderedCollection new.
 	dates := Set new.
 	dates addAll: self losses keys , self incomers keys.
 
 	dates asSortedCollection do: [ :a |
+			| currentEvents timestampedEvents |
+			timestampedEvents := OrderedCollection new.
+			currentEvents := OrderedCollection new.
+
 			(self lossesAt: a) do: [ :event |
 					| tmp |
-					tmp := OrderedCollection new.
-					tmp add: a.
-					tmp add: ((self history at: a + 1) lostDroneWithID: event).
-					events add: tmp ].
-			(self incomersAt: a) do: [ :event |
-					| tmp |
-					tmp := OrderedCollection new.
-					tmp add: a.
-					tmp add: event.
-					events add: tmp ] ].
+					currentEvents add:
+						((self history at: a + 1) lostDroneWithID: event) ].
+			(self incomersAt: a) do: [ :event | currentEvents add: event ].
+
+			timestampedEvents add: a.
+			timestampedEvents add: currentEvents.
+			events add: timestampedEvents ].
 
 	^ events
 ]
@@ -337,4 +343,16 @@ MacroSimulator >> step [
 	future update.
 	self history add: future.
 	self
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> timeStep [
+
+	^ timeStep
+]
+
+{ #category : 'accessing' }
+MacroSimulator >> timeStep: a [
+
+	timeStep := a
 ]

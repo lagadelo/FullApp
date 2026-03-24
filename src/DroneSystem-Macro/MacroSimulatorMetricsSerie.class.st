@@ -16,7 +16,8 @@ Class {
 		'extractors',
 		'series',
 		'behavior',
-		'data'
+		'data',
+		'label'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -38,6 +39,12 @@ MacroSimulatorMetricsSerie >> addExtractor: anAssociation [
 MacroSimulatorMetricsSerie >> addToSeries: anArray [ 
 
 	self series add: anArray
+]
+
+{ #category : 'compute' }
+MacroSimulatorMetricsSerie >> average [
+
+	^ data average
 ]
 
 { #category : 'accessing' }
@@ -77,7 +84,26 @@ MacroSimulatorMetricsSerie >> initialize [
 
 	super initialize.
 	extractors := OrderedCollection new.
+	self initializeSeries
+]
+
+{ #category : 'initialization' }
+MacroSimulatorMetricsSerie >> initializeSeries [
+
 	series := OrderedCollection new
+]
+
+{ #category : 'accessing' }
+MacroSimulatorMetricsSerie >> label [
+
+	label ifNil: [ label := 'summary' ].
+	^ label
+]
+
+{ #category : 'accessing' }
+MacroSimulatorMetricsSerie >> label: anObject [
+
+	label := anObject
 ]
 
 { #category : 'compute' }
@@ -114,21 +140,33 @@ MacroSimulatorMetricsSerie >> parameters: anObject [
 
 { #category : 'processing' }
 MacroSimulatorMetricsSerie >> process [
-
-	^ self series collect: [ :aSerie |
+	"	^ self series collect: [ :aSerie |
 			  aSerie key , (self extractors collect: [ :anAssociation |
 					   self
 						   process: anAssociation key
 						   overField: anAssociation value
-						   ofData: aSerie value ]) ]
+						   ofData: aSerie value ]) ]	 "
+
+	^ self series collect: [ :aSerie |
+			  | tmp |
+			  parameters size = 1 ifTrue:[tmp := OrderedCollection with: aSerie key ] ifFalse:[tmp := OrderedCollection withAll: aSerie key].
+
+			  self extractors do: [ :a | tmp add: (a evaluateOn: aSerie value) ].
+			  tmp ]
 ]
 
 { #category : 'processing' }
-MacroSimulatorMetricsSerie >> process: aSymbol overField: p ofData: d [
+MacroSimulatorMetricsSerie >> process: aProcessing overField: p ofData: d [
+
+"Simple processidng as described as symbols; the methods are implement in MacroSimulatorMetricsSerie"
+"More complex processing are encoded as Block instances, with self as the firsdt parameter, and the extracted data as the second parameter."
+
 
 	data := d collect: [ :aMacroSimulatorMetrics |
 		        aMacroSimulatorMetrics perform: p ].
-	^ (self perform: aSymbol) asFloat
+	^(aProcessing isKindOf: Symbol)
+		ifTrue: [  (self perform: aProcessing) asFloat ]
+		ifFalse: [  aProcessing value: self value: data ]
 ]
 
 { #category : 'accessing' }

@@ -95,6 +95,13 @@ MacroSimulatorDrone >> id: anObject [
 	id := anObject
 ]
 
+{ #category : 'initialize' }
+MacroSimulatorDrone >> initialize [
+
+	super initialize.
+	isAlive := true
+]
+
 { #category : 'accessing' }
 MacroSimulatorDrone >> isAlive [
 

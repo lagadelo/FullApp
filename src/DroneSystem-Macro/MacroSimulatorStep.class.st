@@ -185,10 +185,12 @@ MacroSimulatorStep >> maxID: anObject [
 ]
 
 { #category : 'running' }
-MacroSimulatorStep >> nextID [ 
+MacroSimulatorStep >> nextID [
 
+	| id |
+	id := self maxID.
 	self maxID: self maxID + 1.
-	^ self maxID  
+	^ id
 ]
 
 { #category : 'drones accessing' }
@@ -345,7 +347,7 @@ MacroSimulatorStep >> welcomeDrone: aDrone atPosition: aPosition [
 	"Fine tuning for spare insertion"
 
 	| d |
-	aDrone id: self nextID.
+	aDrone id ifNil:[aDrone id: self nextID].
 	aDrone position: aPosition.
 	d := (self aheadOfPosition: aPosition).
 	self drones add: aDrone.
