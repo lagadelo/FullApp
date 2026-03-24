@@ -446,39 +446,38 @@ MacroSimulatorExample class >> exampleISSE2 [
 	macroMetricsSeries addExtractor:
 		(MacroSimulatorExtractor process: #max overField: #maxGap).
 	macroMetricsSeries addExtractor:
-		(MacroSimulatorExtractor process: #min overField: #maxGap).
-			macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #min overField: #fleetSize).
+	macroMetricsSeries addExtractor:
 		(MacroSimulatorExtractor process: #average overField: #stdGap).
+	300 to: 200 by: -20 do: [ :r |
 			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 250'
-			 block: [ :a | (a select: [ :v | v maxGap > 250 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 240'
-			 block: [ :a | (a select: [ :v | v maxGap > 240 ]) size ]).
-				macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 230'
-			 block: [ :a | (a select: [ :v | v maxGap > 230 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 220'
-			 block: [ :a | (a select: [ :v | v maxGap > 220 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 210'
-			 block: [ :a | (a select: [ :v | v maxGap > 210 ]) size ]).
-				macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 200'
-			 block: [ :a | (a select: [ :v | v maxGap > 200 ]) size ]).
-	macroMetricsSeries parameters: #( #agressivity #run ).
+					 label: 'Violations ' , r printString
+					 block: [ :a | (a select: [ :v | v maxGap > r ]) size ]) ].
+	macroMetricsSeries parameters: #( #nominalSpeed #run ).
 
 	exporter := MacroExporter directoryName: self timeStampForNaming.
-	0 to:30 by: 5 do:[:agressivity|
-		#(10 20 30 40 50) do:[:seedIndex|
-			simulator := self generateScenario: seedIndex withThreshold: (50-agressivity)/100.
-			simulator run: 1500.
-			simulator evaluateMetrics.
+	5 to: 15 do: [ :nominalSpeed |
+			#( 10 15 20 25 30 35 40 45 50 ) do: [ :seedIndex |
+					simulator := self
+						             generateScenario: seedIndex
+						             on: (MacroSimulatorParameters new
+								              seed: (self isseRandomSequence at: seedIndex);
+								              numberOfDrones: 100;
+								              minSpeed: 5;
+								              nominalSpeed: nominalSpeed;
+								              maxSpeed: 15;
+								              sensingRadius: 200;
+								              captureRadius: 200;
+								              totalDistance: 10000;
+								              policy: #capingPolicy;
+								              yourself) initializeSimulator.
+					simulator run: 1500.
+					simulator evaluateMetrics.
 
 
-			data := exporter visit: simulator.
-			macroMetricsSeries addToSeries: (Array with: agressivity with: seedIndex) -> data ")" ]].
+					data := exporter visit: simulator.
+					macroMetricsSeries addToSeries:
+						(Array with: nominalSpeed with: seedIndex) -> data ")" ] ].
 	^ exporter visit: macroMetricsSeries
 ]
 
@@ -489,40 +488,30 @@ MacroSimulatorExample class >> exampleISSE3 [
 	"100 random scenarios. For each, measure max(maxgap), average(sandart deviation of gap) and number of steps when a least one gap leads to a hole"
 
 	| simulator macroMetricsSeries data exporter |
-
-			macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #max overField: #maxGap).
+"	macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #min overField: #maxGap).
 			macroMetricsSeries addExtractor:
-				(MacroSimulatorExtractor process: #max overField: #maxGap).
- 
- 			macroMetricsSeries addExtractor:
-				(MacroSimulatorExtractor process: #min overField: #fleetSize).
+		(MacroSimulatorExtractor process: #average overField: #stdGap)."
+250 to: 170 by: -10 do: [ :r |
 			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-					 label: 'Violations 400'
-					 block: [ :a | (a select: [ :v | v maxGap > 400 ]) size ]).
-			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-					 label: 'Violations 300'
-					 block: [ :a | (a select: [ :v | v maxGap > 300 ]) size ]).
-			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-					 label: 'Violations 200'
-					 block: [ :a | (a select: [ :v | v maxGap > 200 ]) size ]).
-			macroMetricsSeries parameters: #( #agressivity ).
-			exporter := MacroExporter directoryName: self timeStampForNaming.
-				#( 11 12 13 14 15 16 ) do: [ :seedIndex |
-			macroMetricsSeries label: seedIndex printString.
-macroMetricsSeries initializeSeries.
-	
-			0 to: 30 do: [ :agressivity |
-					 
-					simulator := self
-						             generateScenario: seedIndex
-						             withThreshold: 50 - agressivity / 100.
-					simulator run: 1500.
-					simulator evaluateMetrics.
+					 label: 'Violations ' , r printString
+					 block: [ :a | (a select: [ :v | v maxGap > r ]) size ]) ].
+	macroMetricsSeries parameters: #( #agressivity #run ).
+
+	exporter := MacroExporter directoryName: self timeStampForNaming.
+	0 to:30 by: 2 do:[:agressivity|
+		#(10 20 30 40 50) do:[:seedIndex|
+			simulator := self generateScenario: seedIndex withThreshold: (50-agressivity)/100.
+			simulator run: 1500.
+			simulator evaluateMetrics.
 
 
-					data := exporter visit: simulator.
-					macroMetricsSeries addToSeries: (Array with: agressivity) -> data "agressivity with:" ")" ].
-			exporter visit: macroMetricsSeries ]
+			data := exporter visit: simulator.
+			macroMetricsSeries addToSeries: (Array with: agressivity with: seedIndex) -> data ")" ]].
+	^ exporter visit: macroMetricsSeries
 ]
 
 { #category : 'ISSE EXAMPLES' }
