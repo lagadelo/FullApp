@@ -388,6 +388,25 @@ MacroSimulatorExample class >> example9 [
 ]
 
 { #category : 'ISSE EXAMPLES' }
+MacroSimulatorExample class >> example: aSymbol [
+
+	| start stop |
+	[
+		| result label |
+		start := Time current.
+		result := self perform: aSymbol.
+		stop := Time current.
+		label := 'Task ' , aSymbol , ' completed in '
+		         , (stop subtractTime: start) printString.
+
+		SpAlertDialog new
+			title: 'Processing report';
+			label: label;
+			acceptLabel: 'Close this!';
+			openDialog ] forkAt: Processor systemBackgroundPriority
+]
+
+{ #category : 'ISSE EXAMPLES' }
 MacroSimulatorExample class >> exampleISSE [
 	"self exampleISSE"
 
@@ -397,31 +416,10 @@ MacroSimulatorExample class >> exampleISSE [
 	macroMetricsSeries := MacroSimulatorMetricsSerie new.
 	macroMetricsSeries addExtractor:
 		(MacroSimulatorExtractor process: #max overField: #maxGap).
-	macroMetricsSeries addExtractor:
-		(MacroSimulatorExtractor process: #min overField: #maxGap).
-	macroMetricsSeries addExtractor:
-		(MacroSimulatorExtractor process: #average overField: #stdGap).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 350'
-			 block: [ :a | (a select: [ :v | v maxGap > 350 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 325'
-			 block: [ :a | (a select: [ :v | v maxGap > 325 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 300'
-			 block: [ :a | (a select: [ :v | v maxGap > 300 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 275'
-			 block: [ :a | (a select: [ :v | v maxGap > 275 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 250'
-			 block: [ :a | (a select: [ :v | v maxGap > 250 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 225'
-			 block: [ :a | (a select: [ :v | v maxGap > 225 ]) size ]).
-	macroMetricsSeries addExtractor: (MacroSimulatorExtractor
-			 label: 'Violations 200'
-			 block: [ :a | (a select: [ :v | v maxGap > 200 ]) size ]).
+220 to: 150 by: -10 do: [ :r |
+			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
+					 label: 'Violations ' , r printString
+					 block: [ :a | (a select: [ :v | v maxGap > r ]) size ]) ].
 	macroMetricsSeries parameters: #( #run ).
 	exporter := MacroExporter directoryName: self timeStampForNaming.
 	1 to: 100 do: [ :seedIndex |
@@ -478,6 +476,63 @@ MacroSimulatorExample class >> exampleISSE2 [
 					data := exporter visit: simulator.
 					macroMetricsSeries addToSeries:
 						(Array with: nominalSpeed with: seedIndex) -> data ")" ] ].
+	^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'ISSE EXAMPLES' }
+MacroSimulatorExample class >> exampleISSE2b [
+	"[ self   exampleISSE2b ] forkAt: Processor systemBackgroundPriority."
+
+	"100 random scenarios. For each, measure max(maxgap), average(sandart deviation of gap) and number of steps when a least one gap leads to a hole"
+
+	| simulator macroMetricsSeries data exporter pacingRates sensibilities |
+	macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #max overField: #maxGap).
+	macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #min overField: #fleetSize).
+	macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #average overField: #stdGap).
+	"300 to: 200 by: -20" #(210 190 170) do: [ :r |
+			macroMetricsSeries addExtractor: (MacroSimulatorExtractor
+					 label: 'Violations ' , r printString
+					 block: [ :a | (a select: [ :v | v maxGap > r ]) size ]) ].
+					macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #stdev overField: #stdGap).
+			macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #average overField: #avgGap ).
+					macroMetricsSeries addExtractor:
+		(MacroSimulatorExtractor process: #stdev overField: #avgGap ).
+	macroMetricsSeries parameters: #( #pacinRate "#sensibility"  #run ).
+	pacingRates := 0.8 to: 0.99 by: 0.01.
+	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+	exporter := MacroExporter directoryName: self timeStampForNaming.
+	pacingRates do: [ :p |
+			"sensibilities do: [ :s |"
+			60 to:120   do: [ :seedIndex |
+					simulator := self
+						             generateScenario: seedIndex
+						             on: (MacroSimulatorParameters new
+								              seed: (self isseRandomSequence at: seedIndex);
+								              numberOfDrones: 100;
+								              minSpeed: 5;
+																              nominalSpeed: 10;
+								              maxSpeed: 15;
+								              sensingRadius: 200;
+								              captureRadius: 200;
+								              totalDistance: 10000;
+								              policy: #capingPolicy;
+								              yourself) initializeSimulator.
+									simulator behavior
+						sensibility: "s" 0.25;
+						pacingRate: p.
+					simulator run: 1500.
+					simulator evaluateMetrics.
+
+
+					data := exporter visit: simulator.
+					macroMetricsSeries addToSeries:
+						(Array with: p "with: s "with: seedIndex) -> data ")" ]] "]".
 	^ exporter visit: macroMetricsSeries
 ]
 
