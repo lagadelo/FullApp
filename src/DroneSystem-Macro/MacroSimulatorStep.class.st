@@ -19,7 +19,8 @@ Class {
 		'lostDrones',
 		'range',
 		'predecessors',
-		'successors'
+		'successors',
+		'simulator'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -57,7 +58,7 @@ MacroSimulatorStep >> copy [
 	tmp lostDrones: (self lostDrones collect: [ :a | a copy ]).
 
 	tmp range: self range.
-
+	tmp simulator: self simulator.
 	self predecessors keysAndValuesDo: [ :k :v |
 			tmp predecessors
 				at: (tmp drones at: (self drones indexOf: k))
@@ -223,6 +224,24 @@ MacroSimulatorStep >> range: anObject [
 	range := anObject
 ]
 
+{ #category : 'positioning' }
+MacroSimulatorStep >> realPositionFrom: aPosition [
+
+	^ self simulator realPositionFrom: aPosition
+]
+
+{ #category : 'positioning' }
+MacroSimulatorStep >> realPositionOfDrone: aDrone [
+
+	^ self  realPositionFrom: aDrone position 
+]
+
+{ #category : 'positioning' }
+MacroSimulatorStep >> realPositionsOfDrones [
+
+	^ self drones collect: [ :aDrone | self realPositionOfDrone: aDrone ]
+]
+
 { #category : 'running' }
 MacroSimulatorStep >> register: aDrone after: anotherDrone [ 
 
@@ -290,6 +309,18 @@ MacroSimulatorStep >> setupQueue [
 			self
 				register: (self drones at: index % self drones size + 1)
 				asSuccessorOf: (self drones at: index) ]
+]
+
+{ #category : 'accessing' }
+MacroSimulatorStep >> simulator [
+
+	^ simulator
+]
+
+{ #category : 'accessing' }
+MacroSimulatorStep >> simulator: aValue [
+
+	simulator := aValue
 ]
 
 { #category : 'drones accessing' }

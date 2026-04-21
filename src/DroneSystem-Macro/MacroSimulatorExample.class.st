@@ -406,6 +406,17 @@ MacroSimulatorExample class >> example: aSymbol [
 			openDialog ] forkAt: Processor systemBackgroundPriority
 ]
 
+{ #category : 'examples' }
+MacroSimulatorExample class >> exampleBrittany [
+	"Simple case - no loss"
+
+	| parameters simulator |
+	parameters := MacroSimulatorParameters example4.
+	simulator := parameters initializeSimulator.
+	simulator run: 50.
+	^ simulator inspect
+]
+
 { #category : 'ISSE EXAMPLES' }
 MacroSimulatorExample class >> exampleISSE [
 	"self exampleISSE"

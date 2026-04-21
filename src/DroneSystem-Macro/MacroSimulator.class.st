@@ -270,6 +270,12 @@ MacroSimulator >> random: anObject [
 	random := anObject
 ]
 
+{ #category : 'positioning' }
+MacroSimulator >> realPositionFrom: aPosition [
+
+	^ self parameters realPositionFrom: aPosition
+]
+
 { #category : 'stepping' }
 MacroSimulator >> run: n [
 
@@ -329,7 +335,7 @@ MacroSimulator >> startWith: aMacroSimulatorParameters [
 
 	self parameters: aMacroSimulatorParameters.
 	self history add:
-		(MacroSimulatorStep new applyParameters: aMacroSimulatorParameters).
+		(MacroSimulatorStep new applyParameters: aMacroSimulatorParameters; simulator: self ; yourself).
 	behavior policy: aMacroSimulatorParameters policy.
 	self initializeSeed: self parameters seed
 ]

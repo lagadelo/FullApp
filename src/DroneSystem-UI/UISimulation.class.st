@@ -183,6 +183,20 @@ clusterId,droneId,latitude,longitude,altitude
 30,D030,48.4800,-4.6400,190'
 ]
 
+{ #category : 'GoeReferencing' }
+UISimulation class >> haversineMetersFrom: p1 to: p2 [
+    | r lat1 lat2 dLat dLon a c |
+    r := 6378137.0.
+    lat1 := p1 y degreesToRadians.
+    lat2 := p2 y degreesToRadians.
+    dLat := (p2 y - p1 y) degreesToRadians.
+    dLon := (p2 x - p1 x) degreesToRadians.
+    a := ((dLat / 2) sin squared)
+        + ((lat1 cos) * (lat2 cos) * ((dLon / 2) sin squared)).
+    c := 2 * ((a sqrt) arcTan: (1 - a) sqrt).
+    ^ r * c
+]
+
 { #category : 'documentation' }
 UISimulation class >> layers [ 
 
