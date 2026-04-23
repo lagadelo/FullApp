@@ -1,6 +1,21 @@
 Class {
 	#name : 'QuickMap',
 	#superclass : 'Object',
+	#instVars : [
+		'autoRefresh',
+		'canvas',
+		'morph',
+		'model',
+		'rsObjects',
+		'minLal',
+		'minLon',
+		'maxLat',
+		'maxLon',
+		'height',
+		'width',
+		'background',
+		'minLat'
+	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
@@ -153,6 +168,20 @@ QuickMap class >> exampleOuessantLeFaouCompositeSmall [
 ]
 
 { #category : 'examples' }
+QuickMap class >> exampleOverlay [
+
+	| mapForm |
+	mapForm := QuickMap
+		           formForMinLat: 48.80
+		           minLon: 2.20
+		           maxLat: 48.92
+		           maxLon: 2.42
+		           zoom: 12.
+
+	mapForm inspect
+]
+
+{ #category : 'examples' }
 QuickMap class >> exampleParis [
 
 
@@ -236,6 +265,20 @@ QuickMap class >> exampleParisTinyIGN [
  
     body := response contents.
     ^ PNGReadWriter formFromStream: body readStream
+]
+
+{ #category : 'examples' }
+QuickMap class >> exampleRefactored [
+
+	| mapForm |
+	mapForm := self new
+		           minLat: 48.25;
+		           maxLat: 48.5;
+		           minLon: -5.35;
+		           maxLon: -4.10;
+		           yourself.
+ 
+	mapForm inspect
 ]
 
 { #category : 'canvas drawing - general' }
@@ -453,23 +496,33 @@ QuickMap class >> tileUrlX: x y: y z: z [
 
 { #category : 'examples' }
 QuickMap class >> wrapExampleWithScrollers: aSymbol [
-"self wrapExampleWithScrollers: #exampleParis"
-| image canvas morph scroll |
-image := self perform: aSymbol.
+	"self wrapExampleWithScrollers: #exampleParis"
 
- 
+	| image canvas morph scroll   |
+	image := self perform: aSymbol.
+
+
 	canvas := RSCanvas new.
 	canvas add: (RSBitmap new form: image).
 	canvas @ RSCanvasController.
-
+	((10 to: 200 by: 40) collect: [ :x |
+			 | r |
+			 r := (RSCircle size: 20) color: Color red.
+			 r position: x @ x.
+			 canvas addShape: r.
+			 r ]) inspect.
+	
 	morph := canvas createMorph.
 	morph extent: image extent. "important: sinon pas de scroll"
 
 	scroll := ScrollPane new.
 	scroll scroller addMorph: morph.
+
+
 	scroll extent: 700 @ 600.
-	scroll inspect.
-	scroll openInWindowLabeled: 'DuickMap with scrolelrs'
+
+	scroll openInWindowLabeled: 'DuickMap with scrolelrs'.
+	morph inspect.
 ]
 
 { #category : 'examples' }
@@ -489,4 +542,243 @@ QuickMap class >> wrapWithScrollers: aForm [
 	scroll extent: 700 @ 600.
 	scroll inspect.
 	scroll openInWindowLabeled: 'DuickMap with scrollers'
+]
+
+{ #category : 'model' }
+QuickMap >> addShape: aShape withID: anID [
+
+self model add: anID -> aShape. self canvas add: aShape.
+self update.
+]
+
+{ #category : 'accessing' }
+QuickMap >> autoRefresh [
+
+	^ autoRefresh
+]
+
+{ #category : 'accessing' }
+QuickMap >> autoRefresh: anObject [
+
+	autoRefresh := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> background [
+
+	^ background
+]
+
+{ #category : 'accessing' }
+QuickMap >> background: anObject [
+
+	background := anObject
+]
+
+{ #category : 'getter' }
+QuickMap >> build [
+
+	canvas ifNil: [
+			canvas := RSCanvas new.
+			canvas add: (RSBitmap new form: background).
+			canvas @ RSCanvasController.
+
+
+			morph := canvas createMorph.
+			morph extent: background extent "important: sinon pas de scroll" ]
+]
+
+{ #category : 'accessing' }
+QuickMap >> canvas [
+
+	^ canvas
+]
+
+{ #category : 'accessing' }
+QuickMap >> canvas: anObject [
+
+	canvas := anObject
+]
+
+{ #category : 'updating' }
+QuickMap >> forceRefresh [
+
+	self morph signalUpdate
+]
+
+{ #category : 'model' }
+QuickMap >> getID: anID [
+
+	^(self model at: anID) 
+]
+
+{ #category : 'accessing' }
+QuickMap >> height [
+
+	^ height
+]
+
+{ #category : 'accessing' }
+QuickMap >> height: anObject [
+
+	height := anObject
+]
+
+{ #category : 'initialize' }
+QuickMap >> initialize [
+
+	model := Dictionary new.
+	self autoRefresh: true.
+]
+
+{ #category : 'accessing' }
+QuickMap >> maxLat [
+
+	^ maxLat
+]
+
+{ #category : 'accessing' }
+QuickMap >> maxLat: anObject [
+
+	maxLat := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> maxLon [
+
+	^ maxLon
+]
+
+{ #category : 'accessing' }
+QuickMap >> maxLon: anObject [
+
+	maxLon := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> minLat [
+
+	^ minLat
+]
+
+{ #category : 'accessing' }
+QuickMap >> minLat: anObject [
+
+	minLat := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> minLon [
+
+	^ minLon
+]
+
+{ #category : 'accessing' }
+QuickMap >> minLon: anObject [
+
+	minLon := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> model [
+
+	^ model
+]
+
+{ #category : 'accessing' }
+QuickMap >> model: anObject [
+
+	model := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> morph [
+
+	^ morph
+]
+
+{ #category : 'accessing' }
+QuickMap >> morph: anObject [
+
+	morph := anObject
+]
+
+{ #category : 'gui' }
+QuickMap >> openWithScroller [
+
+	| scroll |
+	self build.
+
+	scroll := ScrollPane new.
+	scroll scroller addMorph: self morph.
+
+
+	scroll extent: 700 @ 600.
+
+	scroll openInWindowLabeled: self printString , ' with scrolelrs'
+]
+
+{ #category : 'tiles' }
+QuickMap >> readURL: anURL [
+
+	| client bytes |
+	client := ZnClient new.
+	client
+		url: anURL;
+		headerAt: 'User-Agent' put: 'Pharo QuickMap';
+		get.
+	bytes := client contents.
+	^ PNGReadWriter formFromStream: bytes readStream
+]
+
+{ #category : 'model' }
+QuickMap >> removeID: anID [
+
+	(self model at: anID) remove.
+	self update
+]
+
+{ #category : 'accessing' }
+QuickMap >> rsObjects [
+
+	^ rsObjects
+]
+
+{ #category : 'accessing' }
+QuickMap >> rsObjects: anObject [
+
+	rsObjects := anObject
+]
+
+{ #category : 'geo referencing' }
+QuickMap >> toMercatorLatitude: lat longitude: lon [
+
+	^ self toMercatorLongitude: lon latitude: lat
+]
+
+{ #category : 'geo referencing' }
+QuickMap >> toMercatorLongitude: lon latitude: lat [
+
+	| r latRad |
+	r := 6378137.0.
+	latRad := ((lat max: -85.05112878) min: 85.05112878) degreesToRadians.
+	^ r * lon degreesToRadians @ (r * (Float pi / 4 + (latRad / 2)) tan ln)
+]
+
+{ #category : 'updating' }
+QuickMap >> update [ 
+
+	self autoRefresh ifTrue: [ self forceRefresh ]
+]
+
+{ #category : 'accessing' }
+QuickMap >> width [
+
+	^ width
+]
+
+{ #category : 'accessing' }
+QuickMap >> width: anObject [
+
+	width := anObject
 ]
