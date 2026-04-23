@@ -30,9 +30,6 @@ Class {
 		'regime',
 		'stealthPolicy'
 	],
-	#classInstVars : [
-		'model'
-	],
 	#category : 'DroneSystem-Interception-Simulation',
 	#package : 'DroneSystem-Interception-Simulation'
 }
@@ -107,6 +104,7 @@ DroneHandoffSimulation class >> example2 [
 { #category : 'examples' }
 DroneHandoffSimulation class >> example3 [
 
+"Finds the max distance (+-11Km) for a 95% success at: V=130km/h"
 	| sim maxKm |
 	sim := self default.
 
@@ -118,7 +116,7 @@ DroneHandoffSimulation class >> example3 [
 
 { #category : 'examples' }
 DroneHandoffSimulation class >> example4 [
-
+"Finds the max distance   for a 95% success depending on V"
 	| sim |
 	sim := self default.
 
@@ -132,6 +130,7 @@ DroneHandoffSimulation class >> example4 [
 { #category : 'examples' }
 DroneHandoffSimulation class >> example5 [
 
+"Finds the max distance  at: V=130km/h depending on % succes"
 	| sim |
 	sim := self default.
 
@@ -609,7 +608,7 @@ DroneHandoffSimulation >> defaultStealthPolicy [
         yourself
 ]
 
-{ #category : 'accessing' }
+{ #category : 'metrics computations' }
 DroneHandoffSimulation >> evaluatePureVisionVsFurtiveSampleCount: n [
     | oldPolicy visionPolicy furtivePolicy visionMetrics furtiveMetrics |
     oldPolicy := stealthPolicy.
@@ -635,7 +634,7 @@ DroneHandoffSimulation >> evaluatePureVisionVsFurtiveSampleCount: n [
         yourself
 ]
 
-{ #category : 'initialization' }
+{ #category : 'metrics computations' }
 DroneHandoffSimulation >> evaluateRegime: regimeSymbol sampleCount: n [
 
 	| oldRegime oldSampleCount oldResults metrics |
@@ -670,7 +669,7 @@ DroneHandoffSimulation >> frontierForTargetOnTimePercent: target distancesKm: di
             yourself ]
 ]
 
-{ #category : 'initialization' }
+{ #category : 'computing' }
 DroneHandoffSimulation >> handoffSuccessPercent [
     | okCount |
     results ifEmpty: [ ^ 0.0 ].
@@ -764,7 +763,7 @@ DroneHandoffSimulation >> maxDistanceSearchUpperCapKm [
     ^ 600.0
 ]
 
-{ #category : 'initialization' }
+{ #category : 'computing' }
 DroneHandoffSimulation >> missionContinuityPercent [
 
 	| okCount |
@@ -816,7 +815,7 @@ DroneHandoffSimulation >> onTimeRateForDistanceKm: distanceKm speedKmh: speedKmh
     ^ rate
 ]
 
-{ #category : 'initialization' }
+{ #category : 'computing' }
 DroneHandoffSimulation >> onTimeRatePercent [
 	| onTimeCount |
 	results ifEmpty: [ ^ 0.0 ].
@@ -841,16 +840,16 @@ DroneHandoffSimulation >> printFrontierForTargetOnTimePercent: target distancesK
     table := self frontierForTargetOnTimePercent: target distancesKm: distances sampleCount: n.
     Transcript
         cr;
-        show: '=== Frontier target=', target asString, '% ==='; cr.
+        show: ('=== Frontier target=', target asString, '% ==='); cr.
     table do: [ :row |
         Transcript
-            show: 'd=', (row at: #distanceKm) asString, ' km'
+            show: ('d=', (row at: #distanceKm) asString, ' km'
                 , '  speed>=',
                 ((row at: #requiredSpeedKmh)
                     ifNil: [ 'N/A' ]
                     ifNotNil: [ :v | v printShowingDecimalPlaces: 1 ]),
                 ' km/h'
-                , '  feasible=', (row at: #feasible) asString;
+                , '  feasible=', (row at: #feasible) asString);
             cr ].
     Transcript show: '==============================='; cr.
     ^ table
@@ -871,7 +870,7 @@ DroneHandoffSimulation >> printReport [
         show: '==============================='; cr
 ]
 
-{ #category : 'initialization' }
+{ #category : 'example' }
 DroneHandoffSimulation >> publicationComparisonExample [
     | sim |
     sim := self new
@@ -955,13 +954,13 @@ DroneHandoffSimulation >> results: anObject [
 	results := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'running' }
 DroneHandoffSimulation >> run [
 	results := (1 to: sampleCount) collect: [ :i | self runOneTrial ].
 	^ results
 ]
 
-{ #category : 'initialization' }
+{ #category : 'running' }
 DroneHandoffSimulation >> runOneTrial [
 
 	regime = #baseline ifTrue: [ ^ self runOneTrialBaseline ].
@@ -1000,7 +999,7 @@ DroneHandoffSimulation >> runOneTrialBaseline [
         yourself
 ]
 
-{ #category : 'initialization' }
+{ #category : 'running' }
 DroneHandoffSimulation >> runOneTrialFurtiveHybrid [
 
 	| detect classify alert ack handoff launch stageFixedSeconds baseTransitSeconds distancePenaltySeconds rfAllowed rfMaxPings rfPingSeconds rfAcquireBase rfAcquireGain rfDetectRiskPerPing visionFallbackSeconds visionFallbackJitter missionDropProbability rfPingsUsed rfAcquireSuccess acquisitionDelaySeconds fallbackDelaySeconds exposureRisk missionContinues handoffSuccess totalSeconds onTime |
@@ -1135,7 +1134,7 @@ DroneHandoffSimulation >> sampleCount [
 	^ sampleCount
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffSimulation >> sampleCount: anInteger [
 
 	sampleCount := anInteger
@@ -1171,7 +1170,7 @@ DroneHandoffSimulation >> summary [
 		  yourself
 ]
 
-{ #category : 'initialization' }
+{ #category : 'computing' }
 DroneHandoffSimulation >> summaryMetrics [
 
 	^ Dictionary new

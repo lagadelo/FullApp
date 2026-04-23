@@ -182,7 +182,7 @@ DroneHandoffModel class >> scenarioUrgentIntercept [
         yourself
 ]
 
-{ #category : 'initialization' }
+{ #category : 'converting' }
 DroneHandoffModel >> asDictionary [
     ^ Dictionary new
           at: #tDetect put: tDetect;
@@ -206,7 +206,7 @@ DroneHandoffModel >> distanceKm [
 	^ distanceKm
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> distanceKm: aNumber [
     distanceKm := aNumber asFloat
 ]
@@ -230,7 +230,7 @@ DroneHandoffModel >> isOnTime [
     ^ self totalSeconds <= slaSeconds
 ]
 
-{ #category : 'initialization' }
+{ #category : 'printing' }
 DroneHandoffModel >> printReport [
     Transcript
         cr;
@@ -256,7 +256,7 @@ DroneHandoffModel >> slaSeconds [
 	^ slaSeconds
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> slaSeconds: aNumber [
     slaSeconds := aNumber asFloat
 ]
@@ -267,7 +267,7 @@ DroneHandoffModel >> speedKmh [
 	^ speedKmh
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> speedKmh: aNumber [
     speedKmh := aNumber asFloat
 ]
@@ -278,7 +278,7 @@ DroneHandoffModel >> tAck [
 	^ tAck
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tAck: aNumber [
     tAck := aNumber asFloat
 ]
@@ -289,7 +289,7 @@ DroneHandoffModel >> tAlert [
 	^ tAlert
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tAlert: aNumber [
     tAlert := aNumber asFloat
 ]
@@ -300,7 +300,7 @@ DroneHandoffModel >> tClassify [
 	^ tClassify
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tClassify: aNumber [
     tClassify := aNumber asFloat
 ]
@@ -311,7 +311,7 @@ DroneHandoffModel >> tDetect [
 	^ tDetect
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tDetect: aNumber [
     tDetect := aNumber asFloat
 ]
@@ -328,7 +328,7 @@ DroneHandoffModel >> tHandoff1: anObject [
 	tHandoff := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tHandoff: aNumber [
     tHandoff := aNumber asFloat
 ]
@@ -345,19 +345,19 @@ DroneHandoffModel >> tLaunch1: anObject [
 	tLaunch := anObject
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> tLaunch: aNumber [
     tLaunch := aNumber asFloat
 ]
 
-{ #category : 'initialization' }
+{ #category : 'computing' }
 DroneHandoffModel >> totalSeconds [
 
 	^ tDetect + tClassify + tAlert + tAck + tHandoff + tLaunch
 	  + self transitSeconds
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DroneHandoffModel >> transitSeconds [
     ^ 3600.0 * (distanceKm / speedKmh)
 ]
