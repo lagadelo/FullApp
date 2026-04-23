@@ -163,9 +163,9 @@ QuickMap class >> exampleParis [
 		           minLon: 2.20
 		           maxLat: 48.92
 		           maxLon: 2.42
-		           zoom: 13.
+		           zoom: 14.
 
-	mapForm inspect
+	^mapForm inspect
 ]
 
 { #category : 'examples' }
@@ -356,6 +356,40 @@ QuickMap class >> geoportailEndpoint [
 	"Default GeoPF WMS endpoint with the public key; adjust the key if needed."
 
 	^ 'https://data.geopf.fr/wms-r?apikey=essentiels'
+	
+
+"see | url response canvas morph  image |
+url := 'https://data.geopf.fr/wms-r'
+    , '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+    , '&apikey=essentiels'
+    , '&LAYERS=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2'
+    , '&CRS=EPSG:3857'
+    , '&BBOX=-566616,6120000,-185903,6180000'
+    , '&WIDTH=5000&HEIGHT=747'
+    , '&FORMAT=image/png'
+    , '&STYLES=' 
+    , '&TRANSPARENT=TRUE'.
+
+response := ZnClient new
+    url: url;
+    headerAt: 'User-Agent' put: 'Pharo QuickMap';
+    timeout: 10;
+    get.
+ 
+ 
+image := (PNGReadWriter formFromStream: response contents readStream)  .
+canvas := RSCanvas new.
+canvas add:  (RSBitmap new form: image)  .
+canvas @ RSCanvasController.
+ 
+morph := canvas createMorph.
+morph extent: image extent. 
+
+scroll := ScrollPane new.
+scroll scroller addMorph: morph.
+scroll extent: 700@600.
+scroll openInWindowLabeled: 'WMS (scroll)'.
+"
 ]
 
 { #category : 'converting' }
@@ -368,6 +402,43 @@ QuickMap class >> lon: lon lat: lat toTileAtZoom: zoom [
     ^ x @ y
 ]
 
+{ #category : 'examples' }
+QuickMap class >> lowLevelExample [
+
+	| url response canvas morph image scroll |
+	url := 'https://data.geopf.fr/wms-r'
+	       , '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+	       , '&apikey=essentiels'
+	       , '&LAYERS=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2'
+	       , '&CRS=EPSG:3857' , '&BBOX=-566616,6120000,-185903,6180000'
+	       , '&WIDTH=5000&HEIGHT=747' , '&FORMAT=image/png' , '&STYLES='
+	       , '&TRANSPARENT=TRUE'.
+
+	response := ZnClient new
+		            url: url;
+		            headerAt: 'User-Agent' put: 'Pharo QuickMap';
+		            timeout: 10;
+		            get.
+	url inspect.
+	"Transcript
+    show: response statusLine; cr;
+    show: (response contents size asString); cr."
+
+	"Inspect the image"
+	image := PNGReadWriter formFromStream: response contents readStream.
+	canvas := RSCanvas new.
+	canvas add: (RSBitmap new form: image).
+	canvas @ RSCanvasController.
+
+	morph := canvas createMorph.
+	morph extent: image extent. "important: sinon pas de scroll"
+
+	scroll := ScrollPane new.
+	scroll scroller addMorph: morph.
+	scroll extent: 700 @ 600.
+	scroll openInWindowLabeled: 'WMS (scroll)'
+]
+
 { #category : 'url' }
 QuickMap class >> osmWmsEndpoint [
     ^ 'https://ows.terrestris.de/osm/service'
@@ -378,4 +449,44 @@ QuickMap class >> tileUrlX: x y: y z: z [
 
 	^ 'https://tile.openstreetmap.org/' , z asString , '/' , x asString
 	  , '/' , y asString , '.png'
+]
+
+{ #category : 'examples' }
+QuickMap class >> wrapExampleWithScrollers: aSymbol [
+"self wrapExampleWithScrollers: #exampleParis"
+| image canvas morph scroll |
+image := self perform: aSymbol.
+
+ 
+	canvas := RSCanvas new.
+	canvas add: (RSBitmap new form: image).
+	canvas @ RSCanvasController.
+
+	morph := canvas createMorph.
+	morph extent: image extent. "important: sinon pas de scroll"
+
+	scroll := ScrollPane new.
+	scroll scroller addMorph: morph.
+	scroll extent: 700 @ 600.
+	scroll inspect.
+	scroll openInWindowLabeled: 'DuickMap with scrolelrs'
+]
+
+{ #category : 'examples' }
+QuickMap class >> wrapWithScrollers: aForm [
+	"self wrapWithScrollers: self exampleParis"
+
+	| canvas morph scroll |
+	canvas := RSCanvas new.
+	canvas add: (RSBitmap new form: aForm).
+	canvas @ RSCanvasController.
+
+	morph := canvas createMorph.
+	morph extent: aForm extent. "required for scroll"
+
+	scroll := ScrollPane new.
+	scroll scroller addMorph: morph.
+	scroll extent: 700 @ 600.
+	scroll inspect.
+	scroll openInWindowLabeled: 'DuickMap with scrollers'
 ]
