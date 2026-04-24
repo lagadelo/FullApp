@@ -6,21 +6,103 @@ Class {
 }
 
 { #category : 'examples' }
+QuickGeoportailMap class >> exampleBrittany [
+
+	| wp latitudes mapForm longitudes |
+	wp := MacroSimulatorParameters example4 wayPoints.
+
+	latitudes := (wp collect: [ :a | a y ]) asSortedCollection.
+
+	longitudes := (wp collect: [ :a | a x ]) asSortedCollection.
+
+
+	mapForm := self new
+		           minLat: latitudes first;
+		           maxLat: latitudes last;
+		           minLon: longitudes first;
+		           maxLon: longitudes last;
+		           yourself.
+
+
+	mapForm openWithScroller.
+	wp keysAndValuesDo: [ :k :v | mapForm addModel: k withID: v ].
+	wp do: [ :m |
+			mapForm
+				addShape: ((RSCircle size: 100)
+						 position: (mapForm cartesianLongitude: m x latitude: m y);
+						 color: Color blue;
+						 yourself)
+				withModel: m ]
+]
+
+{ #category : 'examples' }
 QuickGeoportailMap class >> exampleRefactored [
 
 	^ super exampleRefactored
+]
+
+{ #category : 'examples' }
+QuickGeoportailMap class >> minLat: minLat maxLat: maxLat minLon: minLon maxLon: maxLon [
+
+	^ self new
+		  minLat: minLat;
+		  maxLat: maxLat;
+		  minLon: minLon;
+		  maxLon: maxLon;
+		  yourself
+]
+
+{ #category : 'examples' }
+QuickGeoportailMap class >> openOn:aSimulator [
+
+	| wp latitudes mapForm longitudes |
+	wp := aSimulator wayPoints.
+
+	latitudes := (wp collect: [ :a | a y ]) asSortedCollection.
+
+	longitudes := (wp collect: [ :a | a x ]) asSortedCollection.
+
+
+	mapForm := self new
+		           minLat: latitudes first;
+		           maxLat: latitudes last;
+		           minLon: longitudes first;
+		           maxLon: longitudes last;
+		           yourself.
+
+
+	mapForm openWithScroller.
+	wp keysAndValuesDo: [ :k :v | mapForm addModel: k withID: ('WP_',v printString) asSymbol ].
+	wp do: [ :m |
+			mapForm
+				addShape: ((RSBox  new extent: 10@10)
+						 position: (mapForm cartesianLongitude: m x latitude: m y);
+						 color: Color blue;
+						 yourself)
+				withModel: m ].
+			
+		aSimulator drones do: [ :m |
+			mapForm
+				addShape: ((RSCircle  size: 20)
+						 position: (mapForm cartesianLongitude: m x latitude: m y);
+						 color: Color blue;
+						 yourself)
+				withModel: m ].
+			
+		^mapForm 
 ]
 
 { #category : 'getter' }
 QuickGeoportailMap >> buildBackground [
 
 	| url response origin corner imageWidth imageHeight |
-	imageWidth := 5000.
+	imageWidth := 4000.
 	origin := self toMercatorLongitude: minLon latitude: minLat.
 	corner := self toMercatorLongitude: maxLon latitude: maxLat.
 	width := (origin x - corner x) abs.
 	height := (origin y - corner y) abs.
 	imageHeight := (imageWidth * height / width) asInteger.
+	self imageSize: imageWidth@imageHeight.
 	url := 'https://data.geopf.fr/wms-r'
 	       , '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
 	       , '&apikey=essentiels'
@@ -29,8 +111,8 @@ QuickGeoportailMap >> buildBackground [
 	       , ',' , origin y asInteger printString , ','
 	       , corner x asInteger printString , ','
 	       , corner y asInteger printString , '&WIDTH='
-	       , imageWidth printString , '&HEIGHT='
-	       , imageHeight printString , '&FORMAT=image/png' , '&STYLES='
+	       , self imageSize x printString , '&HEIGHT='
+	       , self imageSize y printString , '&FORMAT=image/png' , '&STYLES='
 	       , '&TRANSPARENT=TRUE'.
 	"   , '&BBOX=-566616,6120000,-185903,6180000'"
 
@@ -43,4 +125,18 @@ QuickGeoportailMap >> buildBackground [
 
 	background := PNGReadWriter formFromStream:
 		              response contents readStream
+]
+
+{ #category : 'getter' }
+QuickGeoportailMap >> cartesianLongitude: lon latitude: lat [
+
+	| pos origin corner |
+	pos := self toMercatorLongitude: lon latitude: lat.
+
+
+	origin := self toMercatorLongitude: minLon latitude: minLat.
+		corner := self toMercatorLongitude: maxLon latitude: maxLat.
+
+	^ pos x - origin x / self width * self imageSize x
+	  @ (corner y - pos y / self height * self imageSize y)
 ]

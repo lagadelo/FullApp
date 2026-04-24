@@ -7,14 +7,14 @@ Class {
 		'morph',
 		'model',
 		'rsObjects',
-		'minLal',
 		'minLon',
 		'maxLat',
 		'maxLon',
 		'height',
 		'width',
 		'background',
-		'minLat'
+		'minLat',
+		'imageSize'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -545,10 +545,18 @@ QuickMap class >> wrapWithScrollers: aForm [
 ]
 
 { #category : 'model' }
-QuickMap >> addShape: aShape withID: anID [
+QuickMap >> addModel: aModel withID: anID [
 
-self model add: anID -> aShape. self canvas add: aShape.
-self update.
+	self model add: anID -> aModel
+]
+
+{ #category : 'model' }
+QuickMap >> addShape: aShape withModel: aModel [
+
+	aShape position: aShape position - (imageSize / 2).
+	self rsObjects add: aModel -> aShape.
+	self canvas add: aShape.
+	self update
 ]
 
 { #category : 'accessing' }
@@ -566,6 +574,7 @@ QuickMap >> autoRefresh: anObject [
 { #category : 'accessing' }
 QuickMap >> background [
 
+	background ifNil: [ self buildBackground ].
 	^ background
 ]
 
@@ -575,17 +584,23 @@ QuickMap >> background: anObject [
 	background := anObject
 ]
 
+{ #category : 'accessing' }
+QuickMap >> buidBackground [
+
+	^ self subclassResponsibility 
+]
+
 { #category : 'getter' }
 QuickMap >> build [
 
 	canvas ifNil: [
 			canvas := RSCanvas new.
-			canvas add: (RSBitmap new form: background).
+			canvas add: ((RSBitmap new form: self background)  ).
 			canvas @ RSCanvasController.
 
 
 			morph := canvas createMorph.
-			morph extent: background extent "important: sinon pas de scroll" ]
+			morph extent: self background extent "important: sinon pas de scroll" ]
 ]
 
 { #category : 'accessing' }
@@ -624,10 +639,27 @@ QuickMap >> height: anObject [
 	height := anObject
 ]
 
+{ #category : 'accessing' }
+QuickMap >> imageSize [
+
+	^ imageSize
+]
+
+{ #category : 'accessing' }
+QuickMap >> imageSize: anObject [
+
+	imageSize := anObject
+]
+
 { #category : 'initialize' }
 QuickMap >> initialize [
 
+"model links ID to model elements (eg. drones)
+rsObjects links model elements to forms (eg. RSCircle)"
+
+
 	model := Dictionary new.
+	rsObjects  := Dictionary new.
 	self autoRefresh: true.
 ]
 
@@ -734,8 +766,7 @@ QuickMap >> readURL: anURL [
 { #category : 'model' }
 QuickMap >> removeID: anID [
 
-	(self model at: anID) remove.
-	self update
+	self model removeKey: anID
 ]
 
 { #category : 'accessing' }

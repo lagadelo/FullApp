@@ -17,6 +17,7 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'history',
+		'ui',
 		'behavior',
 		'metrics',
 		'parameters',
@@ -140,6 +141,12 @@ MacroSimulator >> futureStep [
 	^ future
 ]
 
+{ #category : 'gui' }
+MacroSimulator >> hasUI [
+
+	^ ui isNil not
+]
+
 { #category : 'accessing' }
 MacroSimulator >> history [
 
@@ -244,6 +251,12 @@ MacroSimulator >> newIncomerAt: aTimeStamp [
 MacroSimulator >> nextTimeStep [
 
 	^ self history last timeStep + 1
+]
+
+{ #category : 'gui' }
+MacroSimulator >> open [
+
+ui := QuickGeoportailMap openOn: self 
 ]
 
 { #category : 'accessing' }
