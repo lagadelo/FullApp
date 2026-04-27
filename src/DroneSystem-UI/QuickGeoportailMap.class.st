@@ -6,39 +6,19 @@ Class {
 }
 
 { #category : 'examples' }
-QuickGeoportailMap class >> exampleBrittany [
+QuickGeoportailMap class >> buildFrom: tmp [
 
-	| wp latitudes mapForm longitudes |
-	wp := MacroSimulatorParameters example4 wayPoints.
-
-	latitudes := (wp collect: [ :a | a y ]) asSortedCollection.
-
-	longitudes := (wp collect: [ :a | a x ]) asSortedCollection.
-
-
+	| mapForm |
 	mapForm := self new
-		           minLat: latitudes first;
-		           maxLat: latitudes last;
-		           minLon: longitudes first;
-		           maxLon: longitudes last;
+		           minLat: tmp boundingBox origin y;
+		           maxLat: tmp boundingBox corner y;
+		           minLon: tmp boundingBox origin x;
+		           maxLon: tmp boundingBox corner x;
 		           yourself.
 
 
 	mapForm openWithScroller.
-	wp keysAndValuesDo: [ :k :v | mapForm addModel: k withID: v ].
-	wp do: [ :m |
-			mapForm
-				addShape: ((RSCircle size: 100)
-						 position: (mapForm cartesianLongitude: m x latitude: m y);
-						 color: Color blue;
-						 yourself)
-				withModel: m ]
-]
-
-{ #category : 'examples' }
-QuickGeoportailMap class >> exampleRefactored [
-
-	^ super exampleRefactored
+	mapForm buildFrom: tmp
 ]
 
 { #category : 'examples' }
@@ -112,7 +92,7 @@ QuickGeoportailMap >> buildBackground [
 	       , corner x asInteger printString , ','
 	       , corner y asInteger printString , '&WIDTH='
 	       , self imageSize x printString , '&HEIGHT='
-	       , self imageSize y printString , '&FORMAT=image/png' , '&STYLES='
+	       , self imageSize y printString , '&FORMAT=image/png'  , '&STYLES=' 
 	       , '&TRANSPARENT=TRUE'.
 	"   , '&BBOX=-566616,6120000,-185903,6180000'"
 
@@ -125,6 +105,44 @@ QuickGeoportailMap >> buildBackground [
 
 	background := PNGReadWriter formFromStream:
 		              response contents readStream
+]
+
+{ #category : 'as yet unclassified' }
+QuickGeoportailMap >> buildFrom: tmp [
+
+tmp poi keysAndValuesDo: [ :k :v |  self  addModel: k withID: v ].
+	tmp poi do: [ :m |
+			 self 
+				addShape: ((RSCircle size: 40)
+						 position: ( self  cartesianCoordinates: m);
+						 color: Color blue;
+						 yourself)
+				withModel: m ].
+	tmp hull do: [ :m |
+			 self 
+				addShape: ((RSCircle size: 30)
+						 position: ( self  cartesianCoordinates: m);
+						 color: Color red;
+						 yourself)
+				withModel: m ].
+	tmp hull keysAndValuesDo: [ :i :k |
+			 self 
+				addShape: ((RSLine
+						  newFrom: ( self  getShapeFromModel: k)
+						  to:
+							  ( self  getShapeFromModel:
+									   (tmp hull at: i \\ tmp hull size + 1)))
+						 color: Color red;
+						 yourself)
+				withModel: 100 + i ]
+]
+
+{ #category : 'getter' }
+QuickGeoportailMap >> cartesianCoordinates: aGeoPoint [
+
+	^ self
+		  cartesianLongitude: aGeoPoint longitude
+		  latitude: aGeoPoint latitude
 ]
 
 { #category : 'getter' }

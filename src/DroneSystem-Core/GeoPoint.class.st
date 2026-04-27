@@ -144,6 +144,21 @@ GeoPoint >> distanceTo: aGeoPoint [
 	^ (horizDist squared + altDiff squared) sqrt
 ]
 
+{ #category : 'distance functions' }
+GeoPoint >> haversineMetersTo: p2 [
+
+	| r lat1 lat2 dLat dLon a c |
+	r := 6378137.0.
+	lat1 := self latitude degreesToRadians.
+	lat2 := p2 latitude degreesToRadians.
+	dLat := (p2 latitude - self latitude) degreesToRadians.
+	dLon := (p2 longitude - self longitude) degreesToRadians.
+	a := (dLat / 2) sin squared
+	     + (lat1 cos * lat2 cos * (dLon / 2) sin squared).
+	c := 2 * (a sqrt arcTan: (1 - a) sqrt).
+	^ r * c
+]
+
 { #category : 'accessing' }
 GeoPoint >> latitude [
 

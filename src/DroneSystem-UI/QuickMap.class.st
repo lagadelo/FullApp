@@ -1,20 +1,13 @@
 Class {
 	#name : 'QuickMap',
-	#superclass : 'Object',
+	#superclass : 'QuickSimulationGround',
 	#instVars : [
-		'autoRefresh',
-		'canvas',
-		'morph',
-		'model',
-		'rsObjects',
 		'minLon',
 		'maxLat',
 		'maxLon',
 		'height',
 		'width',
-		'background',
-		'minLat',
-		'imageSize'
+		'minLat'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
@@ -544,89 +537,6 @@ QuickMap class >> wrapWithScrollers: aForm [
 	scroll openInWindowLabeled: 'DuickMap with scrollers'
 ]
 
-{ #category : 'model' }
-QuickMap >> addModel: aModel withID: anID [
-
-	self model add: anID -> aModel
-]
-
-{ #category : 'model' }
-QuickMap >> addShape: aShape withModel: aModel [
-
-	aShape position: aShape position - (imageSize / 2).
-	self rsObjects add: aModel -> aShape.
-	self canvas add: aShape.
-	self update
-]
-
-{ #category : 'accessing' }
-QuickMap >> autoRefresh [
-
-	^ autoRefresh
-]
-
-{ #category : 'accessing' }
-QuickMap >> autoRefresh: anObject [
-
-	autoRefresh := anObject
-]
-
-{ #category : 'accessing' }
-QuickMap >> background [
-
-	background ifNil: [ self buildBackground ].
-	^ background
-]
-
-{ #category : 'accessing' }
-QuickMap >> background: anObject [
-
-	background := anObject
-]
-
-{ #category : 'accessing' }
-QuickMap >> buidBackground [
-
-	^ self subclassResponsibility 
-]
-
-{ #category : 'getter' }
-QuickMap >> build [
-
-	canvas ifNil: [
-			canvas := RSCanvas new.
-			canvas add: ((RSBitmap new form: self background)  ).
-			canvas @ RSCanvasController.
-
-
-			morph := canvas createMorph.
-			morph extent: self background extent "important: sinon pas de scroll" ]
-]
-
-{ #category : 'accessing' }
-QuickMap >> canvas [
-
-	^ canvas
-]
-
-{ #category : 'accessing' }
-QuickMap >> canvas: anObject [
-
-	canvas := anObject
-]
-
-{ #category : 'updating' }
-QuickMap >> forceRefresh [
-
-	self morph signalUpdate
-]
-
-{ #category : 'model' }
-QuickMap >> getID: anID [
-
-	^(self model at: anID) 
-]
-
 { #category : 'accessing' }
 QuickMap >> height [
 
@@ -637,30 +547,6 @@ QuickMap >> height [
 QuickMap >> height: anObject [
 
 	height := anObject
-]
-
-{ #category : 'accessing' }
-QuickMap >> imageSize [
-
-	^ imageSize
-]
-
-{ #category : 'accessing' }
-QuickMap >> imageSize: anObject [
-
-	imageSize := anObject
-]
-
-{ #category : 'initialize' }
-QuickMap >> initialize [
-
-"model links ID to model elements (eg. drones)
-rsObjects links model elements to forms (eg. RSCircle)"
-
-
-	model := Dictionary new.
-	rsObjects  := Dictionary new.
-	self autoRefresh: true.
 ]
 
 { #category : 'accessing' }
@@ -723,33 +609,6 @@ QuickMap >> model: anObject [
 	model := anObject
 ]
 
-{ #category : 'accessing' }
-QuickMap >> morph [
-
-	^ morph
-]
-
-{ #category : 'accessing' }
-QuickMap >> morph: anObject [
-
-	morph := anObject
-]
-
-{ #category : 'gui' }
-QuickMap >> openWithScroller [
-
-	| scroll |
-	self build.
-
-	scroll := ScrollPane new.
-	scroll scroller addMorph: self morph.
-
-
-	scroll extent: 700 @ 600.
-
-	scroll openInWindowLabeled: self printString , ' with scrolelrs'
-]
-
 { #category : 'tiles' }
 QuickMap >> readURL: anURL [
 
@@ -761,24 +620,6 @@ QuickMap >> readURL: anURL [
 		get.
 	bytes := client contents.
 	^ PNGReadWriter formFromStream: bytes readStream
-]
-
-{ #category : 'model' }
-QuickMap >> removeID: anID [
-
-	self model removeKey: anID
-]
-
-{ #category : 'accessing' }
-QuickMap >> rsObjects [
-
-	^ rsObjects
-]
-
-{ #category : 'accessing' }
-QuickMap >> rsObjects: anObject [
-
-	rsObjects := anObject
 ]
 
 { #category : 'geo referencing' }
@@ -796,10 +637,10 @@ QuickMap >> toMercatorLongitude: lon latitude: lat [
 	^ r * lon degreesToRadians @ (r * (Float pi / 4 + (latRad / 2)) tan ln)
 ]
 
-{ #category : 'updating' }
-QuickMap >> update [ 
+{ #category : 'as yet unclassified' }
+QuickMap >> updateShapePosition: aShape [
 
-	self autoRefresh ifTrue: [ self forceRefresh ]
+	aShape position: aShape position - (imageSize / 2)
 ]
 
 { #category : 'accessing' }

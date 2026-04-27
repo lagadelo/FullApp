@@ -34,7 +34,7 @@ Class {
 MacroSimulatorParameters class >> balancedRouteFrom: orderedWayPoints [
 	"Defaut values"
 
-	"""Middle policy between convex hull and full route.
+	"Middle policy between convex hull and full route.
     Keep a point if far enough from last kept OR if heading changes enough."
 
 	^ self
@@ -74,6 +74,82 @@ MacroSimulatorParameters class >> balancedRouteFrom: ordered minSpacingKm: minSp
 
 { #category : 'facilities' }
 MacroSimulatorParameters class >> compactedRouteFrom: ordered compactingFactor: compactingFactor [
+    | n target keepCount scores ranked keepIndices |
+    n := ordered size.
+    n <= 2 ifTrue: [ ^ ordered ].
+
+    target := ((n * compactingFactor) rounded max: 2) min: n.
+    keepCount := target - 2.
+
+    scores := OrderedCollection new.
+    2 to: n - 1 do: [ :i |
+        | prev current next turnDeg distKm score |
+        prev    := ordered at: i - 1.
+        current := ordered at: i.
+        next    := ordered at: i + 1.
+
+        turnDeg := self turnAngleDegreesAt: current from: prev to: next.
+        distKm  := (((self haversineMetersFrom: prev to: current))
+                 + ((self haversineMetersFrom: current to: next))) / 2000.0.
+
+        score := (turnDeg * 0.7) + (distKm * 0.3).
+        scores add: (Array with: i with: score) ].
+
+    "Tri déterministe : départage par index si scores égaux"
+    ranked := scores asSortedCollection: [ :a :b |
+        a second = b second
+            ifTrue: [ a first < b first ]
+            ifFalse: [ a second > b second ] ].
+
+    keepIndices := SortedCollection sortBlock: [ :a :b | a < b ].
+    keepIndices add: 1.
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> compactedRouteFrom: ordered compactingFactor: compactingFactor mandatory: mandatory [
+    "mandatory: collection de GeoPoints à garder absolument."
+
+    | n target keepCount scores ranked keepIndices mandatoryIdx |
+
+    n := ordered size.
+    n <= 2 ifTrue: [ ^ ordered ].
+
+    "Indices des points obligatoires"
+    mandatoryIdx := mandatory collect: [ :m | ordered indexOf: m ].
+
+    target := ((n * compactingFactor) rounded max: 2) min: n.
+    keepCount := target - 2 - mandatoryIdx size. "on réserve les slots"
+
+    scores := OrderedCollection new.
+    2 to: n - 1 do: [ :i |
+        (mandatoryIdx includes: i) ifFalse: [
+            | prev current next turnDeg distKm score |
+            prev    := ordered at: i - 1.
+            current := ordered at: i.
+            next    := ordered at: i + 1.
+            turnDeg := self turnAngleDegreesAt: current from: prev to: next.
+            distKm  := ((self haversineMetersFrom: prev to: current)
+                     +  (self haversineMetersFrom: current to: next)) / 2000.0.
+            score := (turnDeg * 0.7) + (distKm * 0.3).
+            scores add: (Array with: i with: score) ] ].
+
+    ranked := scores asSortedCollection: [ :a :b |
+        a second = b second
+            ifTrue:  [ a first < b first ]
+            ifFalse: [ a second > b second ] ].
+
+    keepIndices := SortedCollection sortBlock: [ :a :b | a < b ].
+    keepIndices add: 1.
+    keepIndices add: n.
+    mandatoryIdx do: [ :i | keepIndices add: i ].
+    1 to: (keepCount max: 0) min: ranked size do: [ :k |
+        keepIndices add: (ranked at: k) first ].
+
+    ^ keepIndices collect: [ :idx | ordered at: idx ]
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> compactedRouteFrom: ordered compactingFactorLegacy: compactingFactor [
 	"compactingFactor in [0..1]. Example: 0.5 keeps ~50%."
 
 	| n target keepCount scores ranked keepIndices |
@@ -122,13 +198,13 @@ MacroSimulatorParameters class >> compactedRouteFrom: ordered to: aValue [
 MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points [
     | sorted cross lower upper hull |
     sorted := points asSortedCollection: [ :a :b |
-        (a at: #lng) ~= (b at: #lng)
-            ifTrue: [ (a at: #lng) < (b at: #lng) ]
-            ifFalse: [ (a at: #lat) < (b at: #lat) ] ].
+        (a longitude) ~= (b longitude)
+            ifTrue: [ (a longitude) < (b longitude) ]
+            ifFalse: [ (a latitude) < (b latitude) ] ].
 
     cross := [ :o :a :b |
-        (((a at: #lng) - (o at: #lng)) * ((b at: #lat) - (o at: #lat)))
-            - (((a at: #lat) - (o at: #lat)) * ((b at: #lng) - (o at: #lng))) ].
+        (((a longitude) - (o longitude)) * ((b latitude) - (o latitude)))
+            - (((a latitude) - (o latitude)) * ((b longitude) - (o longitude))) ].
 
     lower := OrderedCollection new.
     sorted do: [ :point |
@@ -147,7 +223,168 @@ MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points [
     hull := lower , (upper copyFrom: 2 to: (upper size - 1 max: 1)).
 
     ^ hull collect: [ :p |
-        ((p at: #lng) truncateTo: 0.001) @ ((p at: #lat) truncateTo: 0.001) ]
+        GeoPoint  latitude: ((p latitude) truncateTo: 0.001) longitude:((p longitude) truncateTo: 0.001) altitude: p altitude]
+]
+
+{ #category : 'examples' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points epsilon: epsilon [
+    "epsilon=0 → hull strict. epsilon>0 → hull relâché (garde plus de points).
+     epsilon est en degrés² (produit vectoriel lon/lat).
+     Typiquement: 0=strict, 0.0001=léger, 0.001=relâché, 0.01=très relâché."
+
+    | sorted cross lower upper seen result |
+    sorted := points asSortedCollection: [ :a :b |
+        a longitude ~= b longitude
+            ifTrue: [ a longitude < b longitude ]
+            ifFalse: [ a latitude < b latitude ] ].
+
+    cross := [ :o :a :b |
+        ((a longitude - o longitude) * (b latitude - o latitude))
+        - ((a latitude - o latitude) * (b longitude - o longitude)) ].
+
+    lower := OrderedCollection new.
+    sorted do: [ :point |
+        [ lower size >= 2 and: [
+            (cross
+                value: (lower at: lower size - 1)
+                value: lower last
+                value: point) <= epsilon negated ] ]
+            whileTrue: [ lower removeLast ].
+        lower add: point ].
+
+    upper := OrderedCollection new.
+    sorted reverseDo: [ :point |
+        [ upper size >= 2 and: [
+            (cross
+                value: (upper at: upper size - 1)
+                value: upper last
+                value: point) <= epsilon negated ] ]
+            whileTrue: [ upper removeLast ].
+        upper add: point ].
+
+    upper removeFirst.
+    upper removeLast.
+
+    seen := Set new.
+    result := OrderedCollection new.
+    (lower , upper) do: [ :p |
+        | key |
+        key := p longitude @ p latitude.
+        (seen includes: key) ifFalse: [
+            seen add: key.
+            result add: p ] ].
+
+    ^ result collect: [ :p |
+        GeoPoint
+            latitude: (p latitude truncateTo: 0.001)
+            longitude: (p longitude truncateTo: 0.001)
+            altitude: p altitude ]
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points ratio: aRatio [
+
+self assert: aRatio >1. 
+	^ self
+		  convexHullRouteFromRawPoints: points
+		  targetCount: aRatio * (self convexHullRouteFromRawPoints: points) size
+]
+
+{ #category : 'as yet unclassified' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points ratio: ratio maxSpikeAngle: maxSpikeAngle [
+    "ratio: multiplicateur du hull strict. Ex: 1.0=hull strict, 2.5=2.5x plus de points."
+    
+    | strictCount targetCount |
+    strictCount := (self convexHullRouteFromRawPoints: points epsilon: 0) size.
+    targetCount := (strictCount * ratio) rounded.
+    
+    ^ self 
+        convexHullRouteFromRawPoints: points 
+        targetCount: targetCount 
+        maxSpikeAngle: maxSpikeAngle
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points targetCount: targetCount [
+	"Trouve epsilon par recherche binaire pour obtenir approximativement targetCount points."
+
+	| low high mid result |
+	"Hull strict = minimum de points"
+	(self convexHullRouteFromRawPoints: points epsilon: 0) size
+	>= targetCount ifTrue: [
+		^ self convexHullRouteFromRawPoints: points epsilon: 0 ].
+
+	low := 0.0.
+	high := 1.0.
+
+	20 timesRepeat: [
+			mid := low + high / 2.0.
+			result := self convexHullRouteFromRawPoints: points epsilon: mid.
+			result size = targetCount ifTrue: [ ^ result ].
+			result size > targetCount
+				ifTrue: [ high := mid ]
+				ifFalse: [ low := mid ] ].
+
+	^ self convexHullRouteFromRawPoints: points epsilon: mid
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPoints: points targetCount: targetCount maxSpikeAngle: maxSpikeAngle [
+
+	| hull toRemove result |
+	hull := (self
+		         convexHullRouteFromRawPoints: points
+		         targetCount: targetCount) asOrderedCollection.
+
+	[
+		toRemove := OrderedCollection new.
+		2 to: hull size - 1 do: [ :i |
+				| turn |
+				turn := self
+					        turnAngleDegreesAt: (hull at: i)
+					        from: (hull at: i - 1)
+					        to: (hull at: i + 1).
+				turn > maxSpikeAngle ifTrue: [ toRemove add: i ] ].
+
+		result := OrderedCollection new.
+		hull keysAndValuesDo: [ :i :p |
+			(toRemove includes: i) ifFalse: [ result add: p ] ].
+		hull := result.
+		toRemove notEmpty ] whileTrue.
+
+	^ result
+]
+
+{ #category : 'facilities' }
+MacroSimulatorParameters class >> convexHullRouteFromRawPointsLegacy: points [
+    | sorted cross lower upper hull |
+    sorted := points asSortedCollection: [ :a :b |
+        (a longitude) ~= (b longitude)
+            ifTrue: [ (a longitude) < (b longitude) ]
+            ifFalse: [ (a latitude) < (b latitude) ] ].
+
+    cross := [ :o :a :b |
+        (((a longitude) - (o longitude)) * ((b latitude) - (o latitude)))
+            - (((a latitude) - (o latitude)) * ((b longitude) - (o longitude))) ].
+
+    lower := OrderedCollection new.
+    sorted do: [ :point |
+        [ lower size >= 2 and: [
+            (cross value: (lower at: lower size - 1) value: (lower at: lower size) value: point) <= 0 ] ]
+            whileTrue: [ lower removeLast ].
+        lower add: point ].
+
+    upper := OrderedCollection new.
+    sorted reverseDo: [ :point |
+        [ upper size >= 2 and: [
+            (cross value: (upper at: upper size - 1) value: (upper at: upper size) value: point) <= 0 ] ]
+            whileTrue: [ upper removeLast ].
+        upper add: point ].
+
+    hull := lower , (upper copyFrom: 2 to: (upper size - 1 max: 1)).
+
+    ^ hull collect: [ :p |
+        GeoPoint  latitude: ((p latitude) truncateTo: 0.001) longitude:((p longitude) truncateTo: 0.001) altitude: p altitude]
 ]
 
 { #category : 'examples' }
@@ -502,14 +739,14 @@ MacroSimulatorParameters class >> exampleWaypoints2: aSeed [
 
 { #category : 'examples' }
 MacroSimulatorParameters class >> generateRawBrittanyPoints: n [
-    | randomGenerator |
-    randomGenerator := Random new.
-    ^ (1 to: n) collect: [ :i |
-        Dictionary new
-            at: #lat put: (47.5 + (randomGenerator next * 1.0));
-            at: #lng put: (-4.5 + (randomGenerator next * 3.0));
-            at:  #alt put: randomGenerator next + 1 * 200;
-            yourself ]
+
+	| randomGenerator |
+	randomGenerator := Random new.
+	^ (1 to: n) collect: [ :i |
+			  GeoPoint
+				  latitude: 47.5 + (randomGenerator next * 1.0)
+				  longitude: -4.5 + (randomGenerator next * 3.0)
+				  altitude: randomGenerator next + 1 * 200 ]
 ]
 
 { #category : 'examples' }
@@ -528,10 +765,10 @@ MacroSimulatorParameters class >> generateRawBrittanyPoints: n seed: aSeed [
 MacroSimulatorParameters class >> haversineMetersFrom: p1 to: p2 [
     | r lat1 lat2 dLat dLon a c |
     r := 6378137.0.
-    lat1 := p1 y degreesToRadians.
-    lat2 := p2 y degreesToRadians.
-    dLat := (p2 y - p1 y) degreesToRadians.
-    dLon := (p2 x - p1 x) degreesToRadians.
+    lat1 := p1 latitude degreesToRadians.
+    lat2 := p2 latitude degreesToRadians.
+    dLat := (p2 latitude- p1 latitude) degreesToRadians.
+    dLon := (p2 longitude - p1 longitude) degreesToRadians.
     a := ((dLat / 2) sin squared)
         + ((lat1 cos) * (lat2 cos) * ((dLon / 2) sin squared)).
     c := 2 * ((a sqrt) arcTan: (1 - a) sqrt).
@@ -540,7 +777,7 @@ MacroSimulatorParameters class >> haversineMetersFrom: p1 to: p2 [
 
 { #category : 'facilities' }
 MacroSimulatorParameters class >> orderedRouteFromRawPoints: points [
-   " | centroidLat centroidLng sorted |
+	" | centroidLat centroidLng sorted |
     centroidLat := (points inject: 0.0 into: [ :sum :p | sum + (p at: #lat) ]) / points size.
     centroidLng := (points inject: 0.0 into: [ :sum :p | sum + (p at: #lng) ]) / points size.
 
@@ -552,19 +789,28 @@ MacroSimulatorParameters class >> orderedRouteFromRawPoints: points [
 
     ^ sorted collect: [ :p |
         ((p at: #lng) truncateTo: 0.001) @ ((p at: #lat) truncateTo: 0.001) ]"
- 
-    | centroidLat centroidLng sorted |
-    centroidLat := (points inject: 0.0 into: [ :sum :p | sum + (p at: #lat) ]) / points size.
-    centroidLng := (points inject: 0.0 into: [ :sum :p | sum + (p at: #lng) ]) / points size.
 
-    sorted := points asSortedCollection: [ :a :b |
-        | angleA angleB |
-        angleA := ((a at: #lat) - centroidLat) arcTan: ((a at: #lng) - centroidLng).
-        angleB := ((b at: #lat) - centroidLat) arcTan: ((b at: #lng) - centroidLng).
-        angleA < angleB ].
+	| centroidLat centroidLng sorted |
+	centroidLat := (points
+		                inject: 0.0
+		                into: [ :sum :p | sum + p latitude ]) / points size.
+	centroidLng := (points
+		                inject: 0.0
+		                into: [ :sum :p | sum + p longitude ]) / points size.
 
-    ^ sorted collect: [ :p |
-        ((p at: #lng) truncateTo: 0.001) @ ((p at: #lat) truncateTo: 0.001) ]
+	sorted := points asSortedCollection: [ :a :b |
+			          | angleA angleB |
+			          angleA := a latitude - centroidLat arcTan:
+				                    a longitude - centroidLng.
+			          angleB := b latitude - centroidLat arcTan:
+				                    b longitude - centroidLng.
+			          angleA < angleB ].
+
+	^ sorted collect: [ :p |
+			  GeoPoint
+				  latitude: (p latitude truncateTo: 0.001)
+				  longitude: (p longitude truncateTo: 0.001)
+				  altitude: p altitude ]
 ]
 
 { #category : 'facilities' }
@@ -604,10 +850,10 @@ MacroSimulatorParameters class >> simulatorAutonomyFreeNotes [
 { #category : 'facilities' }
 MacroSimulatorParameters class >> turnAngleDegreesAt: p2 from: p1 to: p3 [
     | v1x v1y v2x v2y dot n1 n2 cosTheta |
-    v1x := p2 x - p1 x.
-    v1y := p2 y - p1 y.
-    v2x := p3 x - p2 x.
-    v2y := p3 y - p2 y.
+    v1x := p2 longitude - p1 longitude.
+    v1y := p2 latitude - p1 latitude.
+    v2x := p3 longitude - p2 longitude.
+    v2y := p3 latitude - p2 latitude.
 
     n1 := ((v1x * v1x) + (v1y * v1y)) sqrt.
     n2 := ((v2x * v2x) + (v2y * v2y)) sqrt.
