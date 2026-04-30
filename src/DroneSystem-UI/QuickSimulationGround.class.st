@@ -22,6 +22,19 @@ QuickSimulationGround class >> exampleBrittany [
 ]
 
 { #category : 'model' }
+QuickSimulationGround class >> represent: aModel [
+
+^self new
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> acceptMacroSimulator: step [
+
+
+
+]
+
+{ #category : 'model' }
 QuickSimulationGround >> addModel: aModel withID: anID [
 
 	self model add: anID -> aModel
@@ -77,6 +90,12 @@ QuickSimulationGround >> build [
 
 			morph := canvas createMorph.
 			morph extent: self background extent "important: sinon pas de scroll" . canvas zoomToFit.]
+]
+
+{ #category : 'building' }
+QuickSimulationGround >> buildFrom: tmp [
+ 
+self subclassResponsibility 
 ]
 
 { #category : 'accessing' }
@@ -140,6 +159,18 @@ rsObjects links model elements to forms (eg. RSCircle)"
 ]
 
 { #category : 'accessing' }
+QuickSimulationGround >> model [
+
+	^ model
+]
+
+{ #category : 'accessing' }
+QuickSimulationGround >> model: anObject [
+
+	model := anObject
+]
+
+{ #category : 'accessing' }
 QuickSimulationGround >> morph [
 
 	^ morph
@@ -149,6 +180,12 @@ QuickSimulationGround >> morph [
 QuickSimulationGround >> morph: anObject [
 
 	morph := anObject
+]
+
+{ #category : 'gui' }
+QuickSimulationGround >> open [ 
+
+ self morph  openInWindowLabeled: self printString , self className
 ]
 
 { #category : 'gui' }

@@ -637,18 +637,6 @@ QuickMap >> minLon: anObject [
 ]
 
 { #category : 'accessing' }
-QuickMap >> model [
-
-	^ model
-]
-
-{ #category : 'accessing' }
-QuickMap >> model: anObject [
-
-	model := anObject
-]
-
-{ #category : 'accessing' }
 QuickMap >> origin [
 
 	^ origin
