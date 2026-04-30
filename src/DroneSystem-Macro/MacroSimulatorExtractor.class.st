@@ -44,6 +44,12 @@ MacroSimulatorExtractor class >> process: aProcessing overField: p [
  
 ]
 
+{ #category : 'visiting' }
+MacroSimulatorExtractor >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorExtractor: self
+]
+
 { #category : 'accessing' }
 MacroSimulatorExtractor >> block [
 

@@ -28,6 +28,14 @@ MacroExporter class >> visit: anObject [
 ]
 
 { #category : 'visiting' }
+MacroExporter >> accept: aVisitor [
+
+"Still i'm a visitor myself, i can be a client for representation"
+
+	^ aVisitor visitMacroExporter: self
+]
+
+{ #category : 'visiting' }
 MacroExporter >> columnNamesFor: aClass [
 
 	^ aClass instanceVariables collect: [ :aVariable |

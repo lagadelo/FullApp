@@ -75,14 +75,11 @@ QuickGeoportailMap class >> openOn:aSimulator [
 { #category : 'getter' }
 QuickGeoportailMap >> buildBackground [
 
-	| url response origin corner imageWidth imageHeight |
+	| url response     imageWidth imageHeight |
 	imageWidth := 4000.
-	origin := self toMercatorLongitude: minLon latitude: minLat.
-	corner := self toMercatorLongitude: maxLon latitude: maxLat.
-	width := (origin x - corner x) abs.
-	height := (origin y - corner y) abs.
-	imageHeight := (imageWidth * height / width) asInteger.
-	self imageSize: imageWidth@imageHeight.
+	self getExtend.
+	imageHeight := (imageWidth * self height / self width) asInteger.
+	self imageSize: imageWidth @ imageHeight.
 	url := 'https://data.geopf.fr/wms-r'
 	       , '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
 	       , '&apikey=essentiels'
@@ -92,8 +89,8 @@ QuickGeoportailMap >> buildBackground [
 	       , corner x asInteger printString , ','
 	       , corner y asInteger printString , '&WIDTH='
 	       , self imageSize x printString , '&HEIGHT='
-	       , self imageSize y printString , '&FORMAT=image/png'  , '&STYLES=' 
-	       , '&TRANSPARENT=TRUE'.
+	       , self imageSize y printString , '&FORMAT=image/png'
+	       , '&STYLES=' , '&TRANSPARENT=TRUE'.
 	"   , '&BBOX=-566616,6120000,-185903,6180000'"
 
 	response := ZnClient new
@@ -105,56 +102,4 @@ QuickGeoportailMap >> buildBackground [
 
 	background := PNGReadWriter formFromStream:
 		              response contents readStream
-]
-
-{ #category : 'as yet unclassified' }
-QuickGeoportailMap >> buildFrom: tmp [
-
-tmp poi keysAndValuesDo: [ :k :v |  self  addModel: k withID: v ].
-	tmp poi do: [ :m |
-			 self 
-				addShape: ((RSCircle size: 40)
-						 position: ( self  cartesianCoordinates: m);
-						 color: Color blue;
-						 yourself)
-				withModel: m ].
-	tmp hull do: [ :m |
-			 self 
-				addShape: ((RSCircle size: 30)
-						 position: ( self  cartesianCoordinates: m);
-						 color: Color red;
-						 yourself)
-				withModel: m ].
-	tmp hull keysAndValuesDo: [ :i :k |
-			 self 
-				addShape: ((RSLine
-						  newFrom: ( self  getShapeFromModel: k)
-						  to:
-							  ( self  getShapeFromModel:
-									   (tmp hull at: i \\ tmp hull size + 1)))
-						 color: Color red;
-						 yourself)
-				withModel: 100 + i ]
-]
-
-{ #category : 'getter' }
-QuickGeoportailMap >> cartesianCoordinates: aGeoPoint [
-
-	^ self
-		  cartesianLongitude: aGeoPoint longitude
-		  latitude: aGeoPoint latitude
-]
-
-{ #category : 'getter' }
-QuickGeoportailMap >> cartesianLongitude: lon latitude: lat [
-
-	| pos origin corner |
-	pos := self toMercatorLongitude: lon latitude: lat.
-
-
-	origin := self toMercatorLongitude: minLon latitude: minLat.
-		corner := self toMercatorLongitude: maxLon latitude: maxLat.
-
-	^ pos x - origin x / self width * self imageSize x
-	  @ (corner y - pos y / self height * self imageSize y)
 ]

@@ -8,7 +8,10 @@ Class {
 		'maxSpikeAngle',
 		'boundingBox',
 		'hull',
-		'targetCount'
+		'targetCount',
+		'pointsRatio',
+		'perimeterRatio',
+		'hullPolicy'
 	],
 	#category : 'DroneSystem-Missions',
 	#package : 'DroneSystem-Missions'
@@ -69,70 +72,109 @@ MissionFactory >> computeBoundingBox [
 { #category : 'setter' }
 MissionFactory >> computeConvexHull [
 
-	| sorted cross lower upper |
-	sorted := self poi asSortedCollection: [ :a :b |
-			          a longitude ~= b longitude
-				          ifTrue: [ a longitude < b longitude ]
-				          ifFalse: [ a latitude < b latitude ] ].
-
-	cross := [ :o :a :b |
-		         a longitude - o longitude * (b latitude - o latitude)
-		         - (a latitude - o latitude * (b longitude - o longitude)) ].
-
-	lower := OrderedCollection new.
-	sorted do: [ :point |
-			[
-				lower size >= 2 and: [
-						(cross
-							 value: (lower at: lower size - 1)
-							 value: (lower at: lower size)
-							 value: point) <= 0 ] ] whileTrue: [ lower removeLast ].
-			lower add: point ].
-
-	upper := OrderedCollection new.
-	sorted reverseDo: [ :point |
-			[
-				upper size >= 2 and: [
-						(cross
-							 value: (upper at: upper size - 1)
-							 value: (upper at: upper size)
-							 value: point) <= 0 ] ] whileTrue: [ upper removeLast ].
-			upper add: point ].
-
-	self convexHull:
-		(lower , (upper copyFrom: 2 to: (upper size - 1 max: 1)) collect: [
-				 :p |
-				 GeoPoint
-					 latitude: (p latitude truncateTo: 0.001)
-					 longitude: (p longitude truncateTo: 0.001)
-					 altitude: p altitude ])
+	self convexHull: (Hull with: self poi epsilon: 0)
 ]
 
 { #category : 'setter' }
 MissionFactory >> computeHull [
 
-	| adjustedTarget low high mid result bestResult |
-	adjustedTarget := self targetCount + self spikeBuffer.
+	^ self computeHull: self hullPolicy
+]
 
-	(self convexHullRouteFromRawPoints: self poi epsilon: 0) size
-	>= adjustedTarget ifTrue: [
-		^ self convexHullRouteFromRawPoints: self poi epsilon: 0 ].
+{ #category : 'setter' }
+MissionFactory >> computeHull: aPolicy [
+
+	aPolicy = #targetCount ifTrue: [
+		^ self computeHullByTargetCount: self targetCount ].
+	aPolicy= #pointsRatio ifTrue: [
+		^ self computeHullByPointRatio: self pointsRatio ].
+	aPolicy = #perimeterRatio ifTrue: [
+		^ self computeHullByPerimeterRatio:  self perimeterRatio ].
+	Error signal: 'Unknown hull policy: ' , self hullPolicy printString
+]
+
+{ #category : 'setter' }
+MissionFactory >> computeHullByPerimeterRatio: aPerimeterRatio [
+
+	| strictHull strictPerimeter targetPerimeter low high mid result bestResult ignoreThreshold |
+	self assert: aPerimeterRatio >= 1.
+	"Hull strict = référence"
+	strictHull := Hull with: self poi epsilon: 0.
+	strictHull compute.
+
+	strictPerimeter := strictHull totalDistance.
+	targetPerimeter := strictPerimeter * aPerimeterRatio.
+	ignoreThreshold := targetPerimeter /100.
+
+
 
 	low := 0.0.
 	high := 1.0.
-	bestResult := self convexHullRouteFromRawPoints: self poi epsilon: 0.
+	bestResult := strictHull.
+
+	20 timesRepeat: [
+			| p |
+			mid := low + high / 2.0.
+			result := Hull with: self poi epsilon: mid.
+			result compute.
+			p := result totalDistance.
+			(p - targetPerimeter) abs < ignoreThreshold ifTrue: [ "< 500m de tolérance"
+					self hull: result.
+					^ self smoothHull ].
+			p < targetPerimeter
+				ifTrue: [ low := mid. (targetPerimeter - p ) abs < (bestResult totalDistance - targetPerimeter) abs ifTrue: [
+							bestResult := result ] ]
+				ifFalse: [
+						high := mid.
+						 ] .
+					
+					"(targetPerimeter - p ) abs < (bestResult totalDistance - targetPerimeter) abs ifTrue: [
+							bestResult := result ]"].
+
+	self hull: bestResult.
+	^self smoothHull
+]
+
+{ #category : 'setter' }
+MissionFactory >> computeHullByPointRatio: pointRatio [
+	"pointRatio: fraction du hull strict à conserver, ex: 0.6 = 60% des points"
+
+	^ self computeHullByTargetCount:
+		  (((Hull with: self poi epsilon: 0) points size * pointRatio)
+			   rounded max: 3)
+]
+
+{ #category : 'setter' }
+MissionFactory >> computeHullByTargetCount: aTargetCount [
+
+	| adjustedTarget low high mid result bestResult |
+	adjustedTarget := aTargetCount + self spikeBuffer.
+
+	bestResult := Hull with: self poi epsilon: 0.
+	bestResult compute.
+	bestResult points size >= adjustedTarget ifTrue: [
+			self hull: bestResult.
+			^ self smoothHull ].
+
+	low := 0.0.
+	high := 1.0.
 
 	20 timesRepeat: [
 			mid := low + high / 2.0.
-			result := self convexHullRouteFromRawPoints: self poi epsilon: mid.
-			result size = adjustedTarget ifTrue: [ ^ self hull: result ].
-			result size > adjustedTarget
+			result := Hull with: self poi epsilon: mid.
+			result compute.
+			result points size = adjustedTarget ifTrue: [
+					self hull: result.
+					^ self smoothHull ].
+			result points size > adjustedTarget
 				ifTrue: [ high := mid ]
 				ifFalse: [
 						low := mid.
-						result size > bestResult size ifTrue: [ bestResult := result ] ] ].
+						result points size > bestResult points size ifTrue: [
+							bestResult := result ] ] ].
 
-	^ self hull: bestResult
+	self hull: bestResult.
+	^ self smoothHull
 ]
 
 { #category : 'accessing' }
@@ -145,72 +187,6 @@ MissionFactory >> convexHull [
 MissionFactory >> convexHull: anObject [
 
 	convexHull := anObject
-]
-
-{ #category : 'facilities' }
-MissionFactory >> convexHullRouteFromRawPoints: points epsilon: ep [
-	"epsilon=0 → hull strict. epsilon>0 → hull relâché (garde plus de points).
-     epsilon est en degrés² (produit vectoriel lon/lat).
-     Typiquement: 0=strict, 0.0001=léger, 0.001=relâché, 0.01=très relâché."
-
-	| sorted cross lower upper seen result |
-	sorted := points asSortedCollection: [ :a :b |
-			          a longitude ~= b longitude
-				          ifTrue: [ a longitude < b longitude ]
-				          ifFalse: [ a latitude < b latitude ] ].
-
-	cross := [ :o :a :b |
-		         a longitude - o longitude * (b latitude - o latitude)
-		         - (a latitude - o latitude * (b longitude - o longitude)) ].
-
-	lower := OrderedCollection new.
-	sorted do: [ :point |
-			[
-				lower size >= 2 and: [
-						(cross
-							 value: (lower at: lower size - 1)
-							 value: lower last
-							 value: point) <= ep negated ] ] whileTrue: [ lower removeLast ].
-			lower add: point ].
-
-	upper := OrderedCollection new.
-	sorted reverseDo: [ :point |
-			[
-				upper size >= 2 and: [
-						(cross
-							 value: (upper at: upper size - 1)
-							 value: upper last
-							 value: point) <= ep negated ] ] whileTrue: [
-				upper removeLast ].
-			upper add: point ].
-
-	upper removeFirst.
-	upper removeLast.
-
-	seen := Set new.
-	result := OrderedCollection new.
-	lower , upper do: [ :p |
-			| key |
-			key := p longitude @ p latitude.
-			(seen includes: key) ifFalse: [
-					seen add: key.
-					result add: p ] ].
-
-	^ result collect: [ :p |
-			  GeoPoint
-				  latitude: (p latitude truncateTo: 0.001)
-				  longitude: (p longitude truncateTo: 0.001)
-				  altitude: p altitude ]
-]
-
-{ #category : 'computing' }
-MissionFactory >> convexHullRouteWithRatio: aRatio [
-
-	self assert: aRatio < 1.
-	self targetCount: self poi size.
-	self computeHull.
-	self targetCount: self hull size * aRatio.
-	self computeHull
 ]
 
 { #category : 'accessing' }
@@ -237,6 +213,30 @@ MissionFactory >> hull: anObject [
 	hull := anObject
 ]
 
+{ #category : 'policy' }
+MissionFactory >> hullPolicy [
+    ^ hullPolicy ifNil: [ #perimeterRatio ]
+    "ou #targetCount"
+]
+
+{ #category : 'policy' }
+MissionFactory >> hullPolicy: aPolicy [
+
+	self assert:
+		(aPolicy in: { #perimeterRatio. #pointsRatio. #targetPoints }).
+	hullPolicy := aPolicy
+]
+
+{ #category : 'initialize' }
+MissionFactory >> initialize [
+
+	super initialize.
+	maxSpikeAngle := 130. "Max bound for internal angles"
+	pointsRatio := 0.6. "keep only 60% of convex hull"
+	perimeterRatio := 2. "accept a *2 length vs convex hull perimeter"
+	targetCount := 20 "targets keeping +- 20 points"
+]
+
 { #category : 'accessing' }
 MissionFactory >> maxSpikeAngle [
 
@@ -247,6 +247,18 @@ MissionFactory >> maxSpikeAngle [
 MissionFactory >> maxSpikeAngle: anObject [
 
 	maxSpikeAngle := anObject
+]
+
+{ #category : 'accessing' }
+MissionFactory >> perimeterRatio [
+
+	^ perimeterRatio
+]
+
+{ #category : 'accessing' }
+MissionFactory >> perimeterRatio: anObject [
+
+	perimeterRatio := anObject
 ]
 
 { #category : 'accessing' }
@@ -261,13 +273,24 @@ MissionFactory >> poi: anObject [
 	poi := anObject
 ]
 
+{ #category : 'accessing' }
+MissionFactory >> pointsRatio [
+
+	^ pointsRatio
+]
+
+{ #category : 'accessing' }
+MissionFactory >> pointsRatio: anObject [
+
+	pointsRatio := anObject
+]
+
 { #category : 'setter' }
 MissionFactory >> smoothHull [
 
 	| result tmp toRemove |
-	tmp := self
-		        convexHullRoute asOrderedCollection.
-
+	tmp := self hull points.
+	
 	[
 		toRemove := OrderedCollection new.
 		2 to: tmp size - 1 do: [ :i |
@@ -284,7 +307,8 @@ MissionFactory >> smoothHull [
 		tmp := result.
 		toRemove notEmpty ] whileTrue.
 
-	self hull: result
+	self hull: (Hull with:result epsilon:0).
+	self hull compute
 ]
 
 { #category : 'facilities' }
@@ -308,4 +332,18 @@ MissionFactory >> targetCount [
 MissionFactory >> targetCount: anObject [
 
 	targetCount := anObject
+]
+
+{ #category : 'facilities' }
+MissionFactory >> turnAngleDegreesAt: current from: prev to: next [
+
+	| v1 v2 cross dot angle |
+	v1 := current longitude - prev longitude
+	      @ (current latitude - prev latitude).
+	v2 := next longitude - current longitude
+	      @ (next latitude - current latitude).
+	cross := v1 x * v2 y - (v1 y * v2 x).
+	dot := v1 x * v2 x + (v1 y * v2 y).
+	angle := cross arcTan: dot.
+	^ angle radiansToDegrees abs
 ]

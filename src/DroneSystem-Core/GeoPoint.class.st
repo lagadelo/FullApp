@@ -183,6 +183,12 @@ GeoPoint >> longitude: anObject [
 	longitude := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+GeoPoint >> moveTo: stop ratio: ratio [
+
+	^ self + (stop - self / ratio)
+]
+
 { #category : 'distance functions' }
 GeoPoint >> newPointByMovingBy: aDelta [
     "Calcule un nouveau point géoréférencé en se déplaçant de deltaX km vers l'Est

@@ -26,6 +26,12 @@ Class {
 	#package : 'DroneSystem-Macro'
 }
 
+{ #category : 'visiting' }
+MacroSimulatorStep >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorStep: self
+]
+
 { #category : 'drones accessing' }
 MacroSimulatorStep >> aheadOfPosition: p [
 

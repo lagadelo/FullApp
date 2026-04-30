@@ -7,11 +7,29 @@ Class {
 		'maxLon',
 		'height',
 		'width',
-		'minLat'
+		'minLat',
+		'corner',
+		'origin'
 	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
+
+{ #category : 'building' }
+QuickMap class >> buildFrom: tmp [
+
+	| mapForm |
+	mapForm := self new
+		           minLat: tmp boundingBox origin y;
+		           maxLat: tmp boundingBox corner y;
+		           minLon: tmp boundingBox origin x;
+		           maxLon: tmp boundingBox corner x;
+		           yourself.
+
+
+	mapForm openWithScroller.
+	mapForm buildFrom: tmp
+]
 
 { #category : 'facilities' }
 QuickMap class >> commaSeparated: aCollection [
@@ -294,19 +312,6 @@ QuickMap class >> fetchBaseAndRoadsAtBBox: bbox size: size epsg: epsg wmsEndpoin
     ^ self compositeBase: base withOverlay: roads
 ]
 
-{ #category : 'fetching' }
-QuickMap class >> fetchTileX: x y: y z: z [
-
-	| client bytes |
-	client := ZnClient new.
-	client
-		url: (self tileUrlX: x y: y z: z);
-		headerAt: 'User-Agent' put: 'Pharo QuickMap';
-		get.
-	bytes := client contents.
-	^ PNGReadWriter formFromStream: bytes readStream
-]
-
 { #category : 'canvas drawing - general' }
 QuickMap class >> fetchWmsLayers: layerNames bbox: bbox size: size epsg: epsg format: aFormat [
     "Convenience using the default endpoint."
@@ -349,38 +354,6 @@ QuickMap class >> fetchWmsLayers: layerNames bbox: bbox size: size epsg: epsg fo
     "response isSuccess ifFalse: [ self error: response statusLine ]."
     body := response contents.
     ^ PNGReadWriter formFromStream: body readStream
-]
-
-{ #category : 'canvas drawing - general' }
-QuickMap class >> formForMinLat: minLat minLon: minLon maxLat: maxLat maxLon: maxLon zoom: zoom [
-
-	| topLeft bottomRight minX maxX minY maxY tileWidth tileHeight canvas |
-	topLeft := self lon: minLon lat: maxLat toTileAtZoom: zoom.
-	bottomRight := self lon: maxLon lat: minLat toTileAtZoom: zoom.
-
-	minX := topLeft x.
-	maxX := bottomRight x.
-	minY := topLeft y.
-	maxY := bottomRight y.
-
-	tileWidth := 256.
-	tileHeight := 256.
-
-	canvas := Form
-		          extent:
-		          maxX - minX + 1 * tileWidth
-		          @ (maxY - minY + 1 * tileHeight)
-		          depth: 32.
-
-	minX to: maxX do: [ :x |
-			minY to: maxY do: [ :y |
-					| tile dx dy |
-					tile := self fetchTileX: x y: y z: zoom.
-					dx := x - minX * tileWidth.
-					dy := y - minY * tileHeight.
-					tile displayOn: canvas at: dx @ dy ] ].
-
-	^ canvas
 ]
 
 { #category : 'url' }
@@ -480,13 +453,6 @@ QuickMap class >> osmWmsEndpoint [
     ^ 'https://ows.terrestris.de/osm/service'
 ]
 
-{ #category : 'url' }
-QuickMap class >> tileUrlX: x y: y z: z [
-
-	^ 'https://tile.openstreetmap.org/' , z asString , '/' , x asString
-	  , '/' , y asString , '.png'
-]
-
 { #category : 'examples' }
 QuickMap class >> wrapExampleWithScrollers: aSymbol [
 	"self wrapExampleWithScrollers: #exampleParis"
@@ -535,6 +501,79 @@ QuickMap class >> wrapWithScrollers: aForm [
 	scroll extent: 700 @ 600.
 	scroll inspect.
 	scroll openInWindowLabeled: 'DuickMap with scrollers'
+]
+
+{ #category : 'as yet unclassified' }
+QuickMap >> buildFrom: tmp [
+
+tmp poi keysAndValuesDo: [ :k :v |  self  addModel: k withID: v ].
+	tmp poi do: [ :m |
+			 self 
+				addShape: ((RSCircle size: 40)
+						 position: ( self  cartesianCoordinates: m);
+						 color: Color blue;
+						 yourself)
+				withModel: m ].
+	tmp hull points do: [ :m |
+			 self 
+				addShape: ((RSCircle size: 30)
+						 position: ( self  cartesianCoordinates: m);
+						 color: Color red;
+						 yourself)
+				withModel: m ].
+	tmp hull points keysAndValuesDo: [ :i :k |
+			 self 
+				addShape: ((RSLine
+						  newFrom: ( self  getShapeFromModel: k)
+						  to:
+							  ( self  getShapeFromModel:
+									   (tmp hull at: i \\ tmp hull size + 1)))
+						 color: Color red;
+						 yourself)
+				withModel: 100 + i ]
+]
+
+{ #category : 'getter' }
+QuickMap >> cartesianCoordinates: aGeoPoint [
+
+	^ self
+		  cartesianLongitude: aGeoPoint longitude
+		  latitude: aGeoPoint latitude
+]
+
+{ #category : 'getter' }
+QuickMap >> cartesianLongitude: lon latitude: lat [
+
+	| pos |
+	pos := self toMercatorLongitude: lon latitude: lat.
+
+
+
+
+	^ pos x - self origin x / self width * self imageSize x
+	  @ (corner y - pos y / self height * self imageSize y)
+]
+
+{ #category : 'accessing' }
+QuickMap >> corner [
+
+	^ corner
+]
+
+{ #category : 'accessing' }
+QuickMap >> corner: anObject [
+
+	corner := anObject
+]
+
+{ #category : 'as yet unclassified' }
+QuickMap >> getExtend [
+
+	 
+	self origin:  (self toMercatorLongitude: minLon latitude: minLat).
+	self corner: (self toMercatorLongitude: maxLon latitude: maxLat).
+	self width: (self origin x - self corner x) abs.
+	self height: (self origin y - self corner y) abs
 ]
 
 { #category : 'accessing' }
@@ -607,6 +646,18 @@ QuickMap >> model [
 QuickMap >> model: anObject [
 
 	model := anObject
+]
+
+{ #category : 'accessing' }
+QuickMap >> origin [
+
+	^ origin
+]
+
+{ #category : 'accessing' }
+QuickMap >> origin: anObject [
+
+	origin := anObject
 ]
 
 { #category : 'tiles' }

@@ -1,6 +1,9 @@
 Class {
 	#name : 'QuickCircular',
 	#superclass : 'QuickSimulationGround',
+	#instVars : [
+		'radius'
+	],
 	#category : 'DroneSystem-UI',
 	#package : 'DroneSystem-UI'
 }
@@ -31,44 +34,52 @@ tmp
 self background: form.
 ]
 
-{ #category : 'getter' }
-QuickCircular >> buildBackgroundOld [
-
-	| form |
-	form := Form extent: 500 @ 500 depth: 32.
-	form fillColor: Color white.
-	self background: "(RSBitmap new form: form)."form.
-]
-
 { #category : 'building' }
 QuickCircular >> buildFrom: tmp [
 	"We represent the model as a ring of circles"
 
-	| radius distances totalDistance hullShapes |
+	| radius hullShapes hull |
 	self openWithScroller.
 	radius := 200.
-	distances := OrderedCollection with: 0.
 	"First we need to compute distance from start"
-	2 to: tmp hull size do: [ :i |
-			distances add: distances last
-				+ ((tmp hull at: i) haversineMetersTo: (tmp hull at: i - 1)) ].
-	"Then total distance as this is mandatory to compute ratios"
-	totalDistance := distances last
-	                 + (tmp hull last haversineMetersTo: tmp hull first).
 
+	hull := tmp hull.
 	"We build the circles, one per point"
-	hullShapes := RSCircle models: tmp hull.
+	hullShapes := RSCircle models: tmp hull points.
 	hullShapes color: Color red.
 	hullShapes size: 20.
-	hullShapes keysAndValuesDo: [ :i :v |
+	hullShapes do: [ :aShape |
 			| ratio rad |
 			"Comes from p = 2 Pi r"
-			ratio := (distances at: i)   / totalDistance.
+			ratio := (hull distanceFromOrigin at: aShape model)
+			         / hull totalDistance.
 			rad := ratio * 2 * Float pi.
-			v position: rad cos * radius @ (rad sin * radius negated).
+			aShape position: rad cos * radius @ (rad sin * radius negated).
 			" Then we conform to our API"
-			v model: (Array with: v model with: rad with: (distances at:i)).
-			self addShape: v withModel: v model. v   @ RSPopup new. ]
+			"aShape model: (Array with: v model with: rad with: (distances at:i))."
+			self addShape: aShape withModel: (Array
+					 with: aShape model
+					 with: rad
+					 with: (hull distanceFromOrigin at: aShape model)).
+			aShape @ RSPopup new ]
+]
+
+{ #category : 'initialize' }
+QuickCircular >> initialize [
+
+	super initialize.
+	self radius: 200
+]
+
+{ #category : 'getter' }
+QuickCircular >> positionOf: element [
+
+	| ratio rad |
+	"Comes from p = 2 Pi r"
+	ratio := (self hull distanceFromOrigin at: element)
+	         / self hull totalDistance.
+	rad := ratio * 2 * Float pi.
+	^ rad cos * self radius @ (rad sin * self radius negated)
 ]
 
 { #category : 'building' }

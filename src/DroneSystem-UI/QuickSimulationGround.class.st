@@ -76,7 +76,7 @@ QuickSimulationGround >> build [
 
 
 			morph := canvas createMorph.
-			morph extent: self background extent "important: sinon pas de scroll" ]
+			morph extent: self background extent "important: sinon pas de scroll" . canvas zoomToFit.]
 ]
 
 { #category : 'accessing' }
@@ -194,4 +194,34 @@ QuickSimulationGround >> update [
 QuickSimulationGround >> updateShapePosition: aShape [
 
 	self subclassResponsibility
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> visit: aNode [
+
+	^aNode accept: self
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> visitDrone: aNode [
+
+	 
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> visitMacroSimulationStep: aNode [
+
+	 
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> visitMacroSimulator: aNode [
+
+	 
+]
+
+{ #category : 'visiting' }
+QuickSimulationGround >> visitMission: aNode [
+
+	 
 ]

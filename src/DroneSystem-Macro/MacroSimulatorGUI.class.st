@@ -18,6 +18,12 @@ MacroSimulatorGUI class >> openOn: aMacroSimulatorStep [
 		yourself
 ]
 
+{ #category : 'visiting' }
+MacroSimulatorGUI >> accept: aVisitor [
+
+	^ aVisitor visitMacroSimulatorGUI: self
+]
+
 { #category : 'initialization' }
 MacroSimulatorGUI >> initializeMap [ 
 
