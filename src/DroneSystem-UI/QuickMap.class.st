@@ -504,30 +504,30 @@ QuickMap class >> wrapWithScrollers: aForm [
 ]
 
 { #category : 'as yet unclassified' }
-QuickMap >> buildFrom: tmp [
+QuickMap >> buildFromModel [
 
-tmp poi keysAndValuesDo: [ :k :v |  self  addModel: k withID: v ].
-	tmp poi do: [ :m |
-			 self 
+	self model poi keysAndValuesDo: [ :k :v | self addModel: k withID: v ].
+	self model poi do: [ :m |
+			self
 				addShape: ((RSCircle size: 40)
-						 position: ( self  cartesianCoordinates: m);
+						 position: (self cartesianCoordinates: m);
 						 color: Color blue;
 						 yourself)
 				withModel: m ].
-	tmp hull points do: [ :m |
-			 self 
-				addShape: ((RSCircle size: 30)
-						 position: ( self  cartesianCoordinates: m);
-						 color: Color red;
-						 yourself)
-				withModel: m ].
-	tmp hull points keysAndValuesDo: [ :i :k |
-			 self 
+	self model hull points do: [ :m |
+			| shape |
+			shape := (RSCircle size: 30)
+				         position: (self cartesianCoordinates: m);
+				         color: Color red;
+				         yourself.
+			self addShape: shape withModel: m.
+			shape @ self nodePopup ].
+	self model hull points keysAndValuesDo: [ :i :k |
+			self
 				addShape: ((RSLine
-						  newFrom: ( self  getShapeFromModel: k)
-						  to:
-							  ( self  getShapeFromModel:
-									   (tmp hull at: i \\ tmp hull size + 1)))
+						  newFrom: (self getShapeFromModel: k)
+						  to: (self getShapeFromModel:
+									   (self model hull at: i \\ self model hull size + 1)))
 						 color: Color red;
 						 yourself)
 				withModel: 100 + i ]

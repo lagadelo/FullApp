@@ -140,7 +140,7 @@ self assert: self origin y > self maxLat.
 ]
 
 { #category : 'building' }
-QuickOpenStreetMap >> buildFrom: tmp [
+QuickOpenStreetMap >> buildFromOld: tmp [
 
 tmp poi keysAndValuesDo: [ :k :v |  self  addModel: k withID: v ].
 	tmp poi do: [ :m |

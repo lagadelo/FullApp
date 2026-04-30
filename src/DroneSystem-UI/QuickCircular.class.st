@@ -21,33 +21,34 @@ QuickCircular class >> exampleBrittany [
 
 { #category : 'getter' }
 QuickCircular >> buildBackground [
-| form   tmp |
-form := Form extent: 500 @ 500 depth: 32.
-form fillColor: Color white.
 
-tmp := FormCanvas on: form.
-tmp
-    frameOval: (Rectangle center: 250 @ 250 extent: 400 @ 400)
-    width: 4
-    color: Color black.
+	| form tmp |
+	form := Form extent: 500 @ 500 depth: 32.
+	form fillColor: Color white.
 
-self background: form.
+	tmp := FormCanvas on: form.
+	tmp
+		frameOval: (Rectangle center: 250 @ 250 extent: 400 @ 400)
+		width: 2
+		color: Color black.
+
+	self background: form
 ]
 
 { #category : 'building' }
-QuickCircular >> buildFrom: tmp [
+QuickCircular >> buildFromModel [
 	"We represent the model as a ring of circles"
 
-	| radius hullShapes hull |
+	| hullShapes hull |
 	self openWithScroller.
-	radius := 200.
+
 	"First we need to compute distance from start"
 
-	hull := tmp hull.
+	hull := self model hull.
 	"We build the circles, one per point"
-	hullShapes := RSCircle models: tmp hull points.
+	hullShapes := RSCircle models: self model hull points.
 	hullShapes color: Color red.
-	hullShapes size: 20.
+	hullShapes size: self hullShapeSize.
 	hullShapes do: [ :aShape |
 			| ratio rad |
 			"Comes from p = 2 Pi r"
@@ -57,11 +58,14 @@ QuickCircular >> buildFrom: tmp [
 			aShape position: rad cos * radius @ (rad sin * radius negated).
 			" Then we conform to our API"
 			"aShape model: (Array with: v model with: rad with: (distances at:i))."
-			self addShape: aShape withModel: (Array
-					 with: aShape model
-					 with: rad
-					 with: (hull distanceFromOrigin at: aShape model)).
-			aShape @ RSPopup new ]
+			self addShape: aShape withModel: aShape model.
+			aShape @ self nodePopup ]
+]
+
+{ #category : 'accessing' }
+QuickCircular >> hullShapeSize [
+
+	^ self radius / 15
 ]
 
 { #category : 'initialize' }
@@ -80,6 +84,18 @@ QuickCircular >> positionOf: element [
 	         / self hull totalDistance.
 	rad := ratio * 2 * Float pi.
 	^ rad cos * self radius @ (rad sin * self radius negated)
+]
+
+{ #category : 'accessing' }
+QuickCircular >> radius [
+
+	^ radius
+]
+
+{ #category : 'accessing' }
+QuickCircular >> radius: anObject [
+
+	radius := anObject
 ]
 
 { #category : 'building' }

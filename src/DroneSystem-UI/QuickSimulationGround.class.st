@@ -6,6 +6,7 @@ Class {
 		'canvas',
 		'morph',
 		'model',
+		'ids',
 		'rsObjects',
 		'background',
 		'imageSize'
@@ -37,7 +38,7 @@ QuickSimulationGround >> acceptMacroSimulator: step [
 { #category : 'model' }
 QuickSimulationGround >> addModel: aModel withID: anID [
 
-	self model add: anID -> aModel
+	self ids add: anID -> aModel
 ]
 
 { #category : 'model' }
@@ -95,7 +96,16 @@ QuickSimulationGround >> build [
 { #category : 'building' }
 QuickSimulationGround >> buildFrom: tmp [
  
-self subclassResponsibility 
+self model: tmp.
+self buildFromModel.
+
+]
+
+{ #category : 'building' }
+QuickSimulationGround >> buildFromModel [
+
+^self subclassResponsibility 
+
 ]
 
 { #category : 'accessing' }
@@ -119,7 +129,7 @@ QuickSimulationGround >> forceRefresh [
 { #category : 'model' }
 QuickSimulationGround >> getID: anID [
 
-	^(self model at: anID) 
+	^(self ids at: anID) 
 ]
 
 { #category : 'model' }
@@ -132,6 +142,18 @@ QuickSimulationGround >> getShapeFromID: anID [
 QuickSimulationGround >> getShapeFromModel: aModel [
 
 	^(self rsObjects at: aModel) 
+]
+
+{ #category : 'accessing' }
+QuickSimulationGround >> ids [
+
+	^ ids
+]
+
+{ #category : 'accessing' }
+QuickSimulationGround >> ids: anObject [
+
+	ids := anObject
 ]
 
 { #category : 'accessing' }
@@ -149,11 +171,11 @@ QuickSimulationGround >> imageSize: anObject [
 { #category : 'initialize' }
 QuickSimulationGround >> initialize [
 
-"model links ID to model elements (eg. drones)
+"ids links ID to model elements (eg. drones)
 rsObjects links model elements to forms (eg. RSCircle)"
 
 
-	model := Dictionary new.
+	ids := Dictionary new.
 	rsObjects  := Dictionary new.
 	self autoRefresh: true.
 ]
@@ -182,6 +204,20 @@ QuickSimulationGround >> morph: anObject [
 	morph := anObject
 ]
 
+{ #category : 'building' }
+QuickSimulationGround >> nodePopup [
+
+	| view |
+	view := self.
+	^ RSPopup new
+		  text: [ :m |
+				  '#' , (view model hull points indexOf: m) printString
+				  , String lf , m printString , String lf
+				  , (view model hull distanceFromOrigin at: m) rounded printString
+				  , ' km' ];
+		  yourself
+]
+
 { #category : 'gui' }
 QuickSimulationGround >> open [ 
 
@@ -206,7 +242,7 @@ QuickSimulationGround >> openWithScroller [
 { #category : 'model' }
 QuickSimulationGround >> removeID: anID [
 
-	self model removeKey: anID
+	self ids removeKey: anID
 ]
 
 { #category : 'accessing' }
