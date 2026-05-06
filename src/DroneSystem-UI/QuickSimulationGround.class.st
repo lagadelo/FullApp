@@ -31,6 +31,7 @@ QuickSimulationGround class >> represent: aModel [
 { #category : 'visiting' }
 QuickSimulationGround >> acceptMacroSimulator: step [
 
+	 self subclassResponsibility 
 
 
 ]
@@ -65,7 +66,12 @@ QuickSimulationGround >> autoRefresh: anObject [
 { #category : 'accessing' }
 QuickSimulationGround >> background [
 
-	background ifNil: [ self buildBackground ].
+	| empty |
+	empty := true.
+	background ifNil: [
+			empty
+				ifTrue: [ self buildEmptyBackground ]
+				ifFalse: [ self buildBackground ] ].
 	^ background
 ]
 
@@ -278,23 +284,24 @@ QuickSimulationGround >> visit: aNode [
 { #category : 'visiting' }
 QuickSimulationGround >> visitDrone: aNode [
 
-	 
+	 self subclassResponsibility 
 ]
 
 { #category : 'visiting' }
 QuickSimulationGround >> visitMacroSimulationStep: aNode [
 
-	 
+	 	 self subclassResponsibility 
 ]
 
 { #category : 'visiting' }
 QuickSimulationGround >> visitMacroSimulator: aNode [
 
-	 
+	 	 self subclassResponsibility 
 ]
 
 { #category : 'visiting' }
 QuickSimulationGround >> visitMission: aNode [
 
+	 self subclassResponsibility 
 	 
 ]

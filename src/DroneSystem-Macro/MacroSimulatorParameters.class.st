@@ -742,6 +742,7 @@ MacroSimulatorParameters class >> generateRawBrittanyPoints: n [
 
 	| randomGenerator |
 	randomGenerator := Random new.
+	randomGenerator seed: 1000000.
 	^ (1 to: n) collect: [ :i |
 			  GeoPoint
 				  latitude: 47.5 + (randomGenerator next * 1.0)

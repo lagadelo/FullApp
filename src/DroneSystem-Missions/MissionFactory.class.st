@@ -173,7 +173,7 @@ MissionFactory >> computeHullByTargetCount: aTargetCount [
 						result points size > bestResult points size ifTrue: [
 							bestResult := result ] ] ].
 
-	self hull: bestResult.
+	self hull: bestResult. self halt. 
 	^ self smoothHull
 ]
 
@@ -215,7 +215,7 @@ MissionFactory >> hull: anObject [
 
 { #category : 'policy' }
 MissionFactory >> hullPolicy [
-    ^ hullPolicy ifNil: [ #perimeterRatio ]
+    ^ hullPolicy ifNil: [ #targetCount ]
     "ou #targetCount"
 ]
 
@@ -232,7 +232,7 @@ MissionFactory >> initialize [
 
 	super initialize.
 	maxSpikeAngle := 130. "Max bound for internal angles"
-	pointsRatio := 0.6. "keep only 60% of convex hull"
+	pointsRatio := 0.5. "keep only 60% of convex hull"
 	perimeterRatio := 2. "accept a *2 length vs convex hull perimeter"
 	targetCount := 20 "targets keeping +- 20 points"
 ]
@@ -300,14 +300,14 @@ MissionFactory >> smoothHull [
 					        from: (tmp at: i - 1)
 					        to: (tmp at: i + 1).
 				turn > self maxSpikeAngle ifTrue: [ toRemove add: i ] ].
-
+self halt. 
 		result := OrderedCollection new.
 		tmp keysAndValuesDo: [ :i :p |
 			(toRemove includes: i) ifFalse: [ result add: p ] ].
 		tmp := result.
 		toRemove notEmpty ] whileTrue.
 
-	self hull: (Hull with:result epsilon:0).
+	self halt. self hull: (Hull with:result epsilon:0).
 	self hull compute
 ]
 
