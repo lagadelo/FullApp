@@ -1,7 +1,3 @@
-"
-This class has only one methos in class. 
-It loads the prerequisite packages
-"
 Class {
 	#name : 'Prerequisites',
 	#superclass : 'Object',
