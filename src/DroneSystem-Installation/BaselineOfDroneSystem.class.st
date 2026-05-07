@@ -30,15 +30,15 @@ BaselineOfDroneSystem >> baseline: spec [
 	spec
 		repository: 'git@github.com:lagadelo/FullApp.git/src';
 		package: 'DroneSystem-Core';
-		package: 'DroneSystem-Demo';
+	"	package: 'DroneSystem-Demo';
 		package: 'DroneSystem-Examples';
 		package: 'DroneSystem-Missions';
-		package: 'DroneSystem-Simulation';
+		package: 'DroneSystem-Simulation';"
 		"		package: 'DroneSystem-Simulation Events';
 		package: 'DroneSystem-Simulation Strategy';
 		package: 'DroneSystem-Strategies';"
-		package: 'DroneSystem-UI';
+	"	package: 'DroneSystem-UI';
 		package: 'DroneSystem-Utils';
-		package: 'DroneSystem-Verification';
+		package: 'DroneSystem-Verification';"
 		package: 'DroneSystem-Installation'
 ]
