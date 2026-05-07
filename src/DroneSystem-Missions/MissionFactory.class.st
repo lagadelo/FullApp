@@ -84,13 +84,14 @@ MissionFactory >> computeHull [
 { #category : 'setter' }
 MissionFactory >> computeHull: aPolicy [
 
+self assert: ((Array with: #targetCount with: #pointsRatio with: #perimeterRation) includes: aPolicy). 
 	aPolicy = #targetCount ifTrue: [
-		^ self computeHullByTargetCount: self targetCount ].
+		 self computeHullByTargetCount: self targetCount ].
 	aPolicy= #pointsRatio ifTrue: [
-		^ self computeHullByPointRatio: self pointsRatio ].
+		 self computeHullByPointRatio: self pointsRatio ].
 	aPolicy = #perimeterRatio ifTrue: [
-		^ self computeHullByPerimeterRatio:  self perimeterRatio ].
-	Error signal: 'Unknown hull policy: ' , self hullPolicy printString
+		 self computeHullByPerimeterRatio:  self perimeterRatio ].
+	self smoothHull 
 ]
 
 { #category : 'setter' }
@@ -132,12 +133,18 @@ MissionFactory >> computeHullByPerimeterRatio: aPerimeterRatio [
 							bestResult := result ]"].
 
 	self hull: bestResult.
-	^self smoothHull
+	
 ]
 
 { #category : 'setter' }
 MissionFactory >> computeHullByPointRatio: pointRatio [
-	"pointRatio: fraction du hull strict à conserver, ex: 0.6 = 60% des points"
+	"pointRatio: 
+	<1 would mean to ignore some convex hull points ie: getting points outside os the hull.
+	=1 does nothing
+	>1 accept relaxing hull, ie supporting non convex shapes"
+	 
+
+	self assert: pointRatio > 1.
 
 	^ self computeHullByTargetCount:
 		  (((Hull with: self poi epsilon: 0) points size * pointRatio)
@@ -148,7 +155,7 @@ MissionFactory >> computeHullByPointRatio: pointRatio [
 MissionFactory >> computeHullByTargetCount: aTargetCount [
 
 	| adjustedTarget low high mid result bestResult |
-	adjustedTarget := aTargetCount + self spikeBuffer.
+	adjustedTarget := aTargetCount   + self spikeBuffer.
 
 	bestResult := Hull with: self poi epsilon: 0.
 	bestResult compute.
@@ -173,8 +180,8 @@ MissionFactory >> computeHullByTargetCount: aTargetCount [
 						result points size > bestResult points size ifTrue: [
 							bestResult := result ] ] ].
 
-	self hull: bestResult. self halt. 
-	^ self smoothHull
+	self hull: bestResult. 
+ 
 ]
 
 { #category : 'accessing' }
@@ -215,7 +222,7 @@ MissionFactory >> hull: anObject [
 
 { #category : 'policy' }
 MissionFactory >> hullPolicy [
-    ^ hullPolicy ifNil: [ #targetCount ]
+    ^ hullPolicy ifNil: [ #pointsRatio ]
     "ou #targetCount"
 ]
 
@@ -232,7 +239,7 @@ MissionFactory >> initialize [
 
 	super initialize.
 	maxSpikeAngle := 130. "Max bound for internal angles"
-	pointsRatio := 0.5. "keep only 60% of convex hull"
+	pointsRatio := 3. "expand by +200% the # points vs pure   convex hull"
 	perimeterRatio := 2. "accept a *2 length vs convex hull perimeter"
 	targetCount := 20 "targets keeping +- 20 points"
 ]
@@ -288,6 +295,7 @@ MissionFactory >> pointsRatio: anObject [
 { #category : 'setter' }
 MissionFactory >> smoothHull [
 
+
 	| result tmp toRemove |
 	tmp := self hull points.
 	
@@ -300,15 +308,51 @@ MissionFactory >> smoothHull [
 					        from: (tmp at: i - 1)
 					        to: (tmp at: i + 1).
 				turn > self maxSpikeAngle ifTrue: [ toRemove add: i ] ].
-self halt. 
+
 		result := OrderedCollection new.
 		tmp keysAndValuesDo: [ :i :p |
-			(toRemove includes: i) ifFalse: [ result add: p ] ].
+			(toRemove includes: i) ifFalse: [ result add: p ] ]. self halt. 
 		tmp := result.
 		toRemove notEmpty ] whileTrue.
 
-	self halt. self hull: (Hull with:result epsilon:0).
+	self halt. "self   hull: (Hull with:result epsilon:1). "   "keep all points, 1 is an impossidble value hence ensure noto alter the hull still using the common API"
+	self hull: Hull new.
+	self hull points: result.
 	self hull compute
+]
+
+{ #category : 'setter' }
+MissionFactory >> smoothHullLegacy [
+
+
+	| result tmp toRemove |
+	tmp := self hull points.
+	
+	[
+		toRemove := OrderedCollection new.
+		2 to: tmp size - 1 do: [ :i |
+				| turn |
+				turn := self
+					        turnAngleDegreesAt: (tmp at: i)
+					        from: (tmp at: i - 1)
+					        to: (tmp at: i + 1).
+				turn > self maxSpikeAngle ifTrue: [ toRemove add: i ] ].
+
+		result := OrderedCollection new.
+		tmp keysAndValuesDo: [ :i :p |
+			(toRemove includes: i) ifFalse: [ result add: p ] ]. self halt. 
+		tmp := result.
+		toRemove notEmpty ] whileTrue.
+
+	self halt. "self   hull: (Hull with:result epsilon:1). "   "keep all points, 1 is an impossidble value hence ensure noto alter the hull still using the common API"
+	self hull: Hull new.
+	self hull points: result.
+	self hull compute
+]
+
+{ #category : 'setter' }
+MissionFactory >> smoothHullNew [
+self hull smoothAngle: self maxSpikeAngle rank: 10
 ]
 
 { #category : 'facilities' }
@@ -337,7 +381,8 @@ MissionFactory >> targetCount: anObject [
 { #category : 'facilities' }
 MissionFactory >> turnAngleDegreesAt: current from: prev to: next [
 
-	| v1 v2 cross dot angle |
+"self error:'shoiuld use the Hull method instead'.
+	"| v1 v2 cross dot angle |
 	v1 := current longitude - prev longitude
 	      @ (current latitude - prev latitude).
 	v2 := next longitude - current longitude

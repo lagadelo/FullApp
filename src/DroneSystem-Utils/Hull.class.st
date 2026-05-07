@@ -117,10 +117,93 @@ Hull >> points: anObject [
 	points := anObject
 ]
 
+{ #category : 'refactoring hull' }
+Hull >> removeFlatShortBendsRatio: ratio [
+
+"Ignore uselees points (too close)"
+    | result toRemove |
+  ^ self.
+  "result := self points asOrderedCollection.
+    [
+        toRemove := OrderedCollection new.
+        2 to: result size - 1 do: [ :i |
+            | a b c ab bc angle |
+            a := result at: i - 1.
+            b := result at: i.
+            c := result at: i + 1.
+            ab := self distanceBetween: a and: b.
+            bc := self distanceBetween: b and:c.
+            angle := self turnAngleDegreesAt: b from: a to: c.
+            (bc < (ab * ratio) and: [angle <<> 180]) ifTrue: [
+                toRemove add: i ] ].
+       
+        ""On retire les points marqués""
+        toRemove do: [ :i | result removeAt: i ].
+   toRemove isEmpty  ] whileFalse.
+    ^ result"
+]
+
+{ #category : 'refactoring hull' }
+Hull >> removeNecksOfIndexGap: k [
+
+"Remove necks (close points at logical distance; ie problematic shpes such as internaal  u turns  "
+	| n toRemove r |
+	n := self points size.
+	r := self searchRadius.
+	toRemove := Set new.
+	1 to: n do: [ :i |
+			i + k + 1 to: n do: [ :j |
+					(self distanceBetween: (points at: i) and: (points at: j)) < r
+						ifTrue: [ i + 1 to: j - 1 do: [ :idx | toRemove add: idx ] ] ] ].
+	^ points copyWithoutAll:
+		  (toRemove asArray collect: [ :idx | points at: idx ])
+]
+
+{ #category : 'refactoring hull' }
+Hull >> removeSharpAngles: maxAngle [
+	"We set up a max angle value"
+
+	| result toRemove |
+	result := self points asOrderedCollection.
+	[
+		toRemove := OrderedCollection new.
+		2 to: result size - 1 do: [ :i |
+				| turn |
+				turn := self
+					        turnAngleDegreesAt: (result at: i)
+					        from: (result at: i - 1)
+					        to: (result at: i + 1).
+				turn > maxAngle | (turn <0) ifTrue: [   toRemove add: i ] ].
+ 
+		toRemove do: [ :i | result removeAt: i ].
+		toRemove isEmpty ] whileFalse.
+	self points: result
+]
+
+{ #category : 'points functions' }
+Hull >> searchRadius [
+
+"This is used to prevent goulets by comparing physical vs logical neighbouring"
+	^ self totalDistance / self points size * 3
+]
+
 { #category : 'accessing' }
 Hull >> size [
 
 	^ self points size
+]
+
+{ #category : 'refactoring hull' }
+Hull >> smoothAngle: maxAngle rank: k [
+
+	| lastSize |
+	[
+		lastSize := self points size.
+		self removeSharpAngles: maxAngle.
+	"	self removeFlatShortBendsRatio: 0.
+		2.
+		self removeNecksOfIndexGap: 0." "ignore k at first - debug oriented"
+		self points size = lastSize ] whileFalse
 ]
 
 { #category : 'accessing' }
@@ -133,6 +216,20 @@ Hull >> totalDistance [
 Hull >> totalDistance: anObject [
 
 	totalDistance := anObject
+]
+
+{ #category : 'points functions' }
+Hull >> turnAngleDegreesAt: current from: prev to: next [
+
+	| v1 v2 cross dot angle |
+	v1 := current longitude - prev longitude
+	      @ (current latitude - prev latitude).
+	v2 := next longitude - current longitude
+	      @ (next latitude - current latitude).
+	cross := v1 x * v2 y - (v1 y * v2 x).
+	dot := v1 x * v2 x + (v1 y * v2 y).
+	angle := cross arcTan: dot.
+	^ angle radiansToDegrees abs
 ]
 
 { #category : 'examples' }
