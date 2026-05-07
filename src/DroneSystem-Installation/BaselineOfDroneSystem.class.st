@@ -28,7 +28,7 @@ BaselineOfDroneSystem class >> baseline: spec [
 BaselineOfDroneSystem >> baseline: spec [
 	<baseline>
 	spec
-		repository: 'git@github.com:lagadelo/FullApp.git/src';
+		repository: 'git@github.com:lagadelo/FullApp.git';
 		package: 'DroneSystem-Core';
 	"	package: 'DroneSystem-Demo';
 		package: 'DroneSystem-Examples';
