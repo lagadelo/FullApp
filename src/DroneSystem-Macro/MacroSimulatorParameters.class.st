@@ -13,6 +13,7 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'nominalSpeed',
+		'hull',
 		'maxSpeed',
 		'minSpeed',
 		'sensingRadius',
@@ -898,6 +899,14 @@ MacroSimulatorParameters >> accept: aVisitor [
 	^ aVisitor visitMacroSimulatorParameters: self
 ]
 
+{ #category : 'dimensionning' }
+MacroSimulatorParameters >> applyDronesForRevisit: targetRevisitSeconds [
+
+	self numberOfDrones:
+		(self dronesForRevisitSeconds: targetRevisitSeconds).
+	^ self
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> captureRadius [
 
@@ -947,6 +956,35 @@ MacroSimulatorParameters >> computeWayPointsPositions [
 			  d := d + interWayPointDistance ]
 ]
 
+{ #category : 'dimensionning' }
+MacroSimulatorParameters >> dilatedBy: deltaMeters [
+	"Retourne un nouveau MacroSimulatorParameters sur le hull dilaté.
+     Tous les autres params sont conservés (seed, speed, policy...)
+     sauf totalDistance et numberOfDrones recalculés."
+
+	| dilated newParams revisit |
+	hull ifNil: [
+		Error signal: 'Dilation nécessite un Hull attaché aux paramètres' ].
+	dilated := hull dilatedHullFor: deltaMeters.
+	newParams := self copy.
+	newParams hull: dilated. "met à jour totalDistance automatiquement"
+	"Ajuste le nombre de drones pour maintenir le même T_revisit"
+
+	revisit := totalDistance / (numberOfDrones * nominalSpeed).
+	newParams applyDronesForRevisit: revisit.
+	^ newParams
+]
+
+{ #category : 'dimensionning' }
+MacroSimulatorParameters >> dronesForRevisitSeconds: targetRevisitSeconds [
+	"Calcule le nombre de drones nécessaires pour garantir
+     un T_revisit cible (en secondes) sur le périmètre courant."
+
+	| spacing |
+	spacing := nominalSpeed * targetRevisitSeconds.
+	^ (totalDistance / spacing) ceiling
+]
+
 { #category : 'simulator  generation' }
 MacroSimulatorParameters >> generate [
 	"Generate a collection of drones "
@@ -982,10 +1020,24 @@ MacroSimulatorParameters >> generateDrone [
 	^ tmp
 ]
 
-{ #category : 'accessing' }
+{ #category : 'distance' }
 MacroSimulatorParameters >> haversineMetersFrom: p1 to: p2 [
 
 	^ self class haversineMetersFrom: p1 to: p2
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> hull [
+
+	^ hull
+]
+
+{ #category : 'accessing' }
+MacroSimulatorParameters >> hull: aHull [
+
+	hull := aHull.
+	"Synchronisation automatique du périmètre"
+	self totalDistance: aHull totalDistance
 ]
 
 { #category : 'accessing' }
@@ -1078,6 +1130,30 @@ MacroSimulatorParameters >> policy [
 MacroSimulatorParameters >> policy: anObject [
 
 	policy := anObject
+]
+
+{ #category : 'dimensionning' }
+MacroSimulatorParameters >> printDilationReportFor: deltaMeters [ 
+    | dilated original revisit |
+    hull ifNil: [
+        Transcript show: 'Mode circulaire — pas de hull géographique'; cr.
+        ^ self
+    ].
+    original := self.
+    dilated  := self dilatedBy: deltaMeters.
+    revisit  := totalDistance / (numberOfDrones * nominalSpeed).
+
+    Transcript
+        show: '=== Dimensionnement Dilatation ==='; cr;
+        show: '  δ                 : ', deltaMeters printString, ' m'; cr;
+        show: '  Périmètre orig.   : ', (totalDistance / 1000.0) printString, ' km'; cr;
+        show: '  Périmètre dilaté  : ', (dilated totalDistance / 1000.0) printString, ' km'; cr;
+        show: '  k                 : ', ((hull dilationCoefficientFor: deltaMeters) roundTo: 0.001) printString; cr;
+        show: '  T_revisit cible   : ', (revisit roundTo: 0.1) printString, ' s'; cr;
+        show: '  Drones actuels    : ', numberOfDrones printString; cr;
+        show: '  Drones dilatés    : ', dilated numberOfDrones printString; cr;
+        show: '  Renfort nécessaire: +', (dilated numberOfDrones - numberOfDrones) printString; cr;
+        show: '=================================='; cr.
 ]
 
 { #category : 'computing - waypoints' }

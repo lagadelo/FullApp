@@ -80,6 +80,20 @@ MacroSimulatorStep >> copy [
 	^ tmp
 ]
 
+{ #category : 'running' }
+MacroSimulatorStep >> currentMaxGapSeconds [
+	"Convertit le maxGap (distance) en temps à la vitesse nominale"
+
+	^ self maxGap / simulator parameters nominalSpeed
+]
+
+{ #category : 'handoff' }
+MacroSimulatorStep >> currentTRevisitSeconds [
+	"T_revisit courant = périmètre / (n_drones × vitesse_nominale)"
+
+	^ range / (drones size * simulator parameters nominalSpeed)
+]
+
 { #category : 'drones accessing' }
 MacroSimulatorStep >> droneWithID: anID [ 
 
@@ -98,6 +112,28 @@ MacroSimulatorStep >> drones: anObject [
 	drones := anObject
 ]
 
+{ #category : 'handoff' }
+MacroSimulatorStep >> evaluateHandoff: aHandoffSim [
+	"Injecte l'état courant du step dans le simulateur handoff
+     et lance un Monte Carlo. Retourne le Dictionary de résultats."
+
+	| tRev sigma tFuseDeg |
+	"T_revisit dégradé depuis le nombre de drones actuel"
+	tRev := self currentTRevisitSeconds.
+	sigma := tRev * 0.2. "incertitude 20%"
+
+	"T_fuse augmente si le maxGap est grand (corrélation détection)"
+	tFuseDeg := aHandoffSim perception tFuse paramA
+	            + (self currentMaxGapSeconds * 0.5).
+
+	aHandoffSim perception
+		tRevisit: (StochasticParam normal: tRev stddev: sigma);
+		tFuse: (StochasticParam normal: tFuseDeg stddev: tFuseDeg * 0.2).
+
+	aHandoffSim printReport: false.
+	^ aHandoffSim run
+]
+
 { #category : 'reporting' }
 MacroSimulatorStep >> evaluateMetrics [ 
 
@@ -114,6 +150,21 @@ MacroSimulatorStep >> gapAheadDrone: aDrone [
 MacroSimulatorStep >> gapBackwardDrone: aDrone [
 
 	^ aDrone position - (self successorOf: aDrone) position % self range
+]
+
+{ #category : 'handoff' }
+MacroSimulatorStep >> handoffAlertLevel: aHandoffSim threshold: pMin [
+	"Retourne #green, #orange ou #red selon P(SLA)."
+
+	| result pSla |
+	result := self evaluateHandoff: aHandoffSim.
+	pSla := result at: #pSlaRespected.
+	^ pSla >= pMin
+		  ifTrue: [ #green ]
+		  ifFalse: [
+				  pSla >= (pMin - 10.0)
+					  ifTrue: [ #orange ]
+					  ifFalse: [ #red ] ]
 ]
 
 { #category : 'initialize' }
@@ -177,6 +228,13 @@ MacroSimulatorStep >> lostDrones [
 MacroSimulatorStep >> lostDrones: anObject [
 
 	lostDrones := anObject
+]
+
+{ #category : 'running' }
+MacroSimulatorStep >> maxGap [
+
+	^ self drones collect:
+		  [ :d | self gapAheadDrone: d ] asSortedCollection last
 ]
 
 { #category : 'accessing' }

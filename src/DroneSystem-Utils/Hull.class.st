@@ -16,6 +16,26 @@ Hull class >> with: somePoints epsilon: ep [
 	^ self new with: somePoints epsilon: ep
 ]
 
+{ #category : 'transformations' }
+Hull >> areaKm2 [ 
+    ^ self areaM2 / 1000000.0
+]
+
+{ #category : 'transformations' }
+Hull >> areaM2 [
+	"Formule du lacet (Shoelace) — approximation plane, valable pour petites zones"
+
+	| n sum |
+	n := points size.
+	sum := 0.0.
+	1 to: n do: [ :i |
+			| a b |
+			a := points at: i.
+			b := points at: i \\ n + 1.
+			sum := sum + (a x * b y - (b x * a y)) ].
+	^ sum abs / 2.0
+]
+
 { #category : 'accessing' }
 Hull >> at: index [
 
@@ -28,7 +48,7 @@ Hull >> compute [
 	| d |
 	d := OrderedCollection new.
 	d add: 0.
-self distanceFromOrigin at: self points first put: d last.
+	self distanceFromOrigin at: self points first put: d last.
 
 	2 to: self points size do: [ :i |
 			| previous current |
@@ -37,10 +57,81 @@ self distanceFromOrigin at: self points first put: d last.
 			d add: d last + (previous haversineMetersTo: current).
 			self distanceFromOrigin at: current put: d last ].
 	"Then total distance as this is mandatory to compute ratios"
-	self totalDistance: d last
-	                 +
-	                 (self points last haversineMetersTo:
-		                  self points first)
+	self totalDistance:
+		d last + (self points last haversineMetersTo: self points first)
+]
+
+{ #category : 'transformations' }
+Hull >> dilatedAreaM2For: deltaMeters [
+	"Formule de Steiner : A + P·δ + π·δ²"
+
+	^ self areaM2 + (totalDistance * deltaMeters)
+	  + (Float pi * deltaMeters * deltaMeters)
+]
+
+{ #category : 'transformations' }
+Hull >> dilatedHullFor: deltaMeters [
+	"Retourne un nouveau Hull dilaté de deltaMeters, prêt à l'emploi."
+
+	| newHull |
+	newHull := Hull new.
+	newHull points: (self dilatedPointsFor: deltaMeters).
+	newHull compute.
+	^ newHull
+]
+
+{ #category : 'transformations' }
+Hull >> dilatedPerimeterKmFor: deltaMeters [
+
+	^ (self dilatedPerimeterMetersFor: deltaMeters) / 1000.0
+]
+
+{ #category : 'transformations' }
+Hull >> dilatedPerimeterMetersFor: deltaMeters [
+	"P_dilaté = P + 2π·δ  (exact pour hull convexe)"
+
+	^ totalDistance + (2.0 * Float pi * deltaMeters)
+]
+
+{ #category : 'transformations' }
+Hull >> dilatedPointsFor: deltaMeters [
+	"Calcule les nouveaux sommets après offset uniforme de deltaMeters.
+     Retourne une OrderedCollection de points prêts à passer à un nouveau Hull.
+     Appeler compute sur le nouveau Hull après assignation."
+
+	| n result |
+	n := points size.
+	result := OrderedCollection new.
+
+	1 to: n do: [ :i |
+			| prev curr next e1 e2 n1 n2 bisector len scale newX newY |
+			prev := points at: i - 2 \\ n + 1.
+			curr := points at: i.
+			next := points at: i \\ n + 1.
+
+			e1 := self normalizeVec: curr x - prev x @ (curr y - prev y).
+			e2 := self normalizeVec: next x - curr x @ (next y - curr y).
+			n1 := self perpVec: e1.
+			n2 := self perpVec: e2.
+
+			bisector := n1 x + n2 x @ (n1 y + n2 y).
+			len := (bisector x squared + bisector y squared) sqrt.
+			len < 1e-9 ifTrue: [
+					bisector := n1.
+					len := 1.0 ].
+
+			scale := deltaMeters / (len / 2.0 max: 1e-9).
+			newX := curr x + (bisector x / len * scale).
+			newY := curr y + (bisector y / len * scale).
+			result add: newX @ newY ].
+	^ result
+]
+
+{ #category : 'transformations' }
+Hull >> dilationCoefficientFor: deltaMeters [
+	"Ratio périmètre dilaté / périmètre original"
+
+	^ (self dilatedPerimeterMetersFor: deltaMeters) / totalDistance
 ]
 
 { #category : 'points functions' }
@@ -103,6 +194,22 @@ Hull >> locatePointFromDistance: aDistance [
 	         / (self distanceBetween: start and: stop).
 
 "	^ start moveTo: stop ratio: ratio" (LineSegment from: start to: stop) valueAt: ratio
+]
+
+{ #category : 'facilities' }
+Hull >> normalizeVec: aPoint [
+
+	| len |
+	len := (aPoint x squared + aPoint y squared) sqrt.
+	len < 1e-9 ifTrue: [ ^ aPoint ].
+	^ aPoint x / len @ (aPoint y / len)
+]
+
+{ #category : 'facilities' }
+Hull >> perpVec: aPoint [
+	"Rotation +90° → normale sortante (hull dans le sens antihoraire)"
+
+	^ aPoint y negated @ aPoint x
 ]
 
 { #category : 'accessing' }

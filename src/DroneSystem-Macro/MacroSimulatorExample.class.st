@@ -282,6 +282,244 @@ MacroSimulatorExample class >> example8 [
 ]
 
 { #category : 'examples' }
+MacroSimulatorExample class >> example8Revised [
+" self example8"
+
+| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |
+macroMetricsSeries := MacroSimulatorMetricsSerie new.
+macroMetricsSeries addExtractor: #average -> #stdGap.
+macroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.
+macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+
+macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+macroMetricsSeries addExtractor: #average -> #avgSpeed.
+macroMetricsSeries parameters: #( pacingRate sensibilities ).
+
+exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
+pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.
+               0.99 }.
+sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+parameters := MacroSimulatorParameters new
+                  numberOfDrones: 100;
+                  nominalSpeed: 10;
+                  maxSpeed: 15;
+                  sensingRadius: 20;
+                  captureRadius: 20;
+                  totalDistance: 10000;
+                  policy: #capingPolicy;
+                  seed: 3950149054165;
+                  yourself.
+
+pacingRates do: [ :p |
+        sensibilities do: [ :s |
+                | data |
+                simulator := parameters initializeSimulator.
+                simulator behavior
+                    sensibility: s;
+                    pacingRate: p.
+                simulator loose: 1 at: 200.
+                simulator loose: 30 at: 500.
+                simulator loose: 80 at: 800.
+                simulator newIncomerAt: 500.
+                simulator newIncomerAt: 500.
+                simulator newIncomerAt: 1000.
+                simulator run: 1500.
+
+
+                data := exporter visit: simulator.
+                macroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].
+^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'examples' }
+MacroSimulatorExample class >> example8WithDilation [
+    "Compare stabilisation : hull nominal vs hull dilaté.
+     La dilatation augmente le nombre de drones mais peut
+     améliorer les métriques de stabilité (stdGap, maxGap...)."
+
+    | brittany nominalParams dilatedParams
+      macroMetricsSeries pacingRates  exporter
+      deltaMeters |
+
+    "======================================================"
+    "  1. Construire le hull terrain"
+    "======================================================"
+    brittany := (self class
+        poi: (MacroSimulatorParameters generateRawBrittanyPoints: 100)
+        epsilon: 0.1
+        maxSpikeAngle: 130) computeHull.
+
+    "Delta de dilatation : intruder à 80 km/h, SLA 22 s → δ ≈ 489 m"
+    deltaMeters := 500.
+
+    "======================================================"
+    "  2. Paramètres nominaux (hull original)"
+    "======================================================"
+    nominalParams := MacroSimulatorParameters new
+        hull: brittany;          "synchronise totalDistance"
+        nominalSpeed: 10;
+        maxSpeed: 15;
+        sensingRadius: 20;
+        captureRadius: 20;
+        policy: #capingPolicy;
+        seed: 3950149054165;
+        yourself.
+    "Caler le nombre de drones sur un T_revisit de 10 s"
+    nominalParams applyDronesForRevisit: 10.
+
+    "======================================================"
+    "  3. Paramètres dilatés (même T_revisit cible)"
+    "======================================================"
+    dilatedParams := nominalParams dilatedBy: deltaMeters.
+
+    Transcript
+        show: '--- Nominal  : ', nominalParams totalDistance printString,
+              ' m  / ', nominalParams numberOfDrones printString, ' drones'; cr;
+        show: '--- Dilaté   : ', dilatedParams totalDistance printString,
+              ' m  / ', dilatedParams numberOfDrones printString, ' drones'; cr;
+        show: '--- Renfort  : +',
+              (dilatedParams numberOfDrones - nominalParams numberOfDrones) printString; cr.
+
+    "======================================================"
+    "  4. Métriques communes"
+    "======================================================"
+    macroMetricsSeries := MacroSimulatorMetricsSerie new.
+    macroMetricsSeries addExtractor: #average           -> #stdGap.
+    macroMetricsSeries addExtractor: #stabilityRatio    -> #maxGap.
+    macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+    macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+    macroMetricsSeries addExtractor: #average           -> #avgSpeed.
+    macroMetricsSeries parameters: #( hull pacingRate ).
+
+    exporter    := MacroExporter directoryName: self timeStampForNaming.
+    pacingRates := { 0.90. 0.92. 0.94. 0.96. 0.98 }.
+
+    "======================================================"
+    "  5. Boucle comparative : nominal vs dilaté"
+    "======================================================"
+    { 'nominal' -> nominalParams . 'dilated' -> dilatedParams }
+        do: [ :hullAssoc |
+            | params label |
+            label  := hullAssoc key.
+            params := hullAssoc value.
+
+            pacingRates do: [ :p |
+                | simulator data |
+                simulator := params initializeSimulator.
+                simulator behavior pacingRate: p.
+
+                "Événements de perte/arrivée identiques en proportion"
+                simulator loose: (params numberOfDrones * 0.01) ceiling at: 200.
+                simulator loose: (params numberOfDrones * 0.30) ceiling at: 500.
+                simulator loose: (params numberOfDrones * 0.80) ceiling at: 800.
+                simulator newIncomerAt: 500.
+                simulator newIncomerAt: 500.
+                simulator newIncomerAt: 1000.
+                simulator run: 1500.
+
+                data := exporter visit: simulator.
+                macroMetricsSeries
+                    addToSeries: (Array with: label with: p) -> data.
+            ].
+        ].
+
+    ^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'as yet unclassified' }
+MacroSimulatorExample class >> example8WithHandoff [
+    "Prospection in/out drone + métriques handoff Monte Carlo.
+     Pour chaque point (pacingRate × sensibility), on mesure :
+     - les métriques macro (stdGap, maxGap, stabilizationTime...)
+     - les métriques handoff (P95, P(SLA), mean, stddev...)"
+
+    | macroMetricsSeries parameters simulator
+      pacingRates sensibilities exporter
+      handoffSim handoffExtractor |
+
+    "======================================================"
+    "  1. Configurer le simulateur handoff"
+    "======================================================"
+    handoffSim := DroneHandoffSimulation buildMonteCarlo.
+    handoffSim
+        distanceKm:  5.0;
+        speedKmh:   80.0;
+        slaSeconds: 90.0;
+        nRuns:      2000;
+        printReport: false.
+
+    handoffExtractor := HandoffMetricsExtractor
+        on: handoffSim
+        nRuns: 2000.
+
+    "======================================================"
+    "  2. Métriques série"
+    "======================================================"
+    macroMetricsSeries := MacroSimulatorMetricsSerie new.
+    "Métriques macro existantes"
+    macroMetricsSeries addExtractor: #average           -> #stdGap.
+    macroMetricsSeries addExtractor: #stabilityRatio    -> #maxGap.
+    macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+    macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+    macroMetricsSeries addExtractor: #average           -> #avgSpeed.
+    "Brancher l'extracteur handoff"
+    macroMetricsSeries addHandoffExtractor: handoffExtractor.
+    macroMetricsSeries parameters: #( pacingRate sensibilities ).
+
+    "======================================================"
+    "  3. Paramètres simulateur macro"
+    "======================================================"
+    exporter := MacroExporter directoryName: self timeStampForNaming.
+    pacingRates  := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98. 0.99 }.
+    sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+
+    parameters := MacroSimulatorParameters new
+        numberOfDrones: 100;
+        nominalSpeed:   10;
+        maxSpeed:       15;
+        sensingRadius:  20;
+        captureRadius:  20;
+        totalDistance:  10000;
+        policy:        #capingPolicy;
+        seed:           3950149054165;
+        yourself.
+
+    "======================================================"
+    "  4. Boucle principale"
+    "======================================================"
+    pacingRates do: [ :p |
+        sensibilities do: [ :s |
+            | data handoffResult |
+
+            "--- Simulation macro ---"
+            simulator := parameters initializeSimulator.
+            simulator behavior
+                sensibility: s;
+                pacingRate:  p.
+            simulator loose: 1  at: 200.
+            simulator loose: 30 at: 500.
+            simulator loose: 80 at: 800.
+            simulator newIncomerAt: 500.
+            simulator newIncomerAt: 500.
+            simulator newIncomerAt: 1000.
+            simulator run: 1500.
+
+            "--- Métriques macro ---"
+            data := exporter visit: simulator.
+
+            "--- Métriques handoff (Monte Carlo) ---"
+            handoffResult := handoffExtractor extractFrom: simulator.
+            macroMetricsSeries mergeHandoffMetrics: handoffResult into: data.
+
+            macroMetricsSeries
+                addToSeries: (Array with: p with: s) -> data.
+        ].
+    ].
+
+    ^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'examples' }
 MacroSimulatorExample class >> example8b [
 	"Idem example8 plus complex extractor "
 

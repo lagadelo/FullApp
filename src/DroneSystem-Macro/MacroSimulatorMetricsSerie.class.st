@@ -17,7 +17,8 @@ Class {
 		'series',
 		'behavior',
 		'data',
-		'label'
+		'label',
+		'handoffExtractor'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -33,6 +34,21 @@ MacroSimulatorMetricsSerie >> accept: aVisitor [
 MacroSimulatorMetricsSerie >> addExtractor: anAssociation [
 
 	self extractors add: anAssociation
+]
+
+{ #category : 'handoff' }
+MacroSimulatorMetricsSerie >> addHandoffExtractor: aHandoffMetricsExtractor [
+	"======================================================"
+
+	"Extension MacroSimulatorMetricsSerie"
+
+	"pour accueillir les métriques handoff"
+
+	"======================================================"
+
+	"Enregistre l'extracteur handoff — appelé lors de chaque addToSeries:"
+
+	handoffExtractor := aHandoffMetricsExtractor
 ]
 
 { #category : 'accessing' }
@@ -114,6 +130,14 @@ MacroSimulatorMetricsSerie >> max [
 	^ max"
 
 	^ data max
+]
+
+{ #category : 'handoff' }
+MacroSimulatorMetricsSerie >> mergeHandoffMetrics: handoffResult into: aDataDict [
+	"Fusionne les métriques handoff dans le dictionnaire de données existant."
+
+	handoffExtractor metricsKeys do: [ :k |
+		aDataDict at: ('handoff_' , k) asSymbol put: (handoffResult at: k) ]
 ]
 
 { #category : 'compute' }
