@@ -6,22 +6,6 @@ Class {
 }
 
 { #category : 'examples' }
-QuickGeoportailMap class >> buildFrom: tmp [
-
-	| mapForm |
-	mapForm := self new
-		           minLat: tmp boundingBox origin y;
-		           maxLat: tmp boundingBox corner y;
-		           minLon: tmp boundingBox origin x;
-		           maxLon: tmp boundingBox corner x;
-		           yourself.
-
-
-	mapForm openWithScroller.
-	mapForm buildFrom: tmp
-]
-
-{ #category : 'examples' }
 QuickGeoportailMap class >> minLat: minLat maxLat: maxLat minLon: minLon maxLon: maxLon [
 
 	^ self new

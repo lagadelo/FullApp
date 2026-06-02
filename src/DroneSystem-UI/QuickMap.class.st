@@ -504,6 +504,21 @@ QuickMap class >> wrapWithScrollers: aForm [
 ]
 
 { #category : 'as yet unclassified' }
+QuickMap >> buildEmptyBackground [
+
+	| form tmp |
+	self getExtend.
+	self imageSize: 4000 @ (4000/height*width).
+	form := Form extent: self imageSize depth: 32.
+	form fillColor: Color white.
+
+	tmp := FormCanvas on: form.
+	 
+
+	self background: form
+]
+
+{ #category : 'as yet unclassified' }
 QuickMap >> buildFromModel [
 
 	self model poi keysAndValuesDo: [ :k :v | self addModel: k withID: v ].
