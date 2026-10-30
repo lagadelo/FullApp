@@ -25,7 +25,9 @@ Class {
 		'nominalSpeed',
 		'currentSpeed',
 		'maxSpeed',
-		'minSpeed'
+		'minSpeed',
+		'distanceMeasurementAvailable',
+		'visionAvailable'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -81,6 +83,17 @@ MacroSimulatorDrone >> currentSpeed: aSpeed [
 MacroSimulatorDrone >> die [
 
 	self isAlive: false
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> distanceMeasurementAvailable [
+	"Nil means legacy object: keep old nominal behavior."
+	^ distanceMeasurementAvailable ifNil: [ true ]
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> distanceMeasurementAvailable: aBoolean [
+	distanceMeasurementAvailable := aBoolean
 ]
 
 { #category : 'accessing' }
@@ -192,4 +205,33 @@ MacroSimulatorDrone >> sensingRadius: anObject [
 MacroSimulatorDrone >> update [ 
 
 	self position: self position + self currentSpeed
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> useAngularFallback [
+	self distanceMeasurementAvailable: false.
+	self visionAvailable: true
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> useNoSensing [
+	self distanceMeasurementAvailable: false.
+	self visionAvailable: false
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> useNominalSensing [
+	self distanceMeasurementAvailable: true.
+	self visionAvailable: true
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> visionAvailable [
+	"Vision is required for angular fallback. Nil means legacy/nominal."
+	^ visionAvailable ifNil: [ true ]
+]
+
+{ #category : 'capabilities - patrol v0.2' }
+MacroSimulatorDrone >> visionAvailable: aBoolean [
+	visionAvailable := aBoolean
 ]

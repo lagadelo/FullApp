@@ -258,6 +258,30 @@ MacroSimulatorStep >> nextID [
 	^ id
 ]
 
+{ #category : 'perception - patrol extensions' }
+MacroSimulatorStep >> observedGapAheadDrone: aDrone [
+	^ (self perceptionAheadOf: aDrone) estimatedGap
+]
+
+{ #category : 'perception - patrol extensions' }
+MacroSimulatorStep >> observedGapBackwardDrone: aDrone [
+	^ (self perceptionBackwardOf: aDrone) estimatedGap
+]
+
+{ #category : 'perception - patrol v0.2' }
+MacroSimulatorStep >> perceptionAheadOf: aDrone [
+	self simulator ifNil: [
+		^ MacroSimulatorPerceptionModel new observationAheadDrone: aDrone in: self ].
+	^ self simulator perceptionModel observationAheadDrone: aDrone in: self
+]
+
+{ #category : 'perception - patrol v0.2' }
+MacroSimulatorStep >> perceptionBackwardOf: aDrone [
+	self simulator ifNil: [
+		^ MacroSimulatorPerceptionModel new observationBackwardDrone: aDrone in: self ].
+	^ self simulator perceptionModel observationBackwardDrone: aDrone in: self
+]
+
 { #category : 'drones accessing' }
 MacroSimulatorStep >> predecessorOf: aDrone [ 
 

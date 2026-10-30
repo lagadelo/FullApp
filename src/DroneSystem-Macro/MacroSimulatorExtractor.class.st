@@ -9,11 +9,68 @@ Class {
 	#package : 'DroneSystem-Macro'
 }
 
+{ #category : 'private - patrol extensions' }
+MacroSimulatorExtractor class >> aggregate: aProcessing values: values [
+	| selector |
+	selector := aProcessing asSymbol.
+	selector = #average ifTrue: [ ^ values average asFloat ].
+	selector = #min ifTrue: [ ^ values min asFloat ].
+	selector = #max ifTrue: [ ^ values max asFloat ].
+	selector = #sum ifTrue: [ ^ (values inject: 0 into: [ :s :v | s + v ]) asFloat ].
+	selector = #standardDeviation ifTrue: [
+		^ values size < 2
+			ifTrue: [ 0.0 ]
+			ifFalse: [ values standardDeviation asFloat ] ].
+	(values respondsTo: selector) ifTrue: [ ^ (values perform: selector) asFloat ].
+	self error: 'Unsupported aggregation: ', selector asString
+]
+
 { #category : 'instance creation' }
 MacroSimulatorExtractor class >> block: aBlock [
 
 
 ^self new block: aBlock; yourself 
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> convergenceTimeOf: aField towards: aTarget tolerance: aTolerance [
+	^ self
+		label: 'convergence(', aField asString, ')'
+		block: [ :metrics |
+			(MacroSimulatorMetricsHistory from: metrics)
+				convergenceTimeOf: aField
+				towards: aTarget
+				tolerance: aTolerance ]
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> field: aField longestDurationWhere: aPredicate label: aLabel [
+	^ self
+		label: aLabel
+		block: [ :metrics |
+			(MacroSimulatorMetricsHistory from: metrics)
+				longestDurationOf: aField
+				where: aPredicate ]
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> field: aField numberOfPeriodsWhere: aPredicate label: aLabel [
+	^ self
+		label: aLabel
+		block: [ :metrics |
+			(MacroSimulatorMetricsHistory from: metrics)
+				numberOfPeriodsOf: aField
+				where: aPredicate ]
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> field: aField totalDurationWhere: aPredicate label: aLabel [
+	^ self
+		label: aLabel
+		block: [ :metrics |
+			(MacroSimulatorMetricsHistory from: metrics)
+				totalDurationOf: aField
+				where: aPredicate ]
 ]
 
 { #category : 'instance creation' }
@@ -24,24 +81,88 @@ MacroSimulatorExtractor class >> label: aLabel block: aBlock [
 		  yourself
 ]
 
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> longestDurationOf: aField above: aThreshold [
+	^ self
+		field: aField
+		longestDurationWhere: [ :value | value > aThreshold ]
+		label: 'longest(', aField asString, '>', aThreshold printString, ')'
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> longestDurationOf: aField below: aThreshold [
+	^ self
+		field: aField
+		longestDurationWhere: [ :value | value < aThreshold ]
+		label: 'longest(', aField asString, '<', aThreshold printString, ')'
+]
+
+{ #category : 'instance creation - perception patrol v0.2' }
+MacroSimulatorExtractor class >> longestOutOfRangeDuration [
+	^ self
+		label: 'longest(outOfRangePerceptionRatio > 0)'
+		block: [ :history |
+			history longestDurationOf: #outOfRangePerceptionRatio where: [ :v | v > 0.0 ] ]
+]
+
+{ #category : 'instance creation - perception patrol v0.2' }
+MacroSimulatorExtractor class >> longestUnobservableDuration [
+	^ self
+		label: 'longest(unobservablePerceptionRatio > 0)'
+		block: [ :history |
+			history longestDurationOf: #unobservablePerceptionRatio where: [ :v | v > 0.0 ] ]
+]
+
+{ #category : 'instance creation - perception patrol v0.2' }
+MacroSimulatorExtractor class >> maxGapEstimationError [
+	^ self process: #max overField: #maxGapEstimationError
+]
+
+{ #category : 'instance creation - perception patrol v0.2' }
+MacroSimulatorExtractor class >> meanAngularPerceptionRatio [
+	^ self process: #average overField: #angularPerceptionRatio
+]
+
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> numberOfPeriodsOf: aField above: aThreshold [
+	^ self
+		field: aField
+		numberOfPeriodsWhere: [ :value | value > aThreshold ]
+		label: 'periods(', aField asString, '>', aThreshold printString, ')'
+]
+
 { #category : 'as yet unclassified' }
-MacroSimulatorExtractor class >> process: aProcessing overField: p [
+MacroSimulatorExtractor class >> process: aProcessing overField: aField [
+	| processingSelector fieldSelector labelString |
+	processingSelector := aProcessing asSymbol.
+	fieldSelector := aField asSymbol.
+	labelString := processingSelector asString, '(', fieldSelector asString, ')'.
+	^ self
+		label: labelString
+		block: [ :metrics |
+			| values |
+			values := metrics collect: [ :metric | metric perform: fieldSelector ].
+			self aggregate: processingSelector values: values ]
+]
 
-"	^ self block: [ :d |
-			  | data |
-			  data := d collect: [ :aMacroSimulatorMetrics |
-				          aMacroSimulatorMetrics perform: p ].
-			  aProcessing value: data ]"
-	  ^self label:( aProcessing,'(',p,')') block: (
-	
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> stabilizationTimeOf: aField towards: aTarget tolerance: aTolerance during: aWindow [
+	^ self
+		label: 'stabilization(', aField asString, ')'
+		block: [ :metrics |
+			(MacroSimulatorMetricsHistory from: metrics)
+				stabilizationTimeOf: aField
+				towards: aTarget
+				tolerance: aTolerance
+				during: aWindow ]
+]
 
-	OpalCompiler new
-		 source: '[ :d |
-			  | data |
-			  data := d collect: [ :aMacroSimulatorMetrics |
-				          aMacroSimulatorMetrics  ',p,' ].
-			  data ',aProcessing ,' asFloat ]'; evaluate).
- 
+{ #category : 'instance creation - patrol temporal' }
+MacroSimulatorExtractor class >> totalDurationOf: aField above: aThreshold [
+	^ self
+		field: aField
+		totalDurationWhere: [ :value | value > aThreshold ]
+		label: 'total(', aField asString, '>', aThreshold printString, ')'
 ]
 
 { #category : 'visiting' }

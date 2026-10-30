@@ -25,7 +25,10 @@ Class {
 		'random',
 		'seed',
 		'incomers',
-		'timeStep'
+		'timeStep',
+		'events',
+		'randomStreams',
+		'perceptionModel'
 	],
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
@@ -75,6 +78,30 @@ MacroSimulator >> current [
 	^ self history last
 ]
 
+{ #category : 'events - patrol extensions' }
+MacroSimulator >> destroyOneDroneAt: aTimeStep matching: aPredicate stream: aStreamName [
+	^ self scheduleEvent: (MacroSimulatorEvent
+		at: aTimeStep
+		label: 'destroy present drone'
+		do: [ :step :simulator |
+			simulator
+				destroyOneDroneInStep: step
+				matching: aPredicate
+				stream: aStreamName ])
+]
+
+{ #category : 'events - patrol extensions' }
+MacroSimulator >> destroyOneDroneInStep: aStep matching: aPredicate stream: aStreamName [
+	| candidates rnd index victim |
+	candidates := aStep drones select: [ :drone | aPredicate value: drone ].
+	candidates ifEmpty: [ ^ nil ].
+	rnd := self randomFor: aStreamName.
+	index := (rnd next * candidates size) floor + 1.
+	victim := candidates at: index.
+	aStep loseDrone: victim.
+	^ victim
+]
+
 { #category : 'fleet updates' }
 MacroSimulator >> enter: aMacroSimulatorDrone at: aTimeStep [
 
@@ -88,6 +115,22 @@ MacroSimulator >> evaluateMetrics [
 	^ MacroSimulatorMetricsHistory from:
 		  (history collect: [ :aMacroSimulaotStep |
 			   aMacroSimulaotStep evaluateMetrics ])
+]
+
+{ #category : 'accessing - patrol extensions' }
+MacroSimulator >> events [
+	events ifNil: [ events := OrderedDictionary new ].
+	^ events
+]
+
+{ #category : 'accessing - patrol extensions' }
+MacroSimulator >> events: aDictionary [
+	events := aDictionary
+]
+
+{ #category : 'events - patrol extensions' }
+MacroSimulator >> eventsAt: aTimeStep [
+	^ self events at: aTimeStep ifAbsent: [ #() ]
 ]
 
 { #category : 'reporting' }
@@ -129,15 +172,18 @@ MacroSimulator >> export: fields [
 
 { #category : 'time accessing' }
 MacroSimulator >> futureStep [
-
 	| future t |
 	t := self nextTimeStep.
-
-	future := self current copy. "Now currentState"
+	future := self current copy.
 	future timeStep: t.
+
+	"Legacy events first."
 	(self lossesAt: t) do: [ :id | future loseDroneID: id ].
 	(self incomersAt: t) do: [ :drone | future welcomeDrone: drone copy ].
 
+	"Generic state-dependent events next."
+	(self eventsAt: t) do: [ :event |
+		event applyTo: future simulator: self ].
 	^ future
 ]
 
@@ -179,23 +225,24 @@ MacroSimulator >> incomersAt: aTimeStep [
 
 { #category : 'initialization' }
 MacroSimulator >> initialize [
-
 	super initialize.
 	self timeStep: 0.
 	self history: OrderedCollection new.
 	self incomers: OrderedDictionary new.
 	self losses: OrderedDictionary new.
+	self events: OrderedDictionary new.
+	randomStreams := Dictionary new.
 	self behavior: MacroSimulatorBehavior new.
+	self perceptionModel: MacroSimulatorPerfectPerception new.
 	self random: Random new
 ]
 
 { #category : 'initialization' }
 MacroSimulator >> initializeSeed: aSeed [
-	"Usefull for exact replay - ignore nil seed"
-
-	seed ifNil: [
-			seed := aSeed.
-			self random: (Random seed: aSeed) ]
+	"Useful for exact replay. Named streams are deterministically derived from this seed."
+	self seed ifNil: [
+		self seed: aSeed.
+		self random: (Random seed: aSeed) ]
 ]
 
 { #category : 'fleet updates' }
@@ -271,6 +318,17 @@ MacroSimulator >> parameters: anObject [
 	parameters := anObject
 ]
 
+{ #category : 'accessing - patrol extensions' }
+MacroSimulator >> perceptionModel [
+	perceptionModel ifNil: [ perceptionModel := MacroSimulatorPerfectPerception new ].
+	^ perceptionModel
+]
+
+{ #category : 'accessing - patrol extensions' }
+MacroSimulator >> perceptionModel: aModel [
+	perceptionModel := aModel
+]
+
 { #category : 'accessing' }
 MacroSimulator >> random [
 
@@ -283,6 +341,22 @@ MacroSimulator >> random: anObject [
 	random := anObject
 ]
 
+{ #category : 'random - patrol extensions' }
+MacroSimulator >> randomFor: aName [
+	| baseSeed derivedSeed |
+	baseSeed := self seed ifNil: [ 0 ].
+	derivedSeed := baseSeed + (self stableOffsetFor: aName).
+	^ self randomStreams
+		at: aName asSymbol
+		ifAbsentPut: [ Random seed: derivedSeed ]
+]
+
+{ #category : 'accessing - patrol extensions' }
+MacroSimulator >> randomStreams [
+	randomStreams ifNil: [ randomStreams := Dictionary new ].
+	^ randomStreams
+]
+
 { #category : 'positioning' }
 MacroSimulator >> realPositionFrom: aPosition [
 
@@ -293,6 +367,11 @@ MacroSimulator >> realPositionFrom: aPosition [
 MacroSimulator >> run: n [
 
 	n timesRepeat: [ self step ]
+]
+
+{ #category : 'stepping - patrol extensions' }
+MacroSimulator >> runSingleUpdate: n [
+	n timesRepeat: [ self stepSingleUpdate ]
 ]
 
 { #category : 'stepping' }
@@ -331,6 +410,73 @@ MacroSimulator >> scenario [
 	^ events
 ]
 
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> scheduleAllDistanceMeasurementAvailable: aBoolean at: aTimeStep [
+	^ self
+		scheduleDistanceMeasurementAvailable: aBoolean
+		at: aTimeStep
+		matching: [ :drone | true ]
+]
+
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> scheduleDistanceMeasurementAvailable: aBoolean at: aTimeStep matching: aPredicate [
+	^ self scheduleEvent: (MacroSimulatorEvent
+		at: aTimeStep
+		label: (aBoolean ifTrue: [ 'restore distance measurement' ] ifFalse: [ 'lose distance measurement' ])
+		do: [ :step :simulator |
+			simulator
+				setDistanceMeasurementAvailable: aBoolean
+				inStep: step
+				matching: aPredicate ])
+]
+
+{ #category : 'events - patrol extensions' }
+MacroSimulator >> scheduleEvent: anEvent [
+	(self events
+		at: anEvent timeStep
+		ifAbsentPut: [ OrderedCollection new ]) add: anEvent.
+	^ anEvent
+]
+
+{ #category : 'events - patrol extensions' }
+MacroSimulator >> scheduleEventsFrom: firstTime to: lastTime using: anEventLaw stream: aStreamName label: aLabel do: anActionBlock [
+	| rnd |
+	rnd := self randomFor: aStreamName.
+	firstTime to: lastTime do: [ :t |
+		| count |
+		count := anEventLaw countAt: t using: rnd.
+		count timesRepeat: [
+			self scheduleEvent: (MacroSimulatorEvent
+				at: t
+				label: aLabel
+				do: anActionBlock) ] ]
+]
+
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> scheduleOneRandomDistanceLossAt: aTimeStep matching: aPredicate stream: aStreamName [
+	^ self scheduleEvent: (MacroSimulatorEvent
+		at: aTimeStep
+		label: 'one random distance sensor loss'
+		do: [ :step :simulator |
+			| candidates rnd victim |
+			candidates := step drones select: [ :drone |
+				(aPredicate value: drone) and: [ drone distanceMeasurementAvailable ] ].
+			candidates ifNotEmpty: [
+				rnd := simulator randomFor: aStreamName.
+				victim := candidates at: ((rnd next * candidates size) floor + 1).
+				victim distanceMeasurementAvailable: false.
+				victim id ] ])
+]
+
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> scheduleVisionAvailable: aBoolean at: aTimeStep matching: aPredicate [
+	^ self scheduleEvent: (MacroSimulatorEvent
+		at: aTimeStep
+		label: (aBoolean ifTrue: [ 'restore vision' ] ifFalse: [ 'lose vision' ])
+		do: [ :step :simulator |
+			simulator setVisionAvailable: aBoolean inStep: step matching: aPredicate ])
+]
+
 { #category : 'accessing' }
 MacroSimulator >> seed [
 
@@ -339,8 +485,39 @@ MacroSimulator >> seed [
 
 { #category : 'accessing' }
 MacroSimulator >> seed: anObject [
+	seed := anObject.
+	randomStreams := Dictionary new
+]
 
-	seed := anObject
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> setDistanceMeasurementAvailable: aBoolean inStep: aStep matching: aPredicate [
+	| changed |
+	changed := OrderedCollection new.
+	aStep drones do: [ :drone |
+		(aPredicate value: drone) ifTrue: [
+			drone distanceMeasurementAvailable: aBoolean.
+			changed add: drone id ] ].
+	^ changed
+]
+
+{ #category : 'events - sensing patrol v0.2' }
+MacroSimulator >> setVisionAvailable: aBoolean inStep: aStep matching: aPredicate [
+	| changed |
+	changed := OrderedCollection new.
+	aStep drones do: [ :drone |
+		(aPredicate value: drone) ifTrue: [
+			drone visionAvailable: aBoolean.
+			changed add: drone id ] ].
+	^ changed
+]
+
+{ #category : 'random - patrol extensions' }
+MacroSimulator >> stableOffsetFor: aName [
+	| h |
+	h := 0.
+	aName asString do: [ :character |
+		h := ((h * 31) + character asciiValue) \ 2147483647 ].
+	^ h
 ]
 
 { #category : 'initialization' }
@@ -362,6 +539,18 @@ MacroSimulator >> step [
 	future update.
 	self history add: future.
 	self
+]
+
+{ #category : 'stepping - patrol extensions' }
+MacroSimulator >> stepSingleUpdate [
+	"Opt-in corrected stepping semantics: commands are computed, then positions advance exactly once.
+	The legacy step method is deliberately left untouched for backward comparison."
+	| future |
+	future := self futureStep.
+	self behavior computeCommandsFor: future.
+	future update.
+	self history add: future.
+	^ self
 ]
 
 { #category : 'accessing' }

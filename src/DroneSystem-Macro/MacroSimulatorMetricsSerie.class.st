@@ -31,9 +31,16 @@ MacroSimulatorMetricsSerie >> accept: aVisitor [
 ]
 
 { #category : 'accessing' }
-MacroSimulatorMetricsSerie >> addExtractor: anAssociation [
-
-	self extractors add: anAssociation
+MacroSimulatorMetricsSerie >> addExtractor: anExtractorOrAssociation [
+	| extractor |
+	extractor := (anExtractorOrAssociation isKindOf: Association)
+		ifTrue: [
+			MacroSimulatorExtractor
+				process: anExtractorOrAssociation key
+				overField: anExtractorOrAssociation value ]
+		ifFalse: [ anExtractorOrAssociation ].
+	self extractors add: extractor.
+	^ extractor
 ]
 
 { #category : 'handoff' }
@@ -95,6 +102,13 @@ MacroSimulatorMetricsSerie >> extractors: anObject [
 	extractors := anObject
 ]
 
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> firstIndexWhere: aPredicate [
+	^ (1 to: data size)
+		detect: [ :i | aPredicate value: (data at: i) ]
+		ifNone: [ nil ]
+]
+
 { #category : 'initialization' }
 MacroSimulatorMetricsSerie >> initialize [
 
@@ -109,6 +123,31 @@ MacroSimulatorMetricsSerie >> initializeSeries [
 	series := OrderedCollection new
 ]
 
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> intervalsWhere: aPredicate [
+	| result startIndex |
+	result := OrderedCollection new.
+	startIndex := nil.
+	1 to: data size do: [ :i |
+		(aPredicate value: (data at: i))
+			ifTrue: [ startIndex ifNil: [ startIndex := i ] ]
+			ifFalse: [
+				startIndex ifNotNil: [
+					result add: (MacroSimulatorInterval
+						fromIndex: startIndex
+						toIndex: i - 1
+						startTime: startIndex
+						endTime: i - 1).
+					startIndex := nil ] ] ].
+	startIndex ifNotNil: [
+		result add: (MacroSimulatorInterval
+			fromIndex: startIndex
+			toIndex: data size
+			startTime: startIndex
+			endTime: data size) ].
+	^ result
+]
+
 { #category : 'accessing' }
 MacroSimulatorMetricsSerie >> label [
 
@@ -120,6 +159,21 @@ MacroSimulatorMetricsSerie >> label [
 MacroSimulatorMetricsSerie >> label: anObject [
 
 	label := anObject
+]
+
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> lastIndexWhere: aPredicate [
+	^ (data size to: 1 by: -1)
+		detect: [ :i | aPredicate value: (data at: i) ]
+		ifNone: [ nil ]
+]
+
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> longestDurationWhere: aPredicate [
+	| intervals |
+	intervals := self intervalsWhere: aPredicate.
+	intervals ifEmpty: [ ^ 0 ].
+	^ (intervals collect: [ :each | each duration ]) max
 ]
 
 { #category : 'compute' }
@@ -148,6 +202,11 @@ MacroSimulatorMetricsSerie >> min [
 	^ min"
 
 	^ data min
+]
+
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> numberOfPeriodsWhere: aPredicate [
+	^ (self intervalsWhere: aPredicate) size
 ]
 
 { #category : 'accessing' }
@@ -238,6 +297,23 @@ MacroSimulatorMetricsSerie >> stabilizationTime [
 	^ self stabilizationFrame last
 ]
 
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> stabilizationTimeTowards: aTarget tolerance: aTolerance during: aWindow [
+	| lastStart |
+	data ifEmpty: [ ^ Float infinity ].
+	aWindow <= 0 ifTrue: [ ^ Float infinity ].
+	lastStart := data size - aWindow + 1.
+	lastStart < 1 ifTrue: [ ^ Float infinity ].
+	1 to: lastStart do: [ :i |
+		| ok |
+		ok := true.
+		i to: i + aWindow - 1 do: [ :j |
+			((data at: j) - aTarget) abs <= aTolerance
+				ifFalse: [ ok := false ] ].
+		ok ifTrue: [ ^ i ] ].
+	^ Float infinity
+]
+
 { #category : 'compute' }
 MacroSimulatorMetricsSerie >> standardDeviation [ 
 
@@ -248,4 +324,11 @@ MacroSimulatorMetricsSerie >> standardDeviation [
 MacroSimulatorMetricsSerie >> sum [
 
 	^ data inject: 0 into: [ :s :d | s + d ]
+]
+
+{ #category : 'compute - patrol temporal' }
+MacroSimulatorMetricsSerie >> totalDurationWhere: aPredicate [
+	^ (self intervalsWhere: aPredicate)
+		inject: 0
+		into: [ :sum :interval | sum + interval duration ]
 ]

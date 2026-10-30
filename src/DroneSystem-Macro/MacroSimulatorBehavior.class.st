@@ -39,41 +39,40 @@ MacroSimulatorBehavior >> accept: aVisitor [
 
 { #category : 'policies' }
 MacroSimulatorBehavior >> binaryPolicy [
-
-	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  | sensibility |
-		  sensibility := 0.1.
-
-
-
-		  aStep drones do: [ :a |
-				  | ga gb |
-				  ga := aStep gapAheadDrone: a.
-				  gb := aStep gapBackwardDrone: a.
-				  ga > gb ifTrue: [ a currentSpeed: a maxSpeed ].
-				  ga < gb ifTrue: [ a currentSpeed: 0 ].
-				  (ga - gb) abs / ga < sensibility ifTrue: [
-					  a currentSpeed: a nominalSpeed ] ] ]
+	^ [ :aStep |
+		| localSensibility |
+		localSensibility := 0.1.
+		aStep drones do: [ :a |
+			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+				ga > gb ifTrue: [ a currentSpeed: a maxSpeed ].
+				ga < gb ifTrue: [ a currentSpeed: 0 ].
+				ga = 0 ifFalse: [
+					(ga - gb) abs / ga < localSensibility
+						ifTrue: [ a currentSpeed: a nominalSpeed ] ] ] ] ]
 ]
 
 { #category : 'policies' }
 MacroSimulatorBehavior >> capingPolicy [
+	^ [ :aStep |
+		aStep drones do: [ :a |
+			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+				| weight ratio denominator |
+				denominator := ga max: gb.
+				weight := denominator = 0
+					ifTrue: [ 0.0 ]
+					ifFalse: [ ((ga - gb) / denominator) asFloat ].
+				ratio := weight abs < self sensibility
+					ifTrue: [ self pacingRate ]
+					ifFalse: [ weight * 2 + 1 ].
+				a currentSpeed:
+					(((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
+						max: a minSpeed) ] ] ]
+]
 
-	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  | weight |
-		  aStep drones do: [ :a |
-				  | ga gb ratio |
-				  ga := aStep gapAheadDrone: a.
-				  gb := aStep gapBackwardDrone: a.
-
-				  weight := (ga - gb / (ga max: gb)) asFloat.
-				  "	weight <0 ifTrue:[self halt] ."
-				  ratio := weight abs < self sensibility
-					           ifTrue: [ self pacingRate ]
-					           ifFalse: [ weight * 2 + 1 ].
-				  a currentSpeed:
-					  (((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
-						   max: a minSpeed) ] ]
+{ #category : 'running - patrol extensions' }
+MacroSimulatorBehavior >> computeCommandsFor: aStep [
+	"Compute speed commands without advancing positions."
+	(self perform: self policy) value: aStep
 ]
 
 { #category : 'accessing' }
@@ -142,34 +141,32 @@ MacroSimulatorBehavior >> policy: anObject [
 ]
 
 { #category : 'running' }
-MacroSimulatorBehavior >> process: aStep [   
-	  (self perform: self policy) value: aStep.
+MacroSimulatorBehavior >> process: aStep [
+	"Legacy-compatible behavior: compute commands and advance the step once.
+	MacroSimulator>>step currently advances once again afterwards.
+	Use MacroSimulator>>stepSingleUpdate for the corrected one-movement semantics."
+	self computeCommandsFor: aStep.
 	aStep update
 ]
 
 { #category : 'policies' }
 MacroSimulatorBehavior >> revisedCapingPolicy [
-
-	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  | weight |
-		  aStep drones do: [ :a |
-				  | ga gb ratio newSpeed |
-				  ga := aStep gapAheadDrone: a.
-				  gb := aStep gapBackwardDrone: a.
-
-				  weight := (ga - gb / (ga max: gb)) asFloat.
-				  "	weight <0 ifTrue:[self halt] ."
-				  newSpeed := weight abs < self sensibility
-					              ifTrue: [ "smooth adaptation"
-						              a currentSpeed
-						              +
-						              (a nominalSpeed - a currentSpeed * self pacingRate) ]
-					              ifFalse: [
-							              ((a currentSpeed * (weight * 2 + 1) roundUpTo:
-								                0.1) min: a maxSpeed) max: a minSpeed ].
-
-
-				  a currentSpeed: newSpeed ] ]
+	^ [ :aStep |
+		aStep drones do: [ :a |
+			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+				| weight newSpeed denominator |
+				denominator := ga max: gb.
+				weight := denominator = 0
+					ifTrue: [ 0.0 ]
+					ifFalse: [ ((ga - gb) / denominator) asFloat ].
+				newSpeed := weight abs < self sensibility
+					ifTrue: [
+						a currentSpeed
+							+ ((a nominalSpeed - a currentSpeed) * self pacingRate) ]
+					ifFalse: [
+						((a currentSpeed * (weight * 2 + 1) roundUpTo: 0.1)
+							min: a maxSpeed) max: a minSpeed ].
+				a currentSpeed: newSpeed ] ] ]
 ]
 
 { #category : 'accessing' }
@@ -186,18 +183,25 @@ MacroSimulatorBehavior >> sensibility: anObject [
 
 { #category : 'policies' }
 MacroSimulatorBehavior >> weightedPolicy [
+	^ [ :aStep |
+		sensibility := 0.1.
+		aStep drones do: [ :a |
+			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+				| ratio denominator |
+				denominator := ga + gb.
+				ratio := denominator = 0
+					ifTrue: [ 1.0 ]
+					ifFalse: [ 1 + ((ga - gb) / denominator) asFloat ].
+				a currentSpeed:
+					(((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed) max: 0) ] ] ]
+]
 
-	^ [ :aStep | "aStep comes from a former deepCopy. This copy has been pre updated with losses and addons"
-		  sensibility := 0.1.
-
-
-
-		  aStep drones do: [ :a |
-				  | ga gb ratio |
-				  ga := aStep gapAheadDrone: a.
-				  gb := aStep gapBackwardDrone: a.
-				  ratio := 1 + (ga - gb / (ga + gb)) asFloat.
-				  a currentSpeed:
-					  (((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
-						   max: 0) ] ]
+{ #category : 'private - patrol v0.2' }
+MacroSimulatorBehavior >> withObservedGapsOf: aDrone in: aStep do: aTwoArgumentBlock [
+	| ga gb |
+	ga := aStep observedGapAheadDrone: aDrone.
+	gb := aStep observedGapBackwardDrone: aDrone.
+	(ga isNil or: [ gb isNil ]) ifTrue: [ ^ false ].
+	aTwoArgumentBlock value: ga value: gb.
+	^ true
 ]

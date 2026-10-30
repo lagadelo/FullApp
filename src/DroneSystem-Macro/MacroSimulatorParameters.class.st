@@ -907,6 +907,14 @@ MacroSimulatorParameters >> applyDronesForRevisit: targetRevisitSeconds [
 	^ self
 ]
 
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> arcPositionAtSegment: aSegmentIndex fraction: aFraction [
+	| f |
+	f := (aFraction max: 0.0) min: 1.0.
+	^ ((self wayPointsPositions at: aSegmentIndex)
+		+ ((self interWayPointsDistances at: aSegmentIndex) * f)) \ self totalDistance
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> captureRadius [
 
@@ -975,6 +983,14 @@ MacroSimulatorParameters >> dilatedBy: deltaMeters [
 	^ newParams
 ]
 
+{ #category : 'designer - hull fragmentation' }
+MacroSimulatorParameters >> droneSegmentRatio [
+	| segments |
+	segments := self numberOfSegments.
+	(segments isNil or: [ segments = 0 ]) ifTrue: [ ^ nil ].
+	^ self numberOfDrones asFloat / segments asFloat
+]
+
 { #category : 'dimensionning' }
 MacroSimulatorParameters >> dronesForRevisitSeconds: targetRevisitSeconds [
 	"Calcule le nombre de drones nécessaires pour garantir
@@ -983,6 +999,29 @@ MacroSimulatorParameters >> dronesForRevisitSeconds: targetRevisitSeconds [
 	| spacing |
 	spacing := nominalSpeed * targetRevisitSeconds.
 	^ (totalDistance / spacing) ceiling
+]
+
+{ #category : 'designer - hull fragmentation' }
+MacroSimulatorParameters >> effectiveTurnCountAboveDegrees: aThreshold [
+	| count n |
+	self wayPoints ifNil: [ ^ 0 ].
+	n := self wayPoints size.
+	count := 0.
+	1 to: n do: [ :i |
+		| previous current next turn |
+		previous := self wayPoints at: ((i - 2) \ n) + 1.
+		current := self wayPoints at: i.
+		next := self wayPoints at: (i \ n) + 1.
+		turn := self class turnAngleDegreesAt: current from: previous to: next.
+		turn >= aThreshold ifTrue: [ count := count + 1 ] ].
+	^ count
+]
+
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> euclideanDistanceFrom: firstPoint to: secondPoint [
+	| v |
+	v := self localXYOf: secondPoint relativeTo: firstPoint.
+	^ ((v x * v x) + (v y * v y)) sqrt
 ]
 
 { #category : 'simulator  generation' }
@@ -1026,6 +1065,18 @@ MacroSimulatorParameters >> haversineMetersFrom: p1 to: p2 [
 	^ self class haversineMetersFrom: p1 to: p2
 ]
 
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> headingVectorAtArcPosition: aPosition relativeTo: anOrigin [
+	| segment p1 p2 v norm |
+	segment := self segmentIndexAtArcPosition: aPosition.
+	p1 := self localXYOf: (self wayPoints at: segment) relativeTo: anOrigin.
+	p2 := self localXYOf: (self wayPoints at: segment \ self wayPoints size + 1) relativeTo: anOrigin.
+	v := (p2 x - p1 x) @ (p2 y - p1 y).
+	norm := ((v x * v x) + (v y * v y)) sqrt.
+	norm = 0 ifTrue: [ ^ 1.0 @ 0.0 ].
+	^ (v x / norm) @ (v y / norm)
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> hull [
 
@@ -1067,6 +1118,23 @@ MacroSimulatorParameters >> interWayPointsDistances [
 	^ interWayPointsDistances
 ]
 
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> isGeographicPoint: aPoint [
+	^ (aPoint respondsTo: #latitude) and: [ aPoint respondsTo: #longitude ]
+]
+
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> localXYOf: aPoint relativeTo: anOrigin [
+	"Return a local 2D point in kilometres for GeoPoint, otherwise preserve native point units."
+	(self isGeographicPoint: aPoint) ifTrue: [
+		| refLatRadians x y |
+		refLatRadians := anOrigin latitude * Float pi / 180.0.
+		x := (aPoint longitude - anOrigin longitude) * 111.320 * refLatRadians cos.
+		y := (aPoint latitude - anOrigin latitude) * 110.574.
+		^ x @ y ].
+	^ (aPoint x - anOrigin x) @ (aPoint y - anOrigin y)
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> maxSpeed [
 
@@ -1079,6 +1147,28 @@ MacroSimulatorParameters >> maxSpeed [
 MacroSimulatorParameters >> maxSpeed: anObject [
 
 	maxSpeed := anObject
+]
+
+{ #category : 'designer - hull fragmentation' }
+MacroSimulatorParameters >> maxStraightRunBelowTurnDegrees: aThreshold [
+	"Approximate longest run (in route units) through vertices whose turn stays below threshold."
+	| n best current |
+	self wayPoints ifNil: [ ^ nil ].
+	n := self wayPoints size.
+	n = 0 ifTrue: [ ^ 0.0 ].
+	best := 0.0.
+	current := 0.0.
+	1 to: n do: [ :i |
+		| previous currentPoint next turn segmentLength |
+		previous := self wayPoints at: ((i - 2) \ n) + 1.
+		currentPoint := self wayPoints at: i.
+		next := self wayPoints at: (i \ n) + 1.
+		turn := self class turnAngleDegreesAt: currentPoint from: previous to: next.
+		segmentLength := self interWayPointsDistances at: i.
+		turn < aThreshold
+			ifTrue: [ current := current + segmentLength. best := best max: current ]
+			ifFalse: [ current := segmentLength. best := best max: current ] ].
+	^ best
 ]
 
 { #category : 'accessing' }
@@ -1107,6 +1197,12 @@ MacroSimulatorParameters >> nominalSpeed: anObject [
 	nominalSpeed := anObject
 ]
 
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> normalizedArcPosition: aPosition [
+	self totalDistance = 0 ifTrue: [ ^ 0.0 ].
+	^ aPosition \ self totalDistance
+]
+
 { #category : 'accessing' }
 MacroSimulatorParameters >> numberOfDrones [
 
@@ -1117,6 +1213,13 @@ MacroSimulatorParameters >> numberOfDrones [
 MacroSimulatorParameters >> numberOfDrones: anObject [
 
 	numberOfDrones := anObject
+]
+
+{ #category : 'designer - hull fragmentation' }
+MacroSimulatorParameters >> numberOfSegments [
+	"The route is a closed loop, hence one segment per waypoint."
+	self wayPoints ifNil: [ ^ nil ].
+	^ self wayPoints size
 ]
 
 { #category : 'accessing' }
@@ -1156,25 +1259,18 @@ MacroSimulatorParameters >> printDilationReportFor: deltaMeters [
         show: '=================================='; cr.
 ]
 
-{ #category : 'computing - waypoints' }
+{ #category : 'geometry - patrol v0.2' }
 MacroSimulatorParameters >> realPositionFrom: aPosition [
-
-	| relativePosition predecessor ratio |
-	"current turn position"
-	relativePosition := aPosition \\ self totalDistance.
-	"previous wayPoint"
-	predecessor := (self wayPointsPositions size to: 1 by: -1) detect: [
-		               :a |
-		               (self wayPointsPositions at: a) < relativePosition ].
-	"Ofset"
-	ratio := relativePosition - (self wayPointsPositions at: predecessor)
-	         / (self interWayPointsDistances at: predecessor).
-	" Current Position is previous waypoint  + offset"
-	^ (self wayPoints at: predecessor)
-	  +
-		  (ratio
-		   * ((self wayPoints at: predecessor \\ self wayPoints size + 1)
-			    - self wayPoints at: predecessor))
+	"Robust version for exact waypoint positions, including position 0."
+	| s segment start ratio nextIndex |
+	self wayPoints ifNil: [ self error: 'wayPoints are required to compute a real position' ].
+	s := self normalizedArcPosition: aPosition.
+	segment := self segmentIndexAtArcPosition: s.
+	start := self wayPointsPositions at: segment.
+	ratio := (s - start) / (self interWayPointsDistances at: segment).
+	nextIndex := segment \ self wayPoints size + 1.
+	^ (self wayPoints at: segment)
+		+ (ratio * ((self wayPoints at: nextIndex) - (self wayPoints at: segment)))
 ]
 
 { #category : 'accessing' }
@@ -1189,6 +1285,22 @@ MacroSimulatorParameters >> seed [
 MacroSimulatorParameters >> seed: anObject [
 
 	seed := anObject
+]
+
+{ #category : 'geometry - patrol v0.2' }
+MacroSimulatorParameters >> segmentIndexAtArcPosition: aPosition [
+	| s n |
+	self wayPoints ifNil: [ self error: 'Hull wayPoints are required for hybrid perception' ].
+	n := self wayPoints size.
+	n = 0 ifTrue: [ self error: 'Hull wayPoints cannot be empty' ].
+	s := self normalizedArcPosition: aPosition.
+	1 to: n do: [ :i |
+		| start stop |
+		start := self wayPointsPositions at: i.
+		stop := start + (self interWayPointsDistances at: i).
+		((s >= start and: [ s < stop ]) or: [ i = n and: [ s = stop ] ])
+			ifTrue: [ ^ i ] ].
+	^ n
 ]
 
 { #category : 'accessing' }
@@ -1223,9 +1335,10 @@ MacroSimulatorParameters >> wayPoints [
 
 { #category : 'accessing' }
 MacroSimulatorParameters >> wayPoints: anArray [
-
-	 
+	"Changing the hull invalidates all cached geometric quantities."
 	wayPoints := anArray.
+	interWayPointsDistances := nil.
+	wayPointsPositions := nil.
 	self computeTotalDistanceFromWayPoints
 ]
 
