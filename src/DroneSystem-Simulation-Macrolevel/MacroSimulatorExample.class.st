@@ -293,12 +293,19 @@ MacroSimulatorExample class >> example8GUI [
 	ground := FileLocator home / 'terrain-valence'.
 	geometry := STONJSON fromString:
 		            (kit / 'exemple-valence.geojson') contents.
-	wayPoints := (geometry at: 'coordinates') first collect: [ :pair |
+	"wayPoints := (geometry at: 'coordinates') first collect: [ :pair |
 		             pair first @ pair second ].
+	"
+	
+	wayPoints := (0 to: 11) collect: [ :i |
+    | angle |
+    angle := i * 2 * Float pi / 30.
+    (4.8875 + (0.00508 * angle cos)) @
+        (44.9386 + (0.00360 * angle sin)) ].
 	pacingRates := { 0.9. 0.95. 0.99 }.
 	sensibilities := { 0.01 }.
 	parameters := MacroSimulatorParameters new
-		              numberOfDrones: 100;
+		              numberOfDrones: 10;
 		              nominalSpeed: 10;
 		              maxSpeed: 15;
 		              sensingRadius: 20;
@@ -314,22 +321,24 @@ MacroSimulatorExample class >> example8GUI [
 						sensibility: sensibilities first;
 						pacingRate: pacingRates first.
 					simulator loose: 1 at: 200.
-					simulator loose: 30 at: 500.
+				"	simulator loose: 30 at: 500.
 					simulator loose: 80 at: 800.
+					simulator newIncomerAt: 500."
 					simulator newIncomerAt: 500.
-					simulator newIncomerAt: 500.
-					simulator newIncomerAt: 1000.
+				"	simulator newIncomerAt: 1000."
 					 
 	 
 
 	15 timesRepeat: [ simulator run: 100 ].
-
+ 
 	observer := self observerPerceptionOver: ground wayPoints: wayPoints.
-	simulator history do: [ :step |
+	1 to: 1500 by:100 do:[:i| |step| step := simulator history at:i. 
 			view := observer
 				        value: step
-				        value: (timeAtTick value: step timeStep)
-			"Appelle view asForm ici aux tiks que tu veux exporter." ].
+				        value: (timeAtTick value: step timeStep).
+			PNGReadWriter
+        putForm: view asForm
+        onFileNamed: 'valence-',step timeStep printString ,'.png'].
 	view open
 ]
 
@@ -388,43 +397,52 @@ MacroSimulatorExample class >> example9 [
 ]
 
 { #category : 'examples' }
-MacroSimulatorExample class >> observerPerceptionOver: ground wayPoints: wayPoints [  
+MacroSimulatorExample class >> observerPerceptionOver: ground wayPoints: wayPoints [
 
- 
-    | source points segments perimeter perception view |
-    source := PerceptionAdapter fromDirectory: ground.
-    points := source projectPolygon: wayPoints.
-    segments := OrderedCollection new.
-    perimeter := 0.0.
+	| source points segments perimeter perception view |
+	source := PerceptionAdapter fromDirectory: ground.
+	points := source projectPolygon: wayPoints.
+	segments := OrderedCollection new.
+	perimeter := 0.0.
 
-    "Chaque segment contient ses extrémités et ses deux distances cumulées."
-    points withIndexDo: [ :a :i |
-        | b fin |
-        b := points at: (i \\ points size) + 1.
-        fin := perimeter + (a distanceTo: b).
-        fin > perimeter ifTrue: [
-            segments add: { a. b. perimeter. fin }.
-            perimeter := fin ] ].
+	"Chaque segment contient ses extrémités et ses deux distances cumulées."
+	points withIndexDo: [ :a :i |
+			| b fin |
+			b := points at: i \\ points size + 1.
+			fin := perimeter + (a distanceTo: b).
+			fin > perimeter ifTrue: [
+					segments add: {
+							a.
+							b.
+							perimeter.
+							fin }.
+					perimeter := fin ] ].
 
-    perception := PerceptionAdapter on: source terrain.
-    view := PerceptionRoassalView on: perception.
+	perception := PerceptionAdapter on: source terrain.
+	perception cameraHalfFieldTangent: 0.4 sensorSidePixels: 2000.
+	view := PerceptionRoassalView on: perception.
 
-    ^ [ :etape :secondes |
-        | tour poses |
-        tour := etape range.
-        poses := etape drones collect: [ :drone |
-            | distance segment fraction |
-            distance := (drone position \\ tour) / tour * perimeter.
-            segment := segments
-                detect: [ :chacun | distance < chacun fourth ]
-                ifNone: [ segments last ].
-            fraction := (distance - segment third) / (segment fourth - segment third).
-            PerceptionDronePose
-                id: drone id
-                position: (segment first interpolateTo: segment second at: fraction)
-                heightAboveGround: 200 ].
-        perception recordAt: secondes polygon: points drones: poses.
-        view ]
+	^ [ :etape :secondes |
+		  | tour poses |
+		  tour := etape range.
+		  poses := etape drones collect: [ :drone |
+				           | distance segment fraction |
+				           distance := drone position \\ tour / tour * perimeter.
+				           segment := segments
+					                      detect: [ :chacun |
+					                      distance < chacun fourth ]
+					                      ifNone: [ segments last ].
+				           fraction := distance - segment third
+				                       / (segment fourth - segment third).
+				           PerceptionDronePose
+					           id: drone id
+					           position:
+					           (segment first
+						            interpolateTo: segment second
+						            at: fraction)
+					           heightAboveGround: 200 ].
+		  perception recordAt: secondes polygon: points drones: poses.
+		  view ]
 ]
 
 { #category : 'naming' }
