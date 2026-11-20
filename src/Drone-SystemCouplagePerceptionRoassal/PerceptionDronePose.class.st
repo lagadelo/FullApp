@@ -13,54 +13,69 @@ Class {
 
 { #category : 'instance creation' }
 PerceptionDronePose class >> id: id position: point elevation: meters [
-    ^ self new initializeId: id position: point altitude: meters aboveGround: false
 
+	^ self new
+		  initializeId: id
+		  position: point
+		  altitude: meters
+		  aboveGround: false
 ]
 
 { #category : 'instance creation' }
 PerceptionDronePose class >> id: id position: point heightAboveGround: meters [
-    meters > 0 ifFalse: [ self error: 'La hauteur au-dessus du sol doit être positive.' ].
-    ^ self new initializeId: id position: point altitude: meters aboveGround: true
 
+	meters > 0 ifFalse: [
+		self error: 'La hauteur au-dessus du sol doit être positive.' ].
+	^ self new
+		  initializeId: id
+		  position: point
+		  altitude: meters
+		  aboveGround: true
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> altitude [
-    ^ altitude
 
+	^ altitude
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> id [
-    ^ identifier
 
+	^ identifier
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> initializeId: id position: point altitude: meters aboveGround: useAgl [
-    (id notNil and: [ point isPoint and: [ meters isNumber and: [ meters asFloat isFinite ] ] ])
-        ifFalse: [ self error: 'Identifiant, position ou altitude de drone invalide.' ].
-    identifier := id.
-    position := point x @ point y.
-    altitude := meters asFloat.
-    heightAboveGround := useAgl
 
+	(id notNil and: [
+		 point isPoint and: [
+			 meters isNumber and: [ meters asFloat isFinite ] ] ]) ifFalse: [
+		self error: 'Identifiant, position ou altitude de drone invalide.' ].
+	identifier := id.
+	position := point x @ point y.
+	altitude := meters asFloat.
+	heightAboveGround := useAgl
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> position [
-    ^ position
 
+	^ position
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> usesHeightAboveGround [
-    ^ heightAboveGround
 
+	^ heightAboveGround
 ]
 
 { #category : 'accessing' }
 PerceptionDronePose >> withPosition: projectedPoint [
-    ^ self class new initializeId: identifier position: projectedPoint altitude: altitude aboveGround: heightAboveGround
 
+	^ self class new
+		  initializeId: identifier
+		  position: projectedPoint
+		  altitude: altitude
+		  aboveGround: heightAboveGround
 ]

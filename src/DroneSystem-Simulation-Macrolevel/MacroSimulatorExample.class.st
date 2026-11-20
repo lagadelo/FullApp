@@ -280,6 +280,60 @@ MacroSimulatorExample class >> example8 [
 ]
 
 { #category : 'examples' }
+MacroSimulatorExample class >> example8GUI [
+	"Prospection - in/out drone "
+
+	" self example8GUI"
+
+	| parameters simulator pacingRates sensibilities observer view kit ground geometry wayPoints timeAtTick |
+	"definition des waypoints et du terrain"
+	"On utilise le mnt autour de Valence dans un premier temps"
+	timeAtTick :=[:t| t *100].
+	kit := FileLocator home "/ 'Téléchargements' / 'couplage-perception-roassal'".
+	ground := FileLocator home / 'terrain-valence'.
+	geometry := STONJSON fromString:
+		            (kit / 'exemple-valence.geojson') contents.
+	wayPoints := (geometry at: 'coordinates') first collect: [ :pair |
+		             pair first @ pair second ].
+	pacingRates := { 0.9. 0.95. 0.99 }.
+	sensibilities := { 0.01 }.
+	parameters := MacroSimulatorParameters new
+		              numberOfDrones: 100;
+		              nominalSpeed: 10;
+		              maxSpeed: 15;
+		              sensingRadius: 20;
+		              captureRadius: 20;
+		              totalDistance: 10000;
+		              policy: #capingPolicy;
+		              seed: 3950149054165;
+		              yourself.
+
+	 
+					simulator := parameters initializeSimulator.
+					simulator behavior
+						sensibility: sensibilities first;
+						pacingRate: pacingRates first.
+					simulator loose: 1 at: 200.
+					simulator loose: 30 at: 500.
+					simulator loose: 80 at: 800.
+					simulator newIncomerAt: 500.
+					simulator newIncomerAt: 500.
+					simulator newIncomerAt: 1000.
+					 
+	 
+
+	15 timesRepeat: [ simulator run: 100 ].
+
+	observer := self observerPerceptionOver: ground wayPoints: wayPoints.
+	simulator history do: [ :step |
+			view := observer
+				        value: step
+				        value: (timeAtTick value: step timeStep)
+			"Appelle view asForm ici aux tiks que tu veux exporter." ].
+	view open
+]
+
+{ #category : 'examples' }
 MacroSimulatorExample class >> example9 [
 	"Prospection - in/out drone "
 
@@ -331,6 +385,46 @@ MacroSimulatorExample class >> example9 [
 					data := exporter visit: simulator.
 					macroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].
 	^ exporter visit: macroMetricsSeries
+]
+
+{ #category : 'examples' }
+MacroSimulatorExample class >> observerPerceptionOver: ground wayPoints: wayPoints [  
+
+ 
+    | source points segments perimeter perception view |
+    source := PerceptionAdapter fromDirectory: ground.
+    points := source projectPolygon: wayPoints.
+    segments := OrderedCollection new.
+    perimeter := 0.0.
+
+    "Chaque segment contient ses extrémités et ses deux distances cumulées."
+    points withIndexDo: [ :a :i |
+        | b fin |
+        b := points at: (i \\ points size) + 1.
+        fin := perimeter + (a distanceTo: b).
+        fin > perimeter ifTrue: [
+            segments add: { a. b. perimeter. fin }.
+            perimeter := fin ] ].
+
+    perception := PerceptionAdapter on: source terrain.
+    view := PerceptionRoassalView on: perception.
+
+    ^ [ :etape :secondes |
+        | tour poses |
+        tour := etape range.
+        poses := etape drones collect: [ :drone |
+            | distance segment fraction |
+            distance := (drone position \\ tour) / tour * perimeter.
+            segment := segments
+                detect: [ :chacun | distance < chacun fourth ]
+                ifNone: [ segments last ].
+            fraction := (distance - segment third) / (segment fourth - segment third).
+            PerceptionDronePose
+                id: drone id
+                position: (segment first interpolateTo: segment second at: fraction)
+                heightAboveGround: 200 ].
+        perception recordAt: secondes polygon: points drones: poses.
+        view ]
 ]
 
 { #category : 'naming' }
