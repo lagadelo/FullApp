@@ -9,6 +9,53 @@ Class {
 	#package : 'DroneSystem-Macro'
 }
 
+{ #category : 'examples' }
+MacroSimulatorExtractor class >> aggregate: aProcessing values: values [
+    | selector |
+    selector := aProcessing asSymbol.
+    selector = #average ifTrue: [ ^ values average asFloat ].
+    selector = #min ifTrue: [ ^ values min asFloat ].
+    selector = #max ifTrue: [ ^ values max asFloat ].
+    selector = #sum ifTrue: [
+        ^ (values inject: 0 into: [ :sum :value | sum + value ]) asFloat ].
+    selector = #standardDeviation ifTrue: [
+        ^ values size < 2
+            ifTrue: [ 0.0 ]
+            ifFalse: [ values standardDeviation asFloat ] ].
+
+    (#(stabilityRatio stabilizationTime stabilizationDuration) includes: selector)
+        ifTrue: [
+            | transitions stableAt unstableAt firstUnstable firstStable |
+            transitions := 1 to: values size - 1.
+            stableAt := [ :index |
+                | previous change |
+                previous := values at: index.
+                change := (values at: index + 1) - previous.
+                change abs <= (previous abs / 100) ].
+
+            selector = #stabilityRatio ifTrue: [
+                transitions ifEmpty: [ ^ 0.0 ].
+                ^ ((transitions count: stableAt) / transitions size) asFloat ].
+
+            unstableAt := [ :index | (stableAt value: index) not ].
+            selector = #stabilizationTime ifTrue: [
+                | lastUnstable |
+                lastUnstable := (transitions size to: 1 by: -1)
+                    detect: unstableAt
+                    ifNone: [ ^ 0 ].
+                ^ transitions size - lastUnstable ].
+
+            firstUnstable := transitions detect: unstableAt ifNone: [ ^ 0 ].
+            firstStable := (firstUnstable + 1 to: transitions size)
+                detect: stableAt
+                ifNone: [ ^ Float infinity ].
+            ^ firstStable - firstUnstable ].
+
+    (values respondsTo: selector) ifTrue: [
+        ^ (values perform: selector) asFloat ].
+    self error: 'Unsupported aggregation: ', selector asString
+]
+
 { #category : 'instance creation' }
 MacroSimulatorExtractor class >> block: aBlock [
 

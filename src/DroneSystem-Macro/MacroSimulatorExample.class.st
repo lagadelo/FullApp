@@ -206,7 +206,7 @@ MacroSimulatorExample class >> example5 [
 ]
 
 { #category : 'examples' }
-MacroSimulatorExample class >> example6 [ 
+MacroSimulatorExample class >> example6 [
 	"Prospection - incoming drone "
 
 	| parameters simulator pacingRates sensibilities exporter |
@@ -223,20 +223,56 @@ MacroSimulatorExample class >> example6 [
 		              totalDistance: 10000;
 		              yourself.
 	parameters policy: #capingPolicy.
-	
-	
-	
+
+
+
 	pacingRates do: [ :p |
 			sensibilities do: [ :s |
 					simulator := parameters initializeSimulator.
 					simulator behavior
 						sensibility: s;
 						pacingRate: p.
-					"	simulator loose: 1 at: 500."
-					simulator newIncomerAt: 500.
+					 1 to: 20 do:[:i| 	simulator loose: i at: i*20+100].
+						"30 timesRepeat:[simulator newIncomerAt: 500]".
 					simulator run: 1500.
-					exporter visit: simulator ] ]
+					exporter visit: simulator ] ].
 
+	^ simulator
+]
+
+{ #category : 'examples' }
+MacroSimulatorExample class >> example6b [
+	"Prospection - incoming drone "
+
+	| parameters simulator pacingRates sensibilities exporter |
+	exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
+	pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98.
+	               0.99 }.
+	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
+	parameters := MacroSimulatorParameters new
+		              numberOfDrones: 20;
+		              nominalSpeed: 10;
+		              maxSpeed: 15;
+		              sensingRadius: 20;
+		              captureRadius: 20;
+		              totalDistance: 10000;
+		              yourself.
+	parameters policy: #capingPolicy.
+
+
+
+	pacingRates do: [ :p |
+			sensibilities do: [ :s |
+					simulator := parameters initializeSimulator.
+					simulator behavior
+						sensibility: s;
+						pacingRate: p.
+					" 1 to: 20 do:[:i| 	simulator loose: i at: i*20+100]."
+						30 timesRepeat:[simulator newIncomerAt: 500].
+					simulator run: 1500.
+					exporter visit: simulator ] ].
+
+	^ simulator
 ]
 
 { #category : 'examples' }
@@ -325,7 +361,8 @@ MacroSimulatorExample class >> example8 [
 
 					data := exporter visit: simulator.
 					macroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].
-	^ exporter visit: macroMetricsSeries
+	 exporter visit: macroMetricsSeries.
+	^ simulator 
 ]
 
 { #category : 'examples' }

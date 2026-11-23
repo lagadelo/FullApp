@@ -65,8 +65,8 @@ PerceptionDroneUsage class >> valenceGeneration [
 | dossierTerrain geometrie sommets perception vue dossierImages nombreImages pasSimule
   departD01 arriveeD01 departD02 arriveeD02 |
 
-dossierTerrain := 'Carthography/terrain-valence' asFileReference.
-geometrie := STONJSON fromString: ('exemple-valence.geojson' asFileReference) contents.
+dossierTerrain := '/Users/llagadec/TMP/FullApp/couplage-perception-roassal/' asFileReference.
+geometrie := STONJSON fromString: ('/Users/llagadec/TMP/FullApp/couplage-perception-roassal/exemple-valence.geojson' asFileReference) contents.
 sommets := (geometrie at: 'coordinates') first collect: [ :paire |
     paire first @ paire second ].
 
