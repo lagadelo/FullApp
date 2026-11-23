@@ -9,6 +9,53 @@ Class {
 }
 
 { #category : 'examples' }
+MacroSimulatorExample class >> aggregate: aProcessing values: values [
+    | selector |
+    selector := aProcessing asSymbol.
+    selector = #average ifTrue: [ ^ values average asFloat ].
+    selector = #min ifTrue: [ ^ values min asFloat ].
+    selector = #max ifTrue: [ ^ values max asFloat ].
+    selector = #sum ifTrue: [
+        ^ (values inject: 0 into: [ :sum :value | sum + value ]) asFloat ].
+    selector = #standardDeviation ifTrue: [
+        ^ values size < 2
+            ifTrue: [ 0.0 ]
+            ifFalse: [ values standardDeviation asFloat ] ].
+
+    (#(stabilityRatio stabilizationTime stabilizationDuration) includes: selector)
+        ifTrue: [
+            | transitions stableAt unstableAt firstUnstable firstStable |
+            transitions := 1 to: values size - 1.
+            stableAt := [ :index |
+                | previous change |
+                previous := values at: index.
+                change := (values at: index + 1) - previous.
+                change abs <= (previous abs / 100) ].
+
+            selector = #stabilityRatio ifTrue: [
+                transitions ifEmpty: [ ^ 0.0 ].
+                ^ ((transitions count: stableAt) / transitions size) asFloat ].
+
+            unstableAt := [ :index | (stableAt value: index) not ].
+            selector = #stabilizationTime ifTrue: [
+                | lastUnstable |
+                lastUnstable := (transitions size to: 1 by: -1)
+                    detect: unstableAt
+                    ifNone: [ ^ 0 ].
+                ^ transitions size - lastUnstable ].
+
+            firstUnstable := transitions detect: unstableAt ifNone: [ ^ 0 ].
+            firstStable := (firstUnstable + 1 to: transitions size)
+                detect: stableAt
+                ifNone: [ ^ Float infinity ].
+            ^ firstStable - firstUnstable ].
+
+    (values respondsTo: selector) ifTrue: [
+        ^ (values perform: selector) asFloat ].
+    self error: 'Unsupported aggregation: ', selector asString
+]
+
+{ #category : 'examples' }
 MacroSimulatorExample class >> example1 [
 	"Simple case - no loss"
 
@@ -590,7 +637,7 @@ MacroSimulatorExample class >> example9 [
 	macroMetricsSeries parameters: #( pacingRate sensibilities ).
 
 	exporter := MacroExporter directoryName: self timeStampForNaming. "exporter is Unique to ensure directory consistency"
-	pacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.
+	pacingRates := { 0.9.  . 0.98.
 	               0.99 }.
 	sensibilities := { 0.005. 0.01. 0.015. 0.02 }.
 	parameters := MacroSimulatorParameters new

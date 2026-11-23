@@ -9,41 +9,6 @@ Class {
 	#package : 'DroneSystem-Macro'
 }
 
-{ #category : 'private - patrol extensions' }
-MacroSimulatorExtractor class >> aggregate: aProcessing values: values [
-	| selector |
-	selector := aProcessing asSymbol.
-	selector = #average ifTrue: [ ^ values average asFloat ].
-	selector = #min ifTrue: [ ^ values min asFloat ].
-	selector = #max ifTrue: [ ^ values max asFloat ].
-	selector = #sum ifTrue: [ ^ (values inject: 0 into: [ :s :v | s + v ]) asFloat ].
-	selector = #standardDeviation ifTrue: [
-		^ values size < 2
-			ifTrue: [ 0.0 ]
-			ifFalse: [ values standardDeviation asFloat ] ].
-		
-		selector = #stabilityRatio ifTrue:[ |admissibleDifference| admissibleDifference := 0.01 "1%".   ^(((1 to: values size -1) select:[:i| " On cherche le nombre de de valeurs qui ne varient que de max admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) )abs < admissibleDifference]) size / (values size -1))asFloat]. 	
-	
-			selector = #stabilizationTime ifTrue:[ |admissibleDifference default| admissibleDifference := 0.01 "1%".   default := ( values size -1 to: 1 by: -1) detect:[:i| " On cherche la date de la derniere valeur qui  ne varie que de max admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  > admissibleDifference] ifNone: [^0]. ^values size -1 - default  ]. 	
-
- 
-			selector = #stabilizationDuration ifTrue:[  
-				
-				|admissibleDifference default defaultStable| admissibleDifference := 0.01 "1%".   default := ( 1 to:  values size -1  ) detect:[:i| " On cherche la date de la premiere valeur qui    varie de plusque   admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  > admissibleDifference] ifNone: [^0].  defaultStable := (default    to:  values size -1  ) detect:[:i| " On cherche la date de la premiere valeur qui  ne   varie pas de que   admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  < admissibleDifference] ifNone: [^Number infinity ]. ^defaultStable - default.
-				
-				]. 
-				
-
-
-
-		
-	(values respondsTo: selector) ifTrue: [ ^ (values perform: selector) asFloat ].
-
-		
-		
-			self error: 'Unsupported aggregation: ', selector asString  
-]
-
 { #category : 'instance creation' }
 MacroSimulatorExtractor class >> block: aBlock [
 
@@ -60,6 +25,84 @@ MacroSimulatorExtractor class >> convergenceTimeOf: aField towards: aTarget tole
 				convergenceTimeOf: aField
 				towards: aTarget
 				tolerance: aTolerance ]
+]
+
+{ #category : 'private - patrol extensions' }
+MacroSimulatorExtractor class >> example8WithDilation [
+	"Compare la stabilisation pour les périmètres nominal et dilaté, en mètres."
+
+	| contour nominalPerimeter deltaMeters revisitSeconds nominalParams dilatedParams
+	  macroMetricsSeries pacingRates outputDirectory |
+	contour := MacroSimulatorParameters
+		convexHullRouteFromRawPoints: (MacroSimulatorParameters generateRawBrittanyPoints: 100)
+		epsilon: 0.
+	nominalPerimeter := (1 to: contour size) inject: 0 into: [ :perimeter :index |
+		| current next |
+		current := contour at: index.
+		next := contour at: (index \\ contour size) + 1.
+		perimeter + (MacroSimulatorParameters haversineMetersFrom: current to: next) ].
+	deltaMeters := 500.
+	revisitSeconds := 10.
+
+	nominalParams := MacroSimulatorParameters new
+		totalDistance: nominalPerimeter;
+		nominalSpeed: 10;
+		maxSpeed: 15;
+		sensingRadius: 20;
+		captureRadius: 20;
+		policy: #capingPolicy;
+		seed: 3950149054165;
+		applyDronesForRevisit: revisitSeconds;
+		yourself.
+	dilatedParams := nominalParams copy
+		totalDistance: (nominalPerimeter + (2.0 * Float pi * deltaMeters));
+		applyDronesForRevisit: revisitSeconds;
+		yourself.
+
+	Transcript
+		show: 'Nominal  ', nominalParams totalDistance printString,
+			' m / ', nominalParams numberOfDrones printString, ' drones'; cr;
+		show: 'Dilaté   ', dilatedParams totalDistance printString,
+			' m / ', dilatedParams numberOfDrones printString, ' drones'; cr;
+		show: 'Renfort  +', (dilatedParams numberOfDrones - nominalParams numberOfDrones) printString; cr.
+
+	macroMetricsSeries := MacroSimulatorMetricsSerie new.
+	macroMetricsSeries addExtractor: #average -> #stdGap.
+	macroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.
+	macroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.
+	macroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.
+	macroMetricsSeries addExtractor: #average -> #avgSpeed.
+	macroMetricsSeries parameters: #(hull pacingRate).
+
+	outputDirectory := FileLocator workingDirectory /
+		(self timeStampForNaming , '-dilation-' , UUID new asString).
+	pacingRates := #(0.90 0.92 0.94 0.96 0.98).
+	{ 'nominal' -> nominalParams. 'dilated' -> dilatedParams }
+		do: [ :hullCase |
+			| label params fleetSize |
+			label := hullCase key.
+			params := hullCase value.
+			fleetSize := params numberOfDrones.
+			pacingRates do: [ :pacingRate |
+				| simulator exporter data |
+				simulator := params initializeSimulator.
+				simulator behavior pacingRate: pacingRate.
+
+				"Chaque retrait cible un rang relatif dans la flotte initiale."
+				simulator loose: (fleetSize * 0.01) ceiling at: 200.
+				simulator loose: (fleetSize * 0.30) ceiling at: 500.
+				simulator loose: (fleetSize * 0.80) ceiling at: 800.
+				simulator newIncomerAt: 500.
+				simulator newIncomerAt: 500.
+				simulator newIncomerAt: 1000.
+				simulator run: 1500.
+
+				exporter := MacroExporter directoryName:
+					(outputDirectory / label / pacingRate printString) fullName.
+				data := exporter visit: simulator.
+				macroMetricsSeries addToSeries: { label. pacingRate } -> data ] ].
+
+	^ (MacroExporter directoryName: outputDirectory fullName) visit: macroMetricsSeries
 ]
 
 { #category : 'instance creation - patrol temporal' }
