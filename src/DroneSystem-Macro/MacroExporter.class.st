@@ -292,11 +292,18 @@ MacroExporter >> visitMacroSimulatorMetricsSeries: aSimulatorMetricsSerie [
 { #category : 'visiting' }
 MacroExporter >> visitMacroSimulatorParameters: aParameters [ 
 
-	| tmp |
+"	| tmp |
 	tmp := OrderedCollection new.
 	tmp add: (self columnNamesFor: aParameters class).
 	tmp add: (self defaultExport: aParameters).
-	^ tmp
+	^ tmp"
+	
+ 
+    | columns values |
+    columns := self columnNamesFor: aParameters class.
+    values := columns collect: [ :name |
+        aParameters instVarNamed: name ].
+    ^ OrderedCollection with: columns with: values
 ]
 
 { #category : 'visiting' }

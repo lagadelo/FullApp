@@ -21,8 +21,27 @@ MacroSimulatorExtractor class >> aggregate: aProcessing values: values [
 		^ values size < 2
 			ifTrue: [ 0.0 ]
 			ifFalse: [ values standardDeviation asFloat ] ].
+		
+		selector = #stabilityRatio ifTrue:[ |admissibleDifference| admissibleDifference := 0.01 "1%".   ^(((1 to: values size -1) select:[:i| " On cherche le nombre de de valeurs qui ne varient que de max admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) )abs < admissibleDifference]) size / (values size -1))asFloat]. 	
+	
+			selector = #stabilizationTime ifTrue:[ |admissibleDifference default| admissibleDifference := 0.01 "1%".   default := ( values size -1 to: 1 by: -1) detect:[:i| " On cherche la date de la derniere valeur qui  ne varie que de max admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  > admissibleDifference] ifNone: [^0]. ^values size -1 - default  ]. 	
+
+ 
+			selector = #stabilizationDuration ifTrue:[  
+				
+				|admissibleDifference default defaultStable| admissibleDifference := 0.01 "1%".   default := ( 1 to:  values size -1  ) detect:[:i| " On cherche la date de la premiere valeur qui    varie de plusque   admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  > admissibleDifference] ifNone: [^0].  defaultStable := (default    to:  values size -1  ) detect:[:i| " On cherche la date de la premiere valeur qui  ne   varie pas de que   admissibleDifference par rapport à la voisine" (((values at:i) - (values at:i+1)) / (values at:i) ) abs  < admissibleDifference] ifNone: [^Number infinity ]. ^defaultStable - default.
+				
+				]. 
+				
+
+
+
+		
 	(values respondsTo: selector) ifTrue: [ ^ (values perform: selector) asFloat ].
-	self error: 'Unsupported aggregation: ', selector asString
+
+		
+		
+			self error: 'Unsupported aggregation: ', selector asString  
 ]
 
 { #category : 'instance creation' }
@@ -136,7 +155,7 @@ MacroSimulatorExtractor class >> process: aProcessing overField: aField [
 	| processingSelector fieldSelector labelString |
 	processingSelector := aProcessing asSymbol.
 	fieldSelector := aField asSymbol.
-	labelString := processingSelector asString, '(', fieldSelector asString, ')'.
+	labelString := processingSelector asString, '(', fieldSelector asString, ')'.  
 	^ self
 		label: labelString
 		block: [ :metrics |

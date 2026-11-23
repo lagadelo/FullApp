@@ -233,7 +233,7 @@ MacroSimulatorExample class >> example7 [
 MacroSimulatorExample class >> example8 [ 
 	"Prospection - in/out drone "
 
-	" self example8"
+	" self example8 "
 
 	| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |
 	macroMetricsSeries := MacroSimulatorMetricsSerie new.

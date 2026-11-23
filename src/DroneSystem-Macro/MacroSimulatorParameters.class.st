@@ -912,7 +912,7 @@ MacroSimulatorParameters >> arcPositionAtSegment: aSegmentIndex fraction: aFract
 	| f |
 	f := (aFraction max: 0.0) min: 1.0.
 	^ ((self wayPointsPositions at: aSegmentIndex)
-		+ ((self interWayPointsDistances at: aSegmentIndex) * f)) \ self totalDistance
+		+ ((self interWayPointsDistances at: aSegmentIndex) * f)) \\ self totalDistance
 ]
 
 { #category : 'accessing' }
@@ -1070,7 +1070,7 @@ MacroSimulatorParameters >> headingVectorAtArcPosition: aPosition relativeTo: an
 	| segment p1 p2 v norm |
 	segment := self segmentIndexAtArcPosition: aPosition.
 	p1 := self localXYOf: (self wayPoints at: segment) relativeTo: anOrigin.
-	p2 := self localXYOf: (self wayPoints at: segment \ self wayPoints size + 1) relativeTo: anOrigin.
+	p2 := self localXYOf: (self wayPoints at: segment \\ self wayPoints size + 1) relativeTo: anOrigin.
 	v := (p2 x - p1 x) @ (p2 y - p1 y).
 	norm := ((v x * v x) + (v y * v y)) sqrt.
 	norm = 0 ifTrue: [ ^ 1.0 @ 0.0 ].
@@ -1200,7 +1200,7 @@ MacroSimulatorParameters >> nominalSpeed: anObject [
 { #category : 'geometry - patrol v0.2' }
 MacroSimulatorParameters >> normalizedArcPosition: aPosition [
 	self totalDistance = 0 ifTrue: [ ^ 0.0 ].
-	^ aPosition \ self totalDistance
+	^ aPosition \\ self totalDistance
 ]
 
 { #category : 'accessing' }
@@ -1268,9 +1268,9 @@ MacroSimulatorParameters >> realPositionFrom: aPosition [
 	segment := self segmentIndexAtArcPosition: s.
 	start := self wayPointsPositions at: segment.
 	ratio := (s - start) / (self interWayPointsDistances at: segment).
-	nextIndex := segment \ self wayPoints size + 1.
+	nextIndex := segment \\ self wayPoints size + 1.
 	^ (self wayPoints at: segment)
-		+ (ratio * ((self wayPoints at: nextIndex) - (self wayPoints at: segment)))
+		+ ( ((self wayPoints at: nextIndex) - (self wayPoints at: segment))* ratio)
 ]
 
 { #category : 'accessing' }

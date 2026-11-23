@@ -1,6 +1,6 @@
 Class {
 	#name : 'MacroSimulatorPerceptionObservation',
-	#superclass : 'Object',
+	#superclass : 'MacroSimulatorPerceptionModel',
 	#instVars : [
 		'status',
 		'trueArcGap',

@@ -28,7 +28,7 @@ MacroSimulatorHybridPerception >> candidateGapsFrom: aDrone side: aSide ray: ray
 		| q q2 result candidateArc gap |
 		q := parameters localXYOf: (parameters wayPoints at: i) relativeTo: origin.
 		q2 := parameters
-			localXYOf: (parameters wayPoints at: i \ n + 1)
+			localXYOf: (parameters wayPoints at: i \\ n + 1)
 			relativeTo: origin.
 		result := self
 			rayDirection: rayDirection
@@ -40,8 +40,8 @@ MacroSimulatorHybridPerception >> candidateGapsFrom: aDrone side: aSide ray: ray
 			ifFalse: [ result ifNotNil: [
 				candidateArc := parameters arcPositionAtSegment: i fraction: result second.
 				gap := aSide = #ahead
-					ifTrue: [ candidateArc - aDrone position \ aStep range ]
-					ifFalse: [ aDrone position - candidateArc \ aStep range ].
+					ifTrue: [ candidateArc - aDrone position \\ aStep range ]
+					ifFalse: [ aDrone position - candidateArc \\ aStep range ].
 				gap > self intersectionEpsilon ifTrue: [
 					self addCandidateGap: gap to: candidates ] ] ] ].
 	^ Array with: candidates with: collinear
@@ -184,9 +184,9 @@ MacroSimulatorHybridPerception >> rayDirection: rayDirection intersectionWithSeg
 	t := qCrossS / denominator.
 	u := qCrossR / denominator.
 	(t > self intersectionEpsilon
-		and: [ t <= maxDistance + self intersectionEpsilon
-		and: [ u >= 0.0 - self intersectionEpsilon
-		and: [ u <= 1.0 + self intersectionEpsilon ] ] ]) ifFalse: [ ^ nil ].
+		and: [ t <= (maxDistance + self intersectionEpsilon)
+		and: [ u >= (0.0 - self intersectionEpsilon)
+		and: [ u <= (1.0 + self intersectionEpsilon) ] ] ]) ifFalse: [ ^ nil ].
 	^ Array with: t with: ((u max: 0.0) min: 1.0)
 ]
 

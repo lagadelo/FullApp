@@ -1,6 +1,6 @@
 Class {
 	#name : 'MacroSimulatorPerfectPerception',
-	#superclass : 'Object',
+	#superclass : 'MacroSimulatorPerceptionModel',
 	#category : 'DroneSystem-Macro',
 	#package : 'DroneSystem-Macro'
 }
