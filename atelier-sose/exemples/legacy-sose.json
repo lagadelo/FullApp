@@ -1,0 +1,15 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "legacySoSe",
+  "simulation": {
+    "numberOfDrones": 100,
+    "minSpeed": 10.0,
+    "policy": "capingPolicy",
+    "perceptionMode": "scenario",
+    "sensingRadius": 20,
+    "captureRadius": 20,
+    "ticks": 1500,
+    "revisitTargetSeconds": null
+  }
+}

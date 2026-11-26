@@ -1,0 +1,29 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "geometry",
+  "terrain": {
+    "example": "crozon"
+  },
+  "simulation": {
+    "numberOfDrones": 20,
+    "ticks": 30,
+    "perceptionMode": "hybrid",
+    "fleetWithdrawalTick": 12,
+    "fleetArrivalTick": 21
+  },
+  "display": {
+    "background": "hillshade",
+    "height": 220.0,
+    "showDroneNames": true,
+    "droneColorMode": "acceleration",
+    "fadeAfterSeconds": 12.0,
+    "transparentAfterSeconds": 24.0
+  },
+  "playback": {
+    "stride": 5,
+    "normalRate": 10.0,
+    "slowRate": 3.0,
+    "interval": [10, 15]
+  }
+}

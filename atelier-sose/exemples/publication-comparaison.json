@@ -1,0 +1,41 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "geometry",
+  "simulation": {
+    "numberOfDrones": 12,
+    "ticks": 90,
+    "tickSeconds": 1,
+    "revisitTargetSeconds": 32,
+    "sensingRadius": 800,
+    "perceptionMode": "hybrid"
+  },
+  "terrain": {
+    "syntheticLoopLength": 4000
+  },
+  "fleetSchedule": {
+    "seed": 724815,
+    "events": [
+      { "kind": "withdrawal", "tick": 18, "drone": 0 },
+      { "kind": "distance", "tick": 25, "available": false },
+      { "kind": "withdrawal", "fromTick": 30, "toTick": 42, "count": 2 },
+      { "kind": "distance", "tick": 45, "available": true },
+      { "kind": "arrival", "fromTick": 50, "toTick": 66, "count": 2 },
+      { "kind": "arrival", "tick": 72, "position": 1250.0 }
+    ]
+  },
+  "publication": {
+    "policies": ["revisedCapingPolicy", "capingPolicy", "revisitCapingPolicy"],
+    "ticks": [18],
+    "seconds": [35],
+    "origin": "2026-11-26T12:00:00+01:00",
+    "dates": ["2026-11-26T12:01:15+01:00"],
+    "droneIds": [0, 5],
+    "modes": ["speed", "acceleration"],
+    "showDroneNames": true,
+    "trailTicks": 4,
+    "lossMarkerSeconds": 12.0,
+    "positionTolerance": 0.01,
+    "speedTolerance": 0.05
+  }
+}

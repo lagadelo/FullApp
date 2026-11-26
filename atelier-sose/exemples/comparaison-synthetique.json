@@ -1,0 +1,19 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "geometry",
+  "simulation": {
+    "numberOfDrones": 12,
+    "perceptionMode": "hybrid",
+    "ticks": 140,
+    "revisitTargetSeconds": 32.0,
+    "sensorOutages": true,
+    "fleetWithdrawalTick": 18,
+    "fleetArrivalTick": 110,
+    "distanceWeight": 2.0,
+    "bearingHalfAngle": 180.0
+  },
+  "terrain": {
+    "syntheticLoopLength": 4000
+  }
+}

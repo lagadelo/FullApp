@@ -1,0 +1,8 @@
+"variant","perception","policy","distanceWeight","bearingHalfAngle","targetSeconds","lastDelaySeconds","maxDelaySeconds","ticksAboveTarget","lastStdGapMeters","lastSpeedMetersPerSecond","directPercent","bearingPercent","outOfRangePercent","unavailablePercent"
+"distance","distance","revisedCapingPolicy","2.0","180.0","32.0","33.33333333333339","33.33333333333339","141","2.6863151710202873e-13","10.0","100.0","0.0","0.0","0.0"
+"gisement","bearing","revisedCapingPolicy","2.0","180.0","32.0","33.33333333333339","33.33333333333339","141","2.6863151710202873e-13","10.0","0.0","32.86052009456269","0.0","67.13947990543744"
+"hybride","hybrid","revisedCapingPolicy","2.0","180.0","32.0","33.33333333333339","33.33333333333339","141","2.6863151710202873e-13","10.0","100.0","0.0","0.0","0.0"
+"hybride-gain-reduit","hybrid","revisedCapingPolicy","0.35","180.0","32.0","33.33333333333339","33.33333333333339","141","2.6863151710202873e-13","10.0","100.0","0.0","0.0","0.0"
+"hybride-angle-reduit","hybrid","revisedCapingPolicy","2.0","25.0","32.0","33.33333333333339","33.33333333333339","141","2.6863151710202873e-13","10.0","100.0","0.0","0.0","0.0"
+"hybride-revisite","hybrid","revisitCapingPolicy","2.0","180.0","32.0","32.00000000000005","33.33333333333335","8","7.331038234525332e-12","10.416666666666744","100.0","0.0","0.0","0.0"
+"hybride-capping","hybrid","capingPolicy","2.0","180.0","32.0","66.6666666666667","66.6666666666667","141","1.9415723814517298e-13","5.0","100.0","0.0","0.0","0.0"

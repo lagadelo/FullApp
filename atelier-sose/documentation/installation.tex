@@ -1,0 +1,49 @@
+\section{Reconstruire une image Pharo 14}
+Téléchargez une image Pharo 14 vierge et une VM correspondant à l'architecture de la machine. Placez-vous à la racine du kit extrait. Le troisième argument doit désigner un nouveau dossier. Sur macOS, passez le chemin du binaire \sel{Pharo} sous \sel{Pharo.app/Contents/MacOS}.
+
+\begin{lstlisting}
+bash installer.sh "/chemin/vers/pharo" \
+  "/chemin/vers/Pharo 14.image" "$HOME/sose-propre"
+
+"$HOME/sose-propre/lancer.sh"
+\end{lstlisting}
+
+L'installateur importe le socle FullApp figé et NeoCSV embarqués, charge les paquets Tonel de l'atelier, associe les ressources et vérifie l'image. Le répertoire résultat contient \sel{SoSe-Atelier.image}, son lanceur et un dépôt Git local dans \sel{atelier/}. Examinez \sel{provenance.txt} et \sel{verification.txt} pour retrouver les versions et les contrôles. Le socle livré fonctionne sans accès à un dépôt distant à l'installation. Les ressources cartographiques externes restent soumises à la disponibilité des fournisseurs.
+
+Pour utiliser une autre révision FullApp, ajoutez \sel{--fullapp-clone CHEMIN} ou \sel{--fullapp-url URL}, avec \sel{--ref REF} pour figer la révision. Pour préparer une publication, \sel{--clone-publication URL} crée un clone séparé dans \sel{publication/}, prépare les sources sur la branche de travail \sel{atelier-sose} et laisse la révision et l'envoi à l'utilisateur. L'installation locale reste utile pour comparer les modifications de cette branche à l'état livré.
+
+\begin{lstlisting}
+git -C "$HOME/sose-propre/atelier" status
+git -C "$HOME/sose-propre/publication" diff --cached --stat
+\end{lstlisting}
+
+\subsection{Dépendances par usage}
+\begin{tabularx}{\linewidth}{@{}lY@{}}
+\toprule
+Usage & Dépendances \\
+\midrule
+Installation de référence & Git, Bash, VM et image Pharo 14. Le profil charge les classes FullApp nécessaires, NeoCSV et les services terrain. Il utilise Spec et Roassal de l'image Pharo 14 de départ. \\
+Simulation et CSV & L'image installée et les fichiers de paramètres. Une comparaison sur boucle synthétique fournit son parcours sans téléchargement. \\
+Terrain fourni & Les ressources locales de l'atelier. Elles comprennent les données des exemples. \\
+MNT et fonds externes & GDAL dans le \sel{PATH}. Copernicus requiert \sel{curl}, \sel{gdalbuildvrt} et un accès aux dalles publiques. Les fonds externes nécessitent un accès à leur service. \\
+Vidéo MP4 & FFmpeg dans le \sel{PATH}, avec l'encodeur \sel{libx264}. \\
+Carte et 3D Web & Un navigateur récent. L'aperçu 3D utilise WebGL. \\
+Documentation & LaTeX avec TikZ, \sel{listings} et \sel{hyperref}, pour recompiler le PDF. \\
+\bottomrule
+\end{tabularx}
+
+Sur macOS Intel, si Homebrew ne propose pas une version de GDAL installable, utilisez les paquets \sel{osx-64} disponibles pour votre version de macOS dans Conda. Le nom du paquet est \sel{gdal}. Lancez ensuite l'atelier depuis le même Terminal pour qu'il hérite du \sel{PATH}.
+
+\begin{lstlisting}
+conda create -n sose-gdal --override-channels -c conda-forge gdal
+conda activate sose-gdal
+gdalinfo --version
+gdalwarp --version
+gdalbuildvrt --version
+ffmpeg -version
+"$HOME/sose-propre/lancer.sh"
+\end{lstlisting}
+
+Pour faire évoluer les paquets depuis Pharo, ajoutez le dépôt local dans Iceberg. Le fichier \sel{.project} place les paquets sous \sel{src}. Les changements de méthodes sont exportés en Tonel quand vous les commitez dans ce dépôt. Renouvelez une reconstruction sur image vierge pour vérifier le chargement à partir des seuls fichiers.
+
+La référence de construction est \sel{guide-atelier.tex}. Depuis le dossier \sel{documentation}, la commande \sel{latexmk -pdf guide-atelier.tex} régénère ce document et ses diagrammes TikZ.

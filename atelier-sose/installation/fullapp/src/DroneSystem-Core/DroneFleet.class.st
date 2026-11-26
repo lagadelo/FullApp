@@ -1,0 +1,269 @@
+Class {
+	#name : 'DroneFleet',
+	#superclass : 'Object',
+	#instVars : [
+		'clusters',
+		'missions',
+		'hostileClusters',
+		'log',
+		'fleetId',
+		'hostile',
+		'name'
+	],
+	#category : 'DroneSystem-Core',
+	#package : 'DroneSystem-Core'
+}
+
+{ #category : 'as yet unclassified' }
+DroneFleet class >> fleetWithClusters: clusters id: anId hostile: aBool name: aString [
+    ^ (self new) initializeWithClusters: clusters id: anId hostile: aBool name: aString.
+]
+
+{ #category : 'visiting' }
+DroneFleet >> accept: aVisitor [
+
+^aVisitor visitDroneFleet: self 
+]
+
+{ #category : 'initialization' }
+DroneFleet >> addAlliedeCluster: aCluster [
+    self addCluster: aCluster.
+	 aCluster beAllied.
+    log add: 'Allied Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
+]
+
+{ #category : 'initialization' }
+DroneFleet >> addCluster: aCluster [
+    clusters add: aCluster.
+	
+    log add: 'New cluster ', aCluster id asString, ' accepted.'.
+]
+
+{ #category : 'initialization' }
+DroneFleet >> addHostileCluster: aCluster [
+    self addCluster: aCluster.
+	 aCluster beHostile.
+    log add: 'Hostile Cluster ', aCluster clusterId asString, ' tagged as hostile.'.
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allAlliedDrones [
+	^ self allDrones reject: [ :a | a isHostile ]
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allDrones [
+
+	^ self allDronesForClusters: (self clusters reject: [ :c | c isNil ])
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allDronesForClusters: someClusters [
+
+	| tmp |
+	tmp := OrderedCollection new.
+	^ someClusters 
+		  collect: [ :a | a drones ]
+		  thenDo: [ :c | tmp := tmp , c ].
+	^ tmp
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allDronesFromHostileClusters [
+
+	^ self allDronesForClusters: (clusters  select:[:a| a isHostile])
+]
+
+{ #category : 'accessing' }
+DroneFleet >> allHostileDrones [
+
+	^ self allDrones select: [ :a | a isHostile ]
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> alliedCenter [
+
+^(DroneCluster with: self allAlliedDrones) clusterCenter 
+]
+
+{ #category : 'accessing' }
+DroneFleet >> alliedClusters [
+
+"non aligned clusters ?"
+^self clusters select: [:c| c isHostile = false]
+]
+
+{ #category : 'execution' }
+DroneFleet >> assignMission: aMission toCluster: aCluster [
+    aCluster currentMission: aMission.
+    aMission assignToCluster: aCluster.
+    missions add: aMission.
+    log add: 'Mission ', aMission missionType asString, 
+        ' assignée au cluster ', aCluster clusterId asString.
+]
+
+{ #category : 'initialization' }
+DroneFleet >> clearLog [
+    log := OrderedCollection new
+]
+
+{ #category : 'accessing' }
+DroneFleet >> clusters [
+
+	^ clusters
+]
+
+{ #category : 'accessing' }
+DroneFleet >> clusters: anObject [
+
+	clusters := anObject
+]
+
+{ #category : 'initialization' }
+DroneFleet >> deepCopy [ 
+
+| f  clustersMapping|
+f := self class new. 
+clustersMapping := Dictionary new.
+self clusters do:[:c| clustersMapping at:c put: c deepCopy].
+
+self alliedClusters do:[:c| f addCluster:  (clustersMapping at:c) ].
+self hostileClusters do:[:c| f addHostileCluster: (clustersMapping at:c)].
+f name:  self name.
+f missions: (self missions collect:[:m| |mc| mc := m copy. mc assignToCluster: (clustersMapping at: m cluster)]  ).
+
+ ^f
+]
+
+{ #category : 'evaluation' }
+DroneFleet >> evaluateCoverage [
+    "Retourne la couverture combinée de tous les clusters"
+    ^ clusters collectMany: [ :c | c coverage ].
+]
+
+{ #category : 'evaluation' }
+DroneFleet >> evaluateDefense [
+    "Évalue la résilience face aux attaques hostiles"
+    ^ clusters collect: [ :c | { c clusterId . c isOperational } ].
+]
+
+{ #category : 'evaluation' }
+DroneFleet >> evaluateStrategy: aStrategyBlock [
+    "Applique une heuristique d’évaluation à la flotte"
+    ^ aStrategyBlock value: self
+]
+
+{ #category : 'execution' }
+DroneFleet >> executeOn: aSimulation [
+    self subclassResponsibility.
+
+
+]
+
+{ #category : 'accessing' }
+DroneFleet >> flattenCluster [ 
+^DroneCluster with: (self clusters collectMany:[:c| c drones  ])
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> fleetCenter [
+
+^(DroneCluster with: self allDrones) clusterCenter 
+]
+
+{ #category : 'accessing' }
+DroneFleet >> fleetId [
+
+	^ fleetId
+]
+
+{ #category : 'accessing' }
+DroneFleet >> fleetId: anObject [
+
+	fleetId := anObject
+]
+
+{ #category : 'accessing' }
+DroneFleet >> hostile [
+
+	^ hostile
+]
+
+{ #category : 'accessing' }
+DroneFleet >> hostile: anObject [
+
+	hostile := anObject
+]
+
+{ #category : 'as yet unclassified' }
+DroneFleet >> hostileCenter [
+
+^(DroneCluster with: self allHostileDrones) clusterCenter 
+]
+
+{ #category : 'accessing' }
+DroneFleet >> hostileClusters [
+
+"non aligned clusters ?"
+^self clusters select: [:c| c isHostile = true]
+]
+
+{ #category : 'initialization' }
+DroneFleet >> initialize [
+    clusters := OrderedCollection new.
+    missions := OrderedCollection new.
+    hostileClusters := OrderedCollection new.
+    log := OrderedCollection new.
+]
+
+{ #category : 'initialization' }
+DroneFleet >> initializeWithClusters: clusterCollection id: anId hostile: aBool name: aString [
+    clusters := (clusterCollection copy asOrderedCollection).
+    fleetId := anId.
+    hostile := aBool.
+    name := aString.
+    log := OrderedCollection new.
+    ^ self.
+]
+
+{ #category : 'accessing' }
+DroneFleet >> log [
+
+	^ log
+]
+
+{ #category : 'accessing' }
+DroneFleet >> log: anObject [
+
+	log := anObject
+]
+
+{ #category : 'accessing' }
+DroneFleet >> missions [
+
+	^ missions
+]
+
+{ #category : 'accessing' }
+DroneFleet >> missions: anObject [
+
+	missions := anObject
+]
+
+{ #category : 'accessing' }
+DroneFleet >> name [
+
+	^ name
+]
+
+{ #category : 'accessing' }
+DroneFleet >> name: anObject [
+
+	name := anObject
+]
+
+{ #category : 'initialization' }
+DroneFleet >> removeCluster: aCluster [
+    clusters remove: aCluster ifAbsent: [].
+    log add: 'Cluster ', aCluster clusterId asString, ' retiré de la flotte.'.
+]

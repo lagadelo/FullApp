@@ -1,0 +1,11 @@
+{
+  "seed": 724815,
+  "events": [
+    { "kind": "withdrawal", "tick": 18, "drone": 0 },
+    { "kind": "distance", "tick": 25, "available": false },
+    { "kind": "withdrawal", "fromTick": 30, "toTick": 42, "count": 2 },
+    { "kind": "distance", "tick": 45, "available": true },
+    { "kind": "arrival", "fromTick": 50, "toTick": 66, "count": 2 },
+    { "kind": "arrival", "tick": 72, "position": 1250.0 }
+  ]
+}

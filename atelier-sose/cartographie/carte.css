@@ -1,0 +1,71 @@
+:root {
+  color-scheme: light;
+  --ink: #182b37;
+  --subtle: #4e636b;
+  --edge: #cedbdc;
+  --surface: #f5f8f7;
+  --brand: #0c675b;
+  --brand-pale: #e1f0eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: flex; flex-direction: column; background: var(--surface); }
+header { background: #162e36; color: #fff; padding: .8rem 1.2rem; display: flex; gap: 1rem; justify-content: space-between; align-items: center; }
+h1 { margin: 0; font-size: 1.2rem; font-weight: 690; letter-spacing: -.02em; }
+.header-actions { display: flex; gap: .7rem; align-items: center; font-size: .88rem; }
+.header-actions label { color: #e0ebe9; }
+main { flex: 1; display: grid; grid-template-columns: 330px minmax(0, 1fr); min-height: 0; }
+aside { padding: 1rem; border-right: 1px solid var(--edge); overflow-y: auto; }
+aside section, aside form, footer { padding: 0 0 .9rem; margin: 0 0 .9rem; border-bottom: 1px solid var(--edge); }
+footer { border: 0; padding-bottom: 0; margin-bottom: 0; }
+#map { background: #dce9e9; min-height: 16rem; }
+button, select, input { font: inherit; color: var(--ink); }
+button, select, input:not([type=checkbox]) { border: 1px solid var(--edge); border-radius: .46rem; min-height: 2.2rem; background: #fff; }
+button { cursor: pointer; padding: .35rem .63rem; font-weight: 620; font-size: .83rem; }
+button:hover:not(:disabled) { border-color: var(--brand); }
+button:disabled { opacity: .5; cursor: default; }
+button[aria-pressed=true] { border-color: var(--brand); background: var(--brand-pale); color: #09574d; }
+button.primary { background: var(--brand); border-color: #80b1a8; color: #fff; }
+input:not([type=checkbox]), select { padding: .3rem .5rem; }
+:focus-visible { outline: 2px solid #bc690e; outline-offset: 2px; }
+.full { width: 100%; margin-top: .35rem; }
+.example-row { display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+.example-row button { min-height: 1.8rem; }
+.field-label, #center label { font-size: .83rem; font-weight: 650; }
+.coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: .48rem; margin-bottom: .38rem; }
+.coordinates input { width: 100%; display: block; font-size: .82rem; margin-top: .2rem; }
+.drawing-modes, .edit-actions, .file-actions { display: flex; gap: .4rem; }
+.drawing-modes button, .file-actions button { flex: 1; }
+#instruction, #status, #extent { font-size: .79rem; color: var(--subtle); line-height: 1.35; }
+#instruction { min-height: 2rem; margin: .45rem 0; }
+#status { margin-top: .5rem; }
+#status.error { color: #96311f; font-weight: 620; }
+#layer-status { margin: .5rem 0 0; font-size: .79rem; color: #96311f; }
+.extent-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.hull { margin-top: .5rem; display: flex; align-items: center; gap: .3rem; font-size: .83rem; }
+h2 { margin: 0 0 .45rem; font-size: .95rem; }
+#waypoint-count { margin-left: .25rem; color: var(--subtle); font-weight: 500; }
+ol { margin: 0 0 .5rem; padding: 0; list-style: none; overflow-y: auto; max-height: 13rem; }
+ol li button { font-variant-numeric: tabular-nums; display: flex; width: 100%; min-height: 1.9rem; justify-content: space-between; margin-bottom: .23rem; font-size: .8rem; }
+.waypoint-marker { display: grid; place-items: center; background: #086354; color: white; border: 2px solid white; border-radius: 50%; box-shadow: 0 1px 5px #0007; font-weight: 700; }
+.waypoint-marker.selected { background: #923b15; }
+.leaflet-container.drawing { cursor: crosshair; }
+dialog { width: min(430px, calc(100% - 2rem)); border: 1px solid var(--edge); border-radius: .75rem;
+  padding: 1.2rem; background: var(--surface); color: var(--ink); box-shadow: 0 18px 48px #10242a45; }
+dialog::backdrop { background: #172e39a8; }
+dialog h2 { font-size: 1.18rem; }
+dialog p { margin: .4rem 0 .8rem; color: var(--subtle); font-size: .85rem; line-height: 1.4; }
+dialog fieldset { display: grid; gap: .4rem; min-width: 0; margin: 0; border: 0; padding: 0; }
+dialog label { font-size: .85rem; font-weight: 650; }
+dialog .coordinates { margin: .35rem 0; }
+#terrain-status { min-height: 1.2rem; overflow-wrap: anywhere; }
+#terrain-status.error { color: #96311f; font-weight: 620; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+@media (max-width: 720px) {
+  header { align-items: flex-start; flex-wrap: wrap; }
+  .header-actions { flex-wrap: wrap; }
+  main { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 48dvh) auto; overflow-y: auto; }
+  #map { grid-row: 1; }
+  aside { overflow-y: visible; }
+}

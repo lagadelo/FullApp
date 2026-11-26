@@ -1,0 +1,172 @@
+[
+  {
+    "id": "nyc",
+    "label": "New York · Manhattan",
+    "gridStep": 30,
+    "bounds": [
+      -73.997,
+      40.729,
+      -73.957,
+      40.778
+    ],
+    "waypoints": [
+      [
+        -73.9875,
+        40.743
+      ],
+      [
+        -73.9855,
+        40.7478
+      ],
+      [
+        -73.9817,
+        40.7539
+      ],
+      [
+        -73.9786,
+        40.7596
+      ],
+      [
+        -73.9759,
+        40.765
+      ],
+      [
+        -73.9707,
+        40.7685
+      ],
+      [
+        -73.9671,
+        40.7624
+      ],
+      [
+        -73.9705,
+        40.7548
+      ],
+      [
+        -73.9749,
+        40.749
+      ],
+      [
+        -73.9815,
+        40.7424
+      ]
+    ],
+    "source": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. · © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap"
+  },
+  {
+    "id": "crozon",
+    "label": "Finistère · Crozon",
+    "gridStep": 50,
+    "bounds": [
+      -4.649,
+      48.21,
+      -4.413,
+      48.318
+    ],
+    "waypoints": [
+      [
+        -4.586,
+        48.2395
+      ],
+      [
+        -4.575,
+        48.231
+      ],
+      [
+        -4.559,
+        48.231
+      ],
+      [
+        -4.541,
+        48.237
+      ],
+      [
+        -4.524,
+        48.252
+      ],
+      [
+        -4.534,
+        48.268
+      ],
+      [
+        -4.559,
+        48.275
+      ],
+      [
+        -4.586,
+        48.272
+      ],
+      [
+        -4.607,
+        48.261
+      ],
+      [
+        -4.613,
+        48.249
+      ]
+    ],
+    "source": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. · © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap"
+  },
+  {
+    "id": "ormuz",
+    "label": "Détroit d’Ormuz · Les deux rives",
+    "gridStep": 250,
+    "bounds": [
+      55.87,
+      25.93,
+      56.94,
+      27.17
+    ],
+    "waypoints": [
+      [
+        56.0,
+        26.56
+      ],
+      [
+        56.03,
+        26.78
+      ],
+      [
+        56.11,
+        26.99
+      ],
+      [
+        56.31,
+        27.06
+      ],
+      [
+        56.54,
+        27.0
+      ],
+      [
+        56.73,
+        26.92
+      ],
+      [
+        56.83,
+        26.72
+      ],
+      [
+        56.77,
+        26.43
+      ],
+      [
+        56.63,
+        26.19
+      ],
+      [
+        56.47,
+        26.1
+      ],
+      [
+        56.22,
+        26.13
+      ],
+      [
+        56.03,
+        26.32
+      ]
+    ],
+    "source": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. · © OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap"
+  }
+]

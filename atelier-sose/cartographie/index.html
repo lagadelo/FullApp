@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Cartographie · Atelier SoSe</title>
+  <link rel="stylesheet" href="leaflet/leaflet.css">
+  <link rel="stylesheet" href="carte.css">
+  <script defer src="leaflet/leaflet.js"></script>
+  <script defer src="carte.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Cartographie de mission</h1>
+    <div class="header-actions">
+      <label for="layer">Fond de carte</label>
+      <select id="layer">
+        <option value="osm">OpenStreetMap</option>
+        <option value="relief">Relief et littoral</option>
+      </select>
+      <button id="save-terrain" disabled>Enregistrer le terrain…</button>
+      <button id="apply" class="primary">Appliquer dans Pharo</button>
+    </div>
+  </header>
+  <main>
+    <aside aria-label="Tracé de la mission">
+      <section>
+        <div class="example-row">
+          <label class="field-label" for="example">Exemple de terrain</label>
+          <button id="new-trace">Nouveau tracé</button>
+        </div>
+        <select id="example" class="full"><option value="">Tracé en cours</option></select>
+        <p id="layer-status" role="status" hidden></p>
+      </section>
+      <form id="center" aria-label="Centrer sur des coordonnées">
+        <div class="coordinates">
+          <label>Longitude<input id="lon" inputmode="decimal" placeholder="ex. −4,56" required></label>
+          <label>Latitude<input id="lat" inputmode="decimal" placeholder="ex. 48,25" required></label>
+        </div>
+        <button type="submit">Centrer</button>
+        <button type="button" id="fit">Voir le tracé</button>
+      </form>
+      <section>
+        <div class="drawing-modes" role="group" aria-label="Action sur la carte">
+          <button data-mode="navigate" aria-pressed="true">Navigation</button>
+          <button data-mode="point" aria-pressed="false">Point</button>
+          <button data-mode="area" aria-pressed="false">Emprise</button>
+        </div>
+        <p id="instruction">Déplace la carte ou choisis un outil de tracé.</p>
+        <div class="extent-row">
+          <div><span class="field-label">Emprise du MNT</span><div id="extent">Automatique</div></div>
+          <button id="clear-area">Effacer</button>
+        </div>
+        <label class="hull"><input type="checkbox" id="hull"> Enveloppe convexe dans l’atelier</label>
+      </section>
+      <section class="waypoints">
+        <h2>Points de passage <span id="waypoint-count">0</span></h2>
+        <ol id="waypoint-list"></ol>
+        <div class="edit-actions" role="group" aria-label="Modifier le point sélectionné">
+          <button id="up">Monter</button><button id="down">Descendre</button><button id="remove">Retirer</button>
+        </div>
+      </section>
+      <footer>
+        <div class="file-actions">
+          <button id="load">Ouvrir un tracé…</button><input type="file" id="import" accept=".json,application/json" hidden>
+          <button id="save">Enregistrer le tracé</button>
+        </div>
+        <div id="status" role="status"></div>
+      </footer>
+    </aside>
+    <div id="map" aria-label="Carte de la zone de mission"></div>
+  </main>
+  <dialog id="terrain-dialog" aria-labelledby="terrain-title">
+    <form id="terrain-form">
+      <h2 id="terrain-title">Enregistrer le terrain</h2>
+      <p id="terrain-extent"></p>
+      <fieldset id="terrain-fields">
+        <label for="terrain-name">Nom du dossier</label>
+        <input id="terrain-name" required>
+        <div class="coordinates">
+          <label>Maille · m<input id="terrain-step" type="number" min="0.1" max="10000" step="any" required></label>
+          <label>Marge · m<input id="terrain-margin" type="number" min="0" max="100000" step="any" required></label>
+        </div>
+        <label for="terrain-source">Source d’altitude</label>
+        <select id="terrain-source">
+          <option value="copernicus">Copernicus GLO-30 · en ligne</option>
+          <option value="ign">IGN · France</option>
+          <option value="usgs">USGS · États-Unis</option>
+          <option value="geotiff">GeoTIFF local…</option>
+          <option value="example">GeoTIFF de l’exemple</option>
+        </select>
+      </fieldset>
+      <p id="terrain-status" role="status"></p>
+      <div class="dialog-actions">
+        <button id="terrain-close" type="button">Fermer</button>
+        <button id="terrain-submit" type="submit" class="primary">Choisir le dossier dans Pharo</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

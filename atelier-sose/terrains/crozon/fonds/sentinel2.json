@@ -1,0 +1,25 @@
+{
+  "url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg",
+  "source": "EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 & 2017)",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-11-25",
+  "processing": "Découpé et reprojeté sur l’emprise UTM du MNT à la résolution de la vidéo par interpolation bilinéaire",
+  "grid": {
+    "crs": "EPSG:32630",
+    "topLeft": [
+      377450.0,
+      5352650.0
+    ],
+    "cellSize": [
+      50.0,
+      50.0
+    ],
+    "columns": 356,
+    "rows": 234
+  },
+  "rasterSize": [
+    924,
+    607
+  ]
+}

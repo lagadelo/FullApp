@@ -1,0 +1,25 @@
+{
+  "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_19&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+  "source": "Plan IGN — © IGN",
+  "license": "Licence Ouverte 2.0",
+  "licenseUrl": "https://www.data.gouv.fr/datasets/plan-ign",
+  "retrieved": "2026-11-25",
+  "processing": "Découpé et reprojeté sur l’emprise UTM du MNT à la résolution de la vidéo par interpolation bilinéaire",
+  "grid": {
+    "crs": "EPSG:32630",
+    "topLeft": [
+      377450.0,
+      5352650.0
+    ],
+    "cellSize": [
+      50.0,
+      50.0
+    ],
+    "columns": 356,
+    "rows": 234
+  },
+  "rasterSize": [
+    924,
+    607
+  ]
+}

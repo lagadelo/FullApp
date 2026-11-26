@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Rejeu 3D · Atelier SoSe</title>
+  <link rel="stylesheet" href="./viewer.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="app-name">Atelier SoSe</p><h1>Rejeu 3D</h1></div>
+      <p id="summary" role="status">Chargement du rejeu…</p>
+    </header>
+    <section class="viewport" aria-label="Scène tridimensionnelle">
+      <div id="canvas"></div>
+      <p id="notice" role="status" hidden></p>
+      <div class="legend" aria-label="Légende">
+        <span><i></i> Parcours</span><span><i></i> Drone</span>
+      </div>
+    </section>
+    <div class="timeline" aria-label="Lecture">
+      <button id="play" type="button" disabled>Lire</button>
+      <label class="scrub">Pas <input type="range" id="step" min="0" max="0" value="0" disabled></label>
+      <output for="step" id="time"></output>
+      <label>Vitesse
+        <select id="rate" disabled>
+          <option value="0.25">×0,25</option><option value="0.5">×0,5</option>
+          <option value="1" selected>×1</option><option value="2">×2</option>
+          <option value="4">×4</option><option value="10">×10</option>
+        </select>
+      </label>
+    </div>
+    <p class="help">Glisser pour tourner la scène. Faire défiler pour zoomer.</p>
+  </main>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>

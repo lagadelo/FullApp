@@ -1,0 +1,15 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "geometry",
+  "simulation": {
+    "numberOfDrones": 12,
+    "seed": 3950149054165,
+    "ticks": 140,
+    "revisitTargetSeconds": 32.0,
+    "sensorOutages": false
+  },
+  "terrain": {
+    "syntheticLoopLength": 4000
+  }
+}

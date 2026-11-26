@@ -1,0 +1,2396 @@
+{
+	#definitions : OrderedCollection [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'soSe\r    "Une exécution de l’expérience SoSe, avec pacingRate 0.9 et sensibilité 0.01."\r    | parameters simulator |\r    parameters := MacroSimulatorParameters new\r        numberOfDrones: 100;\r        nominalSpeed: 10;\r        maxSpeed: 15;\r        sensingRadius: 20;\r        captureRadius: 20;\r        totalDistance: 10000;\r        policy: #capingPolicy;\r        seed: 3950149054165;\r        yourself.\r    simulator := parameters initializeSimulator.\r    simulator behavior sensibility: 0.01; pacingRate: 0.9.\r    simulator loose: 1 at: 200.\r    simulator loose: 30 at: 500.\r    simulator loose: 80 at: 800.\r    simulator newIncomerAt: 500.\r    simulator newIncomerAt: 500.\r    simulator newIncomerAt: 1000.\r    simulator run: 1500.\r    ^ simulator\r',
+			#category : #exemples,
+			#selector : #soSe,
+			#className : #FullAppMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'isSeWithSeedIndex: anIndex\r    | simulator |\r    simulator := MacroSimulatorExample generateScenario: anIndex.\r    simulator run: 1500.\r    ^ simulator\r',
+			#category : #exemples,
+			#selector : #'isSeWithSeedIndex:',
+			#className : #FullAppMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'newSimulatorWith: configure\r    "Les vitesses du bloc sont en m/s et les portées sont en mètres."\r    | simulator points |\r    points := replay projectedWayPoints.\r    points asSet size >= 3\r        ifFalse: [ self error: \'Le parcours hybride exige au moins trois sommets distincts.\' ].\r    simulator := replay newSimulatorWith: [ :parameters |\r        parameters\r            wayPoints: points;\r            numberOfDrones: 20;\r            minSpeed: 5;\r            nominalSpeed: 10;\r            maxSpeed: 15;\r            sensingRadius: 1600;\r            captureRadius: 90;\r            policy: #revisedCapingPolicy.\r        configure value: parameters ].\r    simulator perceptionModel: MacroSimulatorHybridPerception new.\r    simulator behavior sensibility: 0.01; pacingRate: 0.9.\r    ^ simulator\r',
+			#category : #simulation,
+			#selector : #'newSimulatorWith:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'exportMetricsOf: simulator into: aDirectory\r    | exporter metrics |\r    exporter := MacroSimulatorResultExporter directoryName: aDirectory.\r    metrics := simulator evaluateMetrics.\r    ^ exporter exportHistoryCSV: metrics named: \'sose\'\r        fields: #(timeStep fleetSize maxGap stdGap avgSpeed coverageRatio\r            directPerceptionRatio angularPerceptionRatio unobservablePerceptionRatio\r            outOfRangePerceptionRatio avgGapEstimationError maxGapEstimationError)\r',
+			#category : #export,
+			#selector : #'exportMetricsOf:into:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'initializeOn: aReplay\r    replay := aReplay.\r    replay secondsPerTick: 2; heightAboveGround: 180.\r    replay displayOptions\r        at: #camera put: { 0.5. 2000 };\r        at: #droneColorMode put: #acceleration;\r        at: #droneMarkerSize put: 5;\r        at: #fadeAfterSeconds put: 40;\r        at: #transparentAfterSeconds put: 75.\r    ^ self\r',
+			#category : #configuration,
+			#selector : #'initializeOn:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'scheduleOutageOn: simulator\r    "Les événements portent sur le voisinage utilisé par la loi de commande."\r    simulator scheduleAllDistanceMeasurementAvailable: false at: 25.\r    simulator scheduleVisionAvailable: false at: 45 matching: [ :drone | true ].\r    simulator scheduleVisionAvailable: true at: 70 matching: [ :drone | true ].\r    simulator scheduleAllDistanceMeasurementAvailable: true at: 85.\r    simulator current drones size > 1 ifTrue: [\r        simulator loose: simulator current drones first id at: 55.\r        simulator newIncomerAt: 110 ].\r    ^ simulator\r',
+			#category : #simulation,
+			#selector : #'scheduleOutageOn:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'replay\r    ^ replay\r',
+			#category : #configuration,
+			#selector : #replay,
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'export: simulator every: stride into: aDirectory\r    "Exporte les métriques à chaque tik et une image tous les stride tiks."\r    | output images |\r    output := aDirectory asFileReference asAbsolute.\r    output parent ensureCreateDirectory.\r    output createDirectory.\r    self exportMetricsOf: simulator into: output.\r    images := replay exportHistory: simulator history every: stride into: output.\r    (output / \'images.txt\') writeStreamDo: [ :stream |\r        stream nextPutAll: images fullName; lf ].\r    ^ output\r',
+			#category : #export,
+			#selector : #'export:every:into:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'simulate\r    | simulator |\r    simulator := self newSimulatorWith: [ :parameters | ].\r    self scheduleOutageOn: simulator.\r    simulator runSingleUpdate: 140.\r    ^ simulator\r',
+			#category : #simulation,
+			#selector : #simulate,
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'vercorsFrom: aDirectory\r    ^ self on: (PerceptionMacroReplay vercorsFrom: aDirectory)\r',
+			#category : #'instance creation',
+			#selector : #'vercorsFrom:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'on: aReplay\r    ^ self new initializeOn: aReplay\r',
+			#category : #'instance creation',
+			#selector : #'on:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'fromTerrain: aDirectory routeFile: aFile\r    ^ self on: (PerceptionMacroReplay fromTerrain: aDirectory routeFile: aFile)\r',
+			#category : #'instance creation',
+			#selector : #'fromTerrain:routeFile:',
+			#className : #SoSeVercorsExample,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'computeInterWayPointsDistances\r    "Les GeoPoint gardent les kilomètres du profil historique. Un Point est déjà projeté."\r    | points |\r    points := self wayPoints.\r    ^ (1 to: points size) collect: [ :index |\r        | start stop |\r        start := points at: index.\r        stop := points at: (index \\\\ points size) + 1.\r        (self isGeographicPoint: start)\r            ifTrue: [ (self haversineMetersFrom: start to: stop) / 1000 ]\r            ifFalse: [ start distanceTo: stop ] ]\r',
+			#category : #'computing - waypoints',
+			#selector : #computeInterWayPointsDistances,
+			#className : #MacroSimulatorParameters,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example5\r\t"Prospection"\r\r\t| parameters simulator pacingRates sensibilities exporter |\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example5\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\tparameters := MacroSimulatorParameters new\r\t\t\t\t\t\t              numberOfDrones: 100;\r\t\t\t\t\t\t              nominalSpeed: 10;\r\t\t\t\t\t\t              maxSpeed: 15;\r\t\t\t\t\t\t              minSpeed: 8;\r\t\t\t\t\t\t              sensingRadius: 20;\r\t\t\t\t\t\t              captureRadius: 20;\r\t\t\t\t\t\t              totalDistance: 10000;\r\t\t\t\t\t\t              yourself.\r\t\t\t\t\tparameters policy: #capingPolicy.\r\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\tsimulator loose: 1 at: 200.\r\t\t\t\t\tsimulator run: 1500.\r\t\t\t\t\texporter visit: simulator ] ]',
+			#category : #examples,
+			#selector : #example5,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.289229+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example7\r\t"Prospection - in/out drone "\r\r\t| parameters simulator pacingRates sensibilities exporter |\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example7\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 100;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              yourself.\r\tparameters policy: #capingPolicy.\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\tsimulator loose: 1 at: 200.\r\t\t\t\t\tsimulator loose: 30 at: 500.\r\t\t\t\t\tsimulator loose: 10 at: 400.\r\t\t\t\t\tsimulator loose: 20 at: 500.\r\t\t\t\t\tsimulator loose: 57 at: 1200.\r\t\t\t\t\tsimulator loose: 80 at: 800.\r\t\t\t\t\tsimulator newIncomerAt: 550.\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t\tsimulator newIncomerAt: 1000.\r\t\t\t\t\tsimulator run: 3000.\r\t\t\t\t\texporter visit: simulator ] ]',
+			#category : #examples,
+			#selector : #example7,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.298809+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example10\r\t"Prospection - in/out drone "\r\r\t"revised capingPolicy"\r\r\t" self example10 "\r\r\t| macroMetricsSeries parameters simulator pacingRates sensibilities exporter minSpeeds outputDirectory |\r\tmacroMetricsSeries := MacroSimulatorMetricsSerie new.\r\tmacroMetricsSeries addExtractor: #average -> #stdGap.\r\tmacroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.\r\tmacroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.\r\tmacroMetricsSeries addExtractor: #min -> #maxGap.\r\tmacroMetricsSeries addExtractor: #max -> #maxGap.\r\tmacroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.\r\tmacroMetricsSeries addExtractor: #average -> #avgSpeed.\r\tmacroMetricsSeries parameters: #( pacingRate sensibilities minSpeed ).\r\r\toutputDirectory := self legacyOutputDirectoryFor: \'example10\'.\r\texporter := MacroExporter directoryName: outputDirectory fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tminSpeeds := { 5. 6. 7. 8. 9. 20 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 100;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              policy: #revisedCapingPolicy;\r\t\t              seed: 3950149054165;\r\t\t              yourself.\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\tminSpeeds do: [ :ms |\r\t\t\t\t\t\t\t| data |\r\t\t\t\t\t\t\tparameters minSpeed: ms.\r\r\t\t\t\t\t\t\tsimulator := parameters initializeSimulator.\r\r\t\t\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\t\t\tsimulator loose: 1 at: 199.\r\t\t\t\t\t\t\t"simulator loose: 30 at: 500.\r\t\t\t\t\tsimulator loose: 80 at: 800.\r\t\t\t\t\tsimulator newIncomerAt: 300.\r\t\t\t\t\tsimulator newIncomerAt: 400.\r\t\t\t\t\tsimulator newIncomerAt: 1000."\r\t\t\t\t\t\t\tsimulator run: 1500.\r\r\r\t\t\t\t\t\t\tdata := (MacroExporter directoryName:\r\t\t\t\t\t\t\t\t(outputDirectory / (\'minSpeed-\', ms printString)) fullName)\r\t\t\t\t\t\t\t\tvisit: simulator.\r\t\t\t\t\t\t\tmacroMetricsSeries addToSeries:\r\t\t\t\t\t\t\t\t(Array with: p with: s with: ms) -> data ")" ] ] ].\r\t^ exporter visit: macroMetricsSeries',
+			#category : #examples,
+			#selector : #example10,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.306018+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example1\r\t"Simple case - no loss"\r\r\t| parameters simulator |\r\tparameters := MacroSimulatorParameters example1.\r\tsimulator := parameters initializeSimulator.\r\tsimulator run: 50.\r\t^ simulator inspect',
+			#category : #examples,
+			#selector : #example1,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.285707+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example9\r\t"Prospection - in/out drone "\r\r\t"revised capingPolicy"\r\r\t" self example9"\r\r\t| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |\r\tmacroMetricsSeries := MacroSimulatorMetricsSerie new.\r\tmacroMetricsSeries addExtractor: #average -> #stdGap.\r\tmacroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.\r\tmacroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.\r\r\tmacroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.\r\tmacroMetricsSeries addExtractor: #average -> #avgSpeed.\r\tmacroMetricsSeries parameters: #( pacingRate sensibilities ).\r\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example9\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 100;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              policy: #revisedCapingPolicy;\r\t\t              seed: 3950149054165;\r\t\t              yourself.\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\t| data |\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\tsimulator loose: 1 at: 200.\r\t\t\t\t\tsimulator loose: 30 at: 500.\r\t\t\t\t\tsimulator loose: 80 at: 800.\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t\tsimulator newIncomerAt: 1000.\r\t\t\t\t\tsimulator run: 1500.\r\r\r\t\t\t\t\tdata := exporter visit: simulator.\r\t\t\t\t\tmacroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].\r\t^ exporter visit: macroMetricsSeries',
+			#category : #examples,
+			#selector : #example9,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.302966+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example8b\r\t"Idem example8 plus complex extractor "\r\r\t" self example8b"\r\r\t| macroMetricsSeries parameters simulator pacingRates sensibilities exporter |\r\tmacroMetricsSeries := MacroSimulatorMetricsSerie new.\r\tmacroMetricsSeries addExtractor: (MacroSimulatorExtractor\r\t\tlabel: \'average(stdGap)\'\r\t\tblock: [ :metrics | (metrics collect: #stdGap) average ]).\r\tmacroMetricsSeries addExtractor: #stabilityRatio -> #maxGap.\r\tmacroMetricsSeries addExtractor: #stabilizationTime -> #maxGap.\r\r\tmacroMetricsSeries addExtractor: #stabilizationDuration -> #avgSpeed.\r\tmacroMetricsSeries addExtractor: #average -> #avgSpeed.\r\tmacroMetricsSeries parameters: #( pacingRate sensibilities ).\r\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example8b\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.87. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 100;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              policy: #capingPolicy;\r\t\t              seed: 3950149054165;\r\t\t              yourself.\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\t| data |\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\tsimulator loose: 1 at: 200.\r\t\t\t\t\tsimulator loose: 30 at: 500.\r\t\t\t\t\tsimulator loose: 80 at: 800.\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t\tsimulator newIncomerAt: 1000.\r\t\t\t\t\tsimulator run: 1500.\r\r\r\t\t\t\t\tdata := exporter visit: simulator.\r\t\t\t\t\tmacroMetricsSeries addToSeries: (Array with: p with: s) -> data ")" ] ].\r\t^ exporter visit: macroMetricsSeries',
+			#category : #examples,
+			#selector : #example8b,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.301007+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'exampleBrittany\r\t"Simple case - no loss"\r\r\t| parameters rawPoints ordered simulator |\r\tparameters := MacroSimulatorParameters new\r\t\tnumberOfDrones: 450;\r\t\tnominalSpeed: 130000 / 60;\r\t\tminSpeed: 60000 / 60;\r\t\tmaxSpeed: 220000 / 60;\r\t\tsensingRadius: 3;\r\t\tcaptureRadius: 8;\r\t\tyourself.\r\trawPoints := (MacroSimulatorParameters generateRawBrittanyPoints: 100 seed: parameters seed)\r\t\tcollect: [ :entry |\r\t\t\tGeoPoint latitude: (entry at: #lat)\r\t\t\t\tlongitude: (entry at: #lng)\r\t\t\t\taltitude: (entry at: #alt) ].\r\tordered := MacroSimulatorParameters orderedRouteFromRawPoints: rawPoints.\r\tparameters wayPoints: (MacroSimulatorParameters compactedRouteFrom: ordered compactingFactorLegacy: 0.3).\r\tsimulator := parameters initializeSimulator.\r\tsimulator run: 50.\r\t^ simulator inspect',
+			#category : #examples,
+			#selector : #exampleBrittany,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.307497+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example2\r\t"Simple case - one loss"\r\r\t| parameters simulator |\r\tparameters := MacroSimulatorParameters example1.\r\r\tsimulator := parameters initializeSimulator.\r\tsimulator loose: 1 at: 20.\r\tsimulator run: 50.\r\t^ simulator inspect',
+			#category : #examples,
+			#selector : #example2,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.286433+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example6\r\t"Prospection - incoming drone "\r\r\t| parameters simulator pacingRates sensibilities exporter |\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example6\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 100;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              yourself.\r\tparameters policy: #capingPolicy.\r\r\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\t 1 to: 20 do:[:i| \tsimulator loose: i at: i*20+100].\r\t\t\t\t\t\t"30 timesRepeat:[simulator newIncomerAt: 500]".\r\t\t\t\t\tsimulator run: 1500.\r\t\t\t\t\texporter visit: simulator ] ].\r\r\t^ simulator',
+			#category : #examples,
+			#selector : #example6,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.290685+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'observerPerceptionOver: ground wayPoints: wayPoints\r\r\t| source points segments perimeter perception view |\r\tsource := PerceptionAdapter fromDirectory: ground.\r\tpoints := source projectPolygon: wayPoints.\r\tsegments := OrderedCollection new.\r\tperimeter := 0.0.\r\r\t"Chaque segment contient ses extrémités et ses deux distances cumulées."\r\tpoints withIndexDo: [ :a :i |\r\t\t\t| b fin |\r\t\t\tb := points at: i \\\\ points size + 1.\r\t\t\tfin := perimeter + (a distanceTo: b).\r\t\t\tfin > perimeter ifTrue: [\r\t\t\t\t\tsegments add: {\r\t\t\t\t\t\t\ta.\r\t\t\t\t\t\t\tb.\r\t\t\t\t\t\t\tperimeter.\r\t\t\t\t\t\t\tfin }.\r\t\t\t\t\tperimeter := fin ] ].\r\r\tperception := PerceptionAdapter on: source terrain.\r\tperception cameraHalfFieldTangent: 0.4 sensorSidePixels: 2000.\r\tview := PerceptionRoassalView on: perception.\r\r\t^ [ :etape :secondes |\r\t\t  | tour poses |\r\t\t  tour := etape range.\r\t\t  poses := etape drones collect: [ :drone |\r\t\t\t\t           | distance segment fraction |\r\t\t\t\t           distance := drone position \\\\ tour / tour * perimeter.\r\t\t\t\t           segment := segments\r\t\t\t\t\t                      detect: [ :chacun |\r\t\t\t\t\t                      distance < chacun fourth ]\r\t\t\t\t\t                      ifNone: [ segments last ].\r\t\t\t\t           fraction := distance - segment third\r\t\t\t\t                       / (segment fourth - segment third).\r\t\t\t\t           PerceptionDronePose\r\t\t\t\t\t           id: drone id\r\t\t\t\t\t           position:\r\t\t\t\t\t           (segment first\r\t\t\t\t\t\t            interpolateTo: segment second\r\t\t\t\t\t\t            at: fraction)\r\t\t\t\t\t           heightAboveGround: 200 ].\r\t\t  perception recordAt: secondes polygon: points drones: poses.\r\t\t  view ]',
+			#category : #examples,
+			#selector : #'observerPerceptionOver:wayPoints:',
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.311077+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example4\r\t"Idem example 2 : Simple case - one loss"\r\r\t"Change behavior -ie. speed adjustement policy - to be smoother"\r\r\t| parameters simulator |\r\tparameters := MacroSimulatorParameters example1.\r"\tparameters policy: #capingPolicy."\r\tsimulator := parameters initializeSimulator.\r\tsimulator loose: 1 at: 20.\r\tsimulator run: 3000.\r\tsimulator evaluateMetrics inspect.\r\t^simulator inspect',
+			#category : #examples,
+			#selector : #example4,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.287741+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'legacyOutputDirectoryFor: aName\r\t| timestamp |\r\ttimestamp := self timeStampForNaming copyReplaceAll: \':\' with: \'-\'.\r\t^ FileLocator home / \'ExportsMacro\' /\r\t\t(aName , \'-\' , timestamp , \'-\' , UUID new asString)',
+			#category : #examples,
+			#selector : #'legacyOutputDirectoryFor:',
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.308515+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example3\r\t"Idem example 2 : Simple case - one loss"\r\r\t"Change behavior -ie. speed adjustement policy - to be smoother"\r\r\t| parameters simulator |\r\tparameters := MacroSimulatorParameters example1.\r\tparameters policy: #capingPolicy.\r\tsimulator := parameters initializeSimulator.\r\tsimulator loose: 1 at: 20.\r\tsimulator run: 3000.\r\tsimulator evaluateMetrics inspect.\r\t^simulator inspect',
+			#category : #examples,
+			#selector : #example3,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.287124+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example8GUI\r\t"Prospection - in/out drone "\r\r\t" self example8GUI"\r\r\t| parameters simulator pacingRates sensibilities observer view ground wayPoints timeAtTick images |\r\t"definition des waypoints et du terrain"\r\t"On utilise le mnt autour de Valence dans un premier temps"\r\ttimeAtTick :=[:t| t *100].\r\tground := FileLocator home / \'terrain-valence\'.\r\twayPoints := (0 to: 11) collect: [ :i |\r    | angle |\r    angle := i * 2 * Float pi / 30.\r    (4.8875 + (0.00508 * angle cos)) @\r        (44.9386 + (0.00360 * angle sin)) ].\r\tobserver := self observerPerceptionOver: ground wayPoints: wayPoints.\r\tpacingRates := { 0.9. 0.95. 0.99 }.\r\tsensibilities := { 0.01 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 10;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              policy: #capingPolicy;\r\t\t              seed: 3950149054165;\r\t\t              yourself.\r\r\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: sensibilities first;\r\t\t\t\t\t\tpacingRate: pacingRates first.\r\t\t\t\t\tsimulator loose: 1 at: 200.\r\t\t\t\t"\tsimulator loose: 30 at: 500.\r\t\t\t\t\tsimulator loose: 80 at: 800.\r\t\t\t\t\tsimulator newIncomerAt: 500."\r\t\t\t\t\tsimulator newIncomerAt: 500.\r\t\t\t\t"\tsimulator newIncomerAt: 1000."\r\r\r\r\t15 timesRepeat: [ simulator run: 100 ].\r\r\timages := (self legacyOutputDirectoryFor: \'valence\') ensureCreateDirectory.\r\t1 to: 1500 by:100 do:[:i| |step| step := simulator history at:i.\r\t\t\tview := observer\r\t\t\t\t        value: step\r\t\t\t\t        value: (timeAtTick value: step timeStep).\r\t\t\tPNGReadWriter\r        putForm: view asForm\r        onFileNamed: (images / (\'valence-\', step timeStep printString, \'.png\')) fullName ].\r\tview open',
+			#category : #examples,
+			#selector : #example8GUI,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.313327+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example6b\r\t"Prospection - incoming drone "\r\r\t| parameters simulator pacingRates sensibilities exporter |\r\texporter := MacroExporter directoryName: (self legacyOutputDirectoryFor: \'example6b\') fullName. "exporter is Unique to ensure directory consistency"\r\tpacingRates := { 0.9. 0.91. 0.92. 0.93. 0.94. 0.95. 0.96. 0.97. 0.98.\r\t               0.99 }.\r\tsensibilities := { 0.005. 0.01. 0.015. 0.02 }.\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 20;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              totalDistance: 10000;\r\t\t              yourself.\r\tparameters policy: #capingPolicy.\r\r\r\r\tpacingRates do: [ :p |\r\t\t\tsensibilities do: [ :s |\r\t\t\t\t\tsimulator := parameters initializeSimulator.\r\t\t\t\t\tsimulator behavior\r\t\t\t\t\t\tsensibility: s;\r\t\t\t\t\t\tpacingRate: p.\r\t\t\t\t\t" 1 to: 20 do:[:i| \tsimulator loose: i at: i*20+100]."\r\t\t\t\t\t\t30 timesRepeat:[simulator newIncomerAt: 500].\r\t\t\t\t\tsimulator run: 1500.\r\t\t\t\t\texporter visit: simulator ] ].\r\r\t^ simulator',
+			#category : #examples,
+			#selector : #example6b,
+			#className : #MacroSimulatorExample,
+			#timeStamp : '2026-11-24T17:03:20.292176+01:00'
+		},
+		MCClassDefinition {
+			#name : #FullAppMacroReplay,
+			#superclassName : #Object,
+			#variables : OrderedCollection [ ],
+			#packageName : #DroneSystem-Macro,
+			#type : #normal,
+			#comment : 'Rejeux unitaires du profil macro. SoSe reprend une combinaison de paramètres de l’exemple 8. ISSe conserve la séquence de graines et le générateur de scénarios de MacroSimulatorExample.\r\r    FullAppMacroReplay soSe history inspect.\r    (FullAppMacroReplay isSeWithSeedIndex: 10) evaluateMetrics inspect.\r\rLe rejeu Vercors se trouve dans PerceptionVercorsMissionExample.',
+			#commentStamp : 'FullApp',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCClassDefinition {
+			#name : #SoSeVercorsExample,
+			#superclassName : #Object,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'replay'
+				}
+			],
+			#packageName : #DroneSystem-Macro,
+			#type : #normal,
+			#comment : 'Exemple de SoSe sur la boucle du Vercors avec observation hybride des voisins et rendu des relevés du MNT. Charger reprise-distances.st pour partager les sommets projetés en mètres entre la commande et le rejeu.\r\rexample := SoSeVercorsExample vercorsFrom: bundle / \'rejeu-vercors\'.\rsimulator := example simulate.\rexample replay playHistory: simulator history every: 5.\rexample export: simulator every: 5 into: output.\r\rLe scénario fait disparaître d’abord la mesure de distance, puis le gisement. Avec les lois à deux écarts, un drone qui ne dispose plus de deux valeurs exploitables garde sa dernière vitesse. Lorsque les écarts redeviennent exploitables, la loi s’applique au tik courant. Le rendu optique du MNT lit l’historique et possède sa propre configuration.\r',
+			#commentStamp : 'SoSe',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'visibleCellsForPose: pose\r    "Relit uniquement le champ instantané de cette pose, sans changer le dernier relevé."\r    | cells |\r    cells := Dictionary new.\r    self observePose: pose do: [ :cell :gsd | cells at: cell - gridOffset put: gsd ].\r    ^ cells\r',
+			#category : #simulation,
+			#selector : #'visibleCellsForPose:',
+			#className : #PerceptionCoverageAdapter,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'verdictAt: seconds fresh: fresh unknown: unknown total: total\r    (seconds < startSeconds or: [ endSeconds notNil and: [ seconds > endSeconds ] ])\r        ifTrue: [ ^ #notApplicable ].\r    fresh asFloat / total >= minimumFreshRatio ifTrue: [ ^ #satisfied ].\r    (fresh + unknown) asFloat / total >= minimumFreshRatio ifTrue: [ ^ #unknown ].\r    ^ #violated\r',
+			#category : #evaluating,
+			#selector : #'verdictAt:fresh:unknown:total:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'measureOn: adapter includesCell: includesCell total: total unknown: unknown\r    | instant fresh stale oldest now verdict |\r    instant := fresh := stale := 0.\r    now := adapter time.\r    adapter visibleGridObservationsDo: [ :cell :reading |\r        (includesCell value: cell) ifTrue: [\r            | age |\r            age := now - reading first.\r            oldest := oldest ifNil: [ age ] ifNotNil: [ oldest max: age ].\r            age = 0 ifTrue: [ instant := instant + 1 ].\r            age < maximumAgeSeconds\r                ifTrue: [ fresh := fresh + 1 ]\r                ifFalse: [ stale := stale + 1 ] ] ].\r    verdict := self verdictAt: now fresh: fresh unknown: unknown total: total.\r    ^ {\r        #opticalCoverageRatio -> (instant asFloat / total).\r        #freshCoverageRatio -> (fresh asFloat / total).\r        #staleCoverageRatio -> (stale asFloat / total).\r        #neverObservedRatio -> ((total - unknown - fresh - stale) asFloat / total).\r        #unknownSurfaceRatio -> (unknown asFloat / total).\r        #maxObservationAgeSeconds -> oldest.\r        #freshnessStatus -> verdict } asDictionary\r',
+			#category : #evaluating,
+			#selector : #'measureOn:includesCell:total:unknown:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'activeFromSeconds: first through: last\r    (first isNumber and: [ first asFloat isFinite and: [ first >= 0 and: [\r        last isNil or: [ last isNumber and: [ last asFloat isFinite and: [ last >= first ] ] ] ] ] ])\r            ifFalse: [ self error: \'La fenêtre du contrat doit être croissante et en secondes.\' ].\r    startSeconds := first.\r    endSeconds := last\r',
+			#category : #configuration,
+			#selector : #'activeFromSeconds:through:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'monitorOn: terrain\r    "La zone est discrétisée une fois. Les mesures lisent le dernier relevé confirmé par case."\r    | total unknown includesCell first last |\r    (terrain projectedBounds containsRect: zone)\r        ifFalse: [ self error: \'La zone du contrat doit tenir dans l’emprise du MNT.\' ].\r    first := terrain gridCoordinatesOf: zone origin x @ zone corner y.\r    last := terrain gridCoordinatesOf: zone corner x @ zone origin y.\r    includesCell := [ :cell | zone containsPoint:\r        (terrain projectedCenterAtColumn: cell x row: cell y) ].\r    total := unknown := 0.\r    (first y floor max: 0) to: (last y ceiling min: terrain rows - 1) do: [ :y |\r        (first x floor max: 0) to: (last x ceiling min: terrain columns - 1) do: [ :x |\r            (includesCell value: x @ y) ifTrue: [\r                total := total + 1.\r                (terrain surfaceAtColumn: x row: y) ifNil: [ unknown := unknown + 1 ] ] ] ].\r    total = 0 ifTrue: [ self error: \'La zone du contrat ne contient aucun centre de case.\' ].\r    ^ [ :adapter | self measureOn: adapter includesCell: includesCell total: total unknown: unknown ]\r',
+			#category : #evaluating,
+			#selector : #'monitorOn:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'initializeZone: aRectangle maximumAgeSeconds: limit minimumFreshRatio: target\r    ((aRectangle isKindOf: Rectangle) and: [\r        aRectangle width > 0 and: [ aRectangle height > 0 ] ])\r            ifFalse: [ self error: \'La zone de fraîcheur doit être un rectangle projeté de surface positive.\' ].\r    (limit isNumber and: [ limit asFloat isFinite and: [ limit > 0 ] ])\r        ifFalse: [ self error: \'La limite d’âge doit être finie et strictement positive.\' ].\r    (target isNumber and: [ target between: 0 and: 1 ])\r        ifFalse: [ self error: \'Le ratio de service doit être compris entre 0 et 1.\' ].\r    zone := aRectangle copy.\r    maximumAgeSeconds := limit.\r    minimumFreshRatio := target.\r    startSeconds := 0\r',
+			#category : #configuration,
+			#selector : #'initializeZone:maximumAgeSeconds:minimumFreshRatio:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'zone: aRectangle maximumAgeSeconds: limit minimumFreshRatio: target\r    ^ self new initializeZone: aRectangle maximumAgeSeconds: limit minimumFreshRatio: target\r',
+			#category : #'instance creation',
+			#selector : #'zone:maximumAgeSeconds:minimumFreshRatio:',
+			#className : #PerceptionFreshnessContract,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'droneColorFor: id\r    | acceleration threshold |\r    self droneColorMode = #acceleration ifFalse: [ ^ self speedColorFor: id ].\r    acceleration := accelerations at: id ifAbsent: [ 0 ].\r    threshold := self accelerationThreshold.\r    acceleration < threshold negated ifTrue: [ ^ movementColors first ].\r    acceleration > threshold ifTrue: [ ^ movementColors third ].\r    ^ movementColors second\r',
+			#category : #drawing,
+			#selector : #'droneColorFor:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'overlayFor: aTerrain\r    | overlay hatch fadeColor fadesToTransparency |\r    overlay := Form extent: aTerrain columns @ aTerrain rows depth: 32.\r    self showsCoverage ifTrue: [\r        fadeColor := options at: #fadeColor ifAbsent: [ Color fromHexString: \'F8FBFF\' ].\r        fadesToTransparency := adapter transparentAfterSeconds notNil.\r        adapter visibleGridObservationsDo: [ :cell :reading |\r            | grade color opacity |\r            grade := gsdLimits findFirst: [ :limit | reading second <= limit ].\r            color := (colors at: (grade = 0 ifTrue: [ 5 ] ifFalse: [ grade ]))\r                mixed: 1 - (adapter whitenessOf: reading) with: fadeColor.\r            opacity := fadesToTransparency\r                ifTrue: [ 0.90 * (adapter opacityOf: reading) ] ifFalse: [ 0.74 ].\r            overlay colorAt: cell put: (color alpha: opacity) ].\r        (options at: #showMasks ifAbsent: [ true ]) ifTrue: [\r            hatch := (self maskColor alpha: 0.85).\r            adapter shadowGridCellsDo: [ :cell |\r                ((cell x + cell y) \\\\ 5) < 2 ifTrue: [\r                    overlay colorAt: cell put: hatch ] ] ] ].\r    self highlightFocusOn: overlay.\r    ^ overlay\r',
+			#category : #drawing,
+			#selector : #'overlayFor:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'accelerationThreshold\r    ^ options at: #accelerationThreshold ifAbsent: [ 0 ]\r',
+			#category : #configuration,
+			#selector : #accelerationThreshold,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'annotateAccelerations: values\r    accelerations := values\r',
+			#category : #configuration,
+			#selector : #'annotateAccelerations:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'highlightFocusOn: overlay\r    focusCells := Dictionary new.\r    (focus isNil or: [ (focus at: #pose) isNil ]) ifTrue: [ ^ self ].\r    focusCells := adapter visibleCellsForPose: (focus at: #pose).\r    (options at: #showFocusFootprint ifAbsent: [ true ]) ifTrue: [\r        focusCells keysDo: [ :cell | overlay colorAt: cell put: (self focusColor alpha: 0.72) ] ]\r',
+			#category : #drawing,
+			#selector : #'highlightFocusOn:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'configureColors\r    speedRatioLimits := options at: #speedRatioLimits ifAbsent: [ #(0.95 1.05) ].\r    (speedRatioLimits size = 2 and: [\r        (speedRatioLimits allSatisfy: [ :value | value isNumber and: [ value asFloat isFinite ] ])\r            and: [ speedRatioLimits first >= 0 and: [\r                speedRatioLimits first <= 1 and: [ speedRatioLimits second >= 1 ] ] ] ])\r        ifFalse: [ self error: \'Les deux seuils de vitesse doivent encadrer le rapport 1.\' ].\r    movementColors := options at: #movementColors ifAbsent: [\r        { Color fromHexString: \'62C6FF\'. Color white. Color fromHexString: \'FFAE68\' } ].\r    colors := options at: #coverageColors ifAbsent: [ colors ].\r    ((movementColors size = 3 and: [ colors size = 5 ]) and: [\r        (movementColors, colors) allSatisfy: [ :color | color isKindOf: Color ] ])\r        ifFalse: [ self error: \'Donner trois couleurs de mouvement et cinq couleurs de finesse.\' ].\r    gsdLimits := options at: #gsdLimits ifAbsent: [ #(0.15 0.30 0.45 0.65) ].\r    (gsdLimits size = 4 and: [\r        (gsdLimits allSatisfy: [ :value | value isNumber and: [ value asFloat isFinite and: [ value > 0 ] ] ])\r            and: [ gsdLimits asSet size = 4 and: [ gsdLimits asSortedCollection asArray = gsdLimits asArray ] ] ])\r        ifFalse: [ self error: \'Donner quatre seuils de finesse strictement croissants.\' ]\r',
+			#category : #configuration,
+			#selector : #configureColors,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'focusColor\r    ^ options at: #focusColor ifAbsent: [ Color fromHexString: \'72F6EF\' ]\r',
+			#category : #drawing,
+			#selector : #focusColor,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawPolygon\r    (options at: #showRoute ifAbsent: [ true ]) ifTrue: [ super drawPolygon ]\r',
+			#category : #drawing,
+			#selector : #drawPolygon,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawDroneLabel: id status: status at: point color: color\r    | parts |\r    parts := OrderedCollection new.\r    (options at: #showDroneNames ifAbsent: [ true ]) ifTrue: [ parts add: id asString ].\r    (options at: #showDroneStatus ifAbsent: [ false ]) ifTrue: [ parts add: status ].\r    parts ifNotEmpty: [ self label: (\' · \' join: parts) at: point size: 12 color: color ]\r',
+			#category : #drawing,
+			#selector : #'drawDroneLabel:status:at:color:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'initializeOn: anAdapter options: settings\r    | mode threshold |\r    super initializeOn: anAdapter.\r    options := settings copy.\r    (#(hillshade elevation none) includes: (options at: #background ifAbsent: [ #hillshade ]))\r        ifFalse: [ self error: \'Fond de carte inconnu.\' ].\r    mode := self droneColorMode.\r    (#(speed acceleration none) includes: mode)\r        ifFalse: [ self error: \'Mode de couleur des drones inconnu.\' ].\r    mode = #acceleration ifTrue: [\r        threshold := self accelerationThreshold.\r        (threshold isNumber and: [ threshold >= 0 and: [ threshold asFloat isFinite ] ])\r            ifFalse: [ self error: \'Le seuil d’accélération doit être positif ou nul et fini.\' ] ].\r    canvas extent: 960 @ 740.\r    self configureColors.\r    speedRatios := Dictionary new.\r    accelerations := Dictionary new.\r    focusCells := Dictionary new.\r    losses := intruders := #()\r',
+			#category : #configuration,
+			#selector : #'initializeOn:options:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawLegend\r    | y muted coverage mode |\r    coverage := self showsCoverage.\r    self label: \'Temps simulé  \', ((adapter time ifNil: [ 0 ]) printShowingDecimalPlaces: 2), \' s\'\r        at: 16 @ 10 size: 18 color: Color white.\r    (adapter polygonIncludedInTerrain not or: [ adapter footprintMayBeClipped ]) ifTrue: [\r        self label: \'Bord du modèle de terrain\' at: canvas extent x - 211 @ 14\r            size: 13 color: (Color fromHexString: \'F5DD86\') ].\r    y := canvas extent y - 49.\r    muted := Color fromHexString: \'C0CEE0\'.\r    mode := self droneColorMode.\r    (mode ~= #none and: [ options at: #showDrones ifAbsent: [ true ] ]) ifTrue: [\r        | labels |\r        labels := mode = #acceleration\r            ifTrue: [ #( \'Accélération\' \'Freine\' \'Stable\' \'Accélère\' ) ]\r            ifFalse: [ #( \'Vitesse\' \'Lente\' \'Nominale\' \'Rapide\' ) ].\r        self label: labels first at: 445 @ y size: 13 color: muted.\r        self label: labels second at: 552 @ y size: 13 color: movementColors first.\r        self label: labels third at: 614 @ y size: 13 color: movementColors second.\r        self label: labels fourth at: 697 @ y size: 13 color: movementColors third ].\r    coverage ifTrue: [\r        self drawCoverageLegendAt: y color: muted.\r        (options at: #showMasks ifAbsent: [ true ]) ifTrue: [\r            self label: \'Hachures · masque\' at: 777 @ y size: 13 color: self maskColor ].\r        adapter transparentAfterSeconds ifNotNil: [ :seconds |\r            self label: \'Transparent à \', seconds printString, \' s\'\r                at: 270 @ (y + 21) size: 13 color: muted ] ].\r    (self showsLossMarkers and: [ (options at: #lossMarkerSeconds ifAbsent: [ 0 ]) > 0 ]) ifTrue: [\r        self label: \'Croix · retrait\' at: 460 @ (y + 21)\r            size: 13 color: self lossColor ].\r    intruders ifNotEmpty: [\r        self label: \'Point doré · détecté\' at: 760 @ (y + 21)\r            size: 13 color: (Color fromHexString: \'FFE48F\') ]\r',
+			#category : #drawing,
+			#selector : #drawLegend,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawLossMarker: marker\r    | point color |\r    (adapter terrain includesProjectedPoint: marker second) ifFalse: [ ^ self ].\r    point := self screenPoint: marker second.\r    color := self lossColor.\r    self drawLineFrom: point - (5 @ 5) to: point + (5 @ 5) color: color.\r    self drawLineFrom: point + (-5 @ 5) to: point + (5 @ -5) color: color.\r    self drawDroneLabel: marker first status: \'retiré\' at: point + (7 @ -15) color: color\r',
+			#category : #drawing,
+			#selector : #'drawLossMarker:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawActivePose: pose\r    | point |\r    (adapter terrain includesProjectedPoint: pose position) ifFalse: [ ^ self ].\r    point := self screenPoint: pose position.\r    self dotAt: point size: (options at: #droneMarkerSize ifAbsent: [ 9 ])\r        color: (self droneColorFor: pose id).\r    self drawDroneLabel: pose id status: \'actif\' at: point + (6 @ -17) color: Color white\r',
+			#category : #drawing,
+			#selector : #'drawActivePose:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'coverageAdapter\r    ^ adapter\r',
+			#category : #configuration,
+			#selector : #coverageAdapter,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawFocus\r    | panel position pose color count text |\r    focus ifNil: [ ^ self ].\r    position := focus at: #position.\r    pose := focus at: #pose.\r    color := self focusColor.\r    panel := RSBox new width: 326; height: 113; color: (Color fromHexString: \'142337\'); yourself.\r    panel translateTo: 179 @ 107.\r    self addFixed: panel.\r    self label: (\'Drone \', (focus at: #id) asString, \' · \', (pose ifNil: [ \'retiré\' ] ifNotNil: [ \'actif\' ]))\r        at: 26 @ 59 size: 15 color: color.\r    self label: (\'Position  \', (position x printShowingDecimalPlaces: 0), \' / \',\r        (position y printShowingDecimalPlaces: 0), \' m · \', adapter terrain crs)\r        at: 26 @ 83 size: 12 color: Color white.\r    pose ifNil: [ ^ self ].\r    (adapter terrain includesProjectedPoint: position) ifTrue: [\r        self dotAt: (self screenPoint: position) size: 8 color: color ].\r    self label: (\'Vitesse  \', ((focus at: #speed) printShowingDecimalPlaces: 2), \' m/s\',\r        \'   Hauteur  \', (pose altitude printShowingDecimalPlaces: 0), \' m AGL\')\r        at: 26 @ 103 size: 12 color: Color white.\r    count := focusCells size.\r    text := \'Champ visible  \', count printString, \' cases\'.\r    count > 0 ifTrue: [ text := text, \' · \',\r        (focusCells values min printShowingDecimalPlaces: 2), \' m/px au mieux\' ].\r    self label: text at: 26 @ 123 size: 12 color: color\r',
+			#category : #drawing,
+			#selector : #drawFocus,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawCoverageLegendAt: y color: muted\r    self label: \'Finesse (m/px)\' at: 16 @ y size: 13 color: muted.\r    1 to: 5 do: [ :index |\r        | sign limit |\r        sign := index = 5 ifTrue: [ \'> \' ] ifFalse: [ \'≤ \' ].\r        limit := gsdLimits at: (index min: 4).\r        self label: sign, limit printString\r            at: 139 + (index - 1 * 63) @ y size: 13 color: (colors at: index) ].\r    self label: \'Blanc après \', adapter fadeSeconds printString, \' s sans passage\'\r        at: 16 @ (y + 21) size: 13 color: muted\r',
+			#category : #drawing,
+			#selector : #'drawCoverageLegendAt:color:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'drawDrones\r    (options at: #showDrones ifAbsent: [ true ]) ifTrue: [\r        adapter poses do: [ :pose | self drawActivePose: pose ] ].\r    self showsLossMarkers ifTrue: [\r        losses do: [ :marker | self drawLossMarker: marker ] ].\r    intruders do: [ :marker |\r        (adapter terrain includesProjectedPoint: marker second) ifTrue: [\r            self dotAt: (self screenPoint: marker second)\r                size: (marker third ifTrue: [ 12 ] ifFalse: [ 4 ])\r                color: (Color fromHexString: (marker third\r                    ifTrue: [ \'FFE48F\' ] ifFalse: [ \'8994A4\' ])) ] ].\r    self drawFocus\r',
+			#category : #drawing,
+			#selector : #drawDrones,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'speedColorFor: id\r    | ratio |\r    self droneColorMode = #speed ifFalse: [ ^ movementColors second ].\r    ratio := speedRatios at: id ifAbsent: [ 1 ].\r    ratio < speedRatioLimits first ifTrue: [ ^ movementColors first ].\r    ratio > speedRatioLimits second ifTrue: [ ^ movementColors third ].\r    ^ movementColors second\r',
+			#category : #drawing,
+			#selector : #'speedColorFor:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'showsCoverage\r    ^ options at: #showCoverage ifAbsent: [ true ]\r',
+			#category : #configuration,
+			#selector : #showsCoverage,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'maskColor\r    ^ options at: #maskColor ifAbsent: [ Color fromHexString: \'F879A7\' ]\r',
+			#category : #drawing,
+			#selector : #maskColor,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'droneColorMode\r    ^ options at: #droneColorMode ifAbsent: [\r        (options at: #showSpeedColors ifAbsent: [ false ])\r            ifTrue: [ #speed ]\r            ifFalse: [ #none ] ]\r',
+			#category : #configuration,
+			#selector : #droneColorMode,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'showsLossMarkers\r    ^ options at: #showLossMarkers ifAbsent: [ true ]\r',
+			#category : #configuration,
+			#selector : #showsLossMarkers,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'lossColor\r    ^ options at: #lossColor ifAbsent: [ Color fromHexString: \'FF706B\' ]\r',
+			#category : #drawing,
+			#selector : #lossColor,
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'annotateFocus: details\r    focus := details\r',
+			#category : #configuration,
+			#selector : #'annotateFocus:',
+			#className : #PerceptionMissionView,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'staleCoverageRatio\r    ^ freshness at: #staleCoverageRatio\r',
+			#category : #freshness,
+			#selector : #staleCoverageRatio,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'freshness\r    ^ freshness copy\r',
+			#category : #freshness,
+			#selector : #freshness,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'maxObservationAgeSeconds\r    ^ freshness at: #maxObservationAgeSeconds\r',
+			#category : #freshness,
+			#selector : #maxObservationAgeSeconds,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'freshnessStatus\r    ^ freshness at: #freshnessStatus\r',
+			#category : #freshness,
+			#selector : #freshnessStatus,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'opticalCoverageRatio\r    ^ freshness at: #opticalCoverageRatio\r',
+			#category : #freshness,
+			#selector : #opticalCoverageRatio,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'freshCoverageRatio\r    ^ freshness at: #freshCoverageRatio\r',
+			#category : #freshness,
+			#selector : #freshCoverageRatio,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'freshness: report\r    freshness := report\r',
+			#category : #freshness,
+			#selector : #'freshness:',
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'unknownSurfaceRatio\r    ^ freshness at: #unknownSurfaceRatio\r',
+			#category : #freshness,
+			#selector : #unknownSurfaceRatio,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'neverObservedRatio\r    ^ freshness at: #neverObservedRatio\r',
+			#category : #freshness,
+			#selector : #neverObservedRatio,
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'on: step freshness: report\r    ^ (self on: step) freshness: report; yourself\r',
+			#category : #'instance creation',
+			#selector : #'on:freshness:',
+			#className : #MacroSimulatorFreshnessMetrics,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'playHistory: aHistory every: stride\r    | nextFrame view animation lastFrame window extent |\r    nextFrame := self frameReaderFor: aHistory every: stride.\r    view := nextFrame value.\r    extent := view canvas extent + (20 @ 40).\r    lastFrame := Time millisecondClockValue.\r    animation := view canvas newAnimation.\r    animation\r        repeat;\r        onStepDo: [\r            (Time millisecondsSince: lastFrame) >= 80 ifTrue: [\r                nextFrame value\r                    ifNil: [ animation stop ]\r                    ifNotNil: [ :nextView | nextView refresh ].\r                lastFrame := Time millisecondClockValue ] ].\r    window := view open.\r    window extent: extent.\r    ^ window\r',
+			#category : #replay,
+			#selector : #'playHistory:every:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'writeTimelineImage: name duration: duration on: timeline\r    timeline nextPutAll: \'file \'; nextPut: $\'; nextPutAll: name; nextPut: $\'; lf.\r    timeline nextPutAll: \'option framerate 1000\'; lf.\r    duration ifNotNil: [\r        timeline nextPutAll: \'duration \'; nextPutAll: (duration printShowingDecimalPlaces: 6); lf ]\r',
+			#category : #replay,
+			#selector : #'writeTimelineImage:duration:on:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'heightAt: aBlock\r    "Le bloc reçoit le tik et le drone, et renvoie une hauteur au-dessus du sol en mètres."\r    heightAt := aBlock\r',
+			#category : #configuration,
+			#selector : #'heightAt:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'secondsPerTick\r    ^ secondsPerTick\r',
+			#category : #configuration,
+			#selector : #secondsPerTick,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'projectedWayPoints\r    ^ scene projectedWayPoints\r',
+			#category : #configuration,
+			#selector : #projectedWayPoints,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'checkedHistory: aHistory every: stride\r    | history |\r    (stride isInteger and: [ stride > 0 ])\r        ifFalse: [ self error: \'L’intervalle entre deux images doit être un entier positif.\' ].\r    history := aHistory asArray.\r    history ifEmpty: [ self error: \'L’historique est vide.\' ].\r    ^ history\r',
+			#category : #replay,
+			#selector : #'checkedHistory:every:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'evaluateMetricsOf: simulator freshness: contract\r    | observe measure rows |\r    observe := self newStepObserver.\r    measure := contract monitorOn: scene terrain.\r    rows := simulator history collect: [ :step |\r        | view |\r        view := observe value: step.\r        MacroSimulatorFreshnessMetrics on: step\r            freshness: (measure value: view coverageAdapter) ].\r    ^ MacroSimulatorMetricsHistory from: rows\r',
+			#category : #metrics,
+			#selector : #'evaluateMetricsOf:freshness:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'projectedPositionOfDrone: id in: step\r    "Renvoie un Point en mètres dans le CRS de grille, ou nil."\r    ^ step drones\r        detect: [ :drone | drone id = id ]\r        ifFound: [ :drone | scene positionOf: drone in: step ]\r        ifNone: [ nil ]\r',
+			#category : #configuration,
+			#selector : #'projectedPositionOfDrone:in:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'newSimulatorWith: configure\r    | parameters minSpeed nominalSpeed maxSpeed |\r    parameters := MacroSimulatorParameters new\r        numberOfDrones: 20;\r        totalDistance: self perimeterMeters;\r        minSpeed: 5;\r        nominalSpeed: 10;\r        maxSpeed: 15;\r        sensingRadius: 20;\r        captureRadius: 20;\r        policy: #capingPolicy;\r        seed: 3950149054165;\r        yourself.\r    configure value: parameters.\r    (parameters numberOfDrones isInteger and: [ parameters numberOfDrones > 0 ])\r        ifFalse: [ self error: \'L’effectif doit être un entier positif.\' ].\r    minSpeed := parameters minSpeed.\r    nominalSpeed := parameters nominalSpeed.\r    maxSpeed := parameters maxSpeed.\r    (({ minSpeed. nominalSpeed. maxSpeed } allSatisfy: [ :speed | speed isNumber and: [ speed asFloat isFinite ] ])\r        and: [ minSpeed >= 0 and: [ nominalSpeed > 0 and: [\r            minSpeed <= nominalSpeed and: [ nominalSpeed <= maxSpeed ] ] ] ])\r                ifFalse: [ self error: \'Les vitesses doivent respecter 0 ≤ min ≤ nominale ≤ max et nominale > 0.\' ].\r    "MacroSimulatorDrone >> update ajoute la vitesse à l’abscisse à chaque mouvement."\r    parameters\r        minSpeed: minSpeed * secondsPerTick;\r        nominalSpeed: nominalSpeed * secondsPerTick;\r        maxSpeed: maxSpeed * secondsPerTick.\r    ^ parameters initializeSimulator\r',
+			#category : #simulation,
+			#selector : #'newSimulatorWith:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'exportHistory: aHistory every: stride into: aDirectory\r    | nextFrame directory view index |\r    nextFrame := self frameReaderFor: aHistory every: stride.\r    directory := (aDirectory asFileReference / (\'images-\', UUID new asString)) ensureCreateDirectory.\r    index := 0.\r    view := nextFrame value.\r    [ view notNil ] whileTrue: [\r        self writeImageOf: view index: index into: directory.\r        index := index + 1.\r        view := nextFrame value ].\r    ^ directory\r',
+			#category : #replay,
+			#selector : #'exportHistory:every:into:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'heightAboveGround: metres\r    (metres isNumber and: [ metres asFloat isFinite and: [ metres > 0 ] ])\r        ifFalse: [ self error: \'La hauteur au-dessus du sol doit être positive et finie.\' ].\r    self heightAt: [ :step :drone | metres ]\r',
+			#category : #configuration,
+			#selector : #'heightAboveGround:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'scene: aScene\r    scene := aScene\r',
+			#category : #initialization,
+			#selector : #'scene:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'secondsPerTick: seconds\r    (seconds isNumber and: [ seconds asFloat isFinite and: [ seconds > 0 ] ])\r        ifFalse: [ self error: \'La durée d’un tik doit être positive et finie.\' ].\r    secondsPerTick := seconds\r',
+			#category : #configuration,
+			#selector : #'secondsPerTick:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'initialize\r    super initialize.\r    secondsPerTick := 1.\r    self heightAboveGround: 180.\r    displayOptions := {\r        #background -> #hillshade.\r        #showDroneNames -> false.\r        #showSpeedColors -> true.\r        #lossMarkerSeconds -> 40.\r        #fadeAfterSeconds -> 16.\r        #transparentAfterSeconds -> 28 } asDictionary\r',
+			#category : #initialization,
+			#selector : #initialize,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'writeImageOf: view index: index into: directory\r    | name |\r    name := (index printString padLeftTo: 4 with: $0), \'.png\'.\r    (directory / name) binaryWriteStreamDo: [ :stream |\r        (PNGReadWriter on: stream) nextPutImage: view asForm ].\r    ^ name\r',
+			#category : #replay,
+			#selector : #'writeImageOf:index:into:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'perimeterMeters\r    ^ scene perimeterMeters\r',
+			#category : #configuration,
+			#selector : #perimeterMeters,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'displayOptions\r    ^ displayOptions\r',
+			#category : #configuration,
+			#selector : #displayOptions,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'newStepObserver\r    | tickSeconds observe |\r    tickSeconds := secondsPerTick.\r    observe := scene observerWith: displayOptions\r        heightAt: heightAt\r        intrudersAt: [ :step | #() ]\r        secondsPerTick: tickSeconds.\r    ^ [ :step | observe value: step value: step timeStep * tickSeconds ]\r',
+			#category : #replay,
+			#selector : #newStepObserver,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'freshnessContractFor: aRectangle minimumFreshRatio: target\r    "Fixe la limite d’âge au seuil actuel de blanchiment complet."\r    ^ PerceptionFreshnessContract\r        zone: aRectangle\r        maximumAgeSeconds: (displayOptions at: #fadeAfterSeconds ifAbsent: [ 300 ])\r        minimumFreshRatio: target\r',
+			#category : #metrics,
+			#selector : #'freshnessContractFor:minimumFreshRatio:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'exportTimedHistory: aHistory every: stride into: aDirectory rateAt: rateBlock\r    "rateBlock reçoit l’état puis un bloc id -> position projetée. Taux en secondes simulées par seconde de vidéo."\r    | history rates indices observe directory name frame |\r    history := self checkedHistory: aHistory every: stride.\r    rates := history collect: [ :step |\r        | rate |\r        rate := rateBlock value: step value: [ :id | self projectedPositionOfDrone: id in: step ].\r        (rate isNumber and: [ rate asFloat isFinite and: [ rate > 0 ] ])\r            ifFalse: [ self error: \'Le taux de lecture doit être fini et strictement positif.\' ].\r        rate asFloat ].\r    indices := OrderedCollection new.\r    1 to: history size do: [ :index |\r        ((index - 1 \\\\ stride = 0) or: [ index = history size or: [\r            (rates at: index) ~= (rates at: index - 1) ] ])\r                ifTrue: [ indices add: index ] ].\r    observe := self newStepObserver.\r    directory := (aDirectory asFileReference / (\'images-\', UUID new asString)) ensureCreateDirectory.\r    frame := 1.\r    (directory / \'lecture.ffconcat\') writeStreamDo: [ :timeline |\r        timeline nextPutAll: \'ffconcat version 1.0\'; lf.\r        history withIndexDo: [ :step :index |\r            | view |\r            view := observe value: step.\r            index = (indices at: frame) ifTrue: [\r                | duration |\r                name := self writeImageOf: view index: frame - 1 into: directory.\r                duration := frame = indices size\r                    ifTrue: [ secondsPerTick ]\r                    ifFalse: [ ((history at: (indices at: frame + 1)) timeStep - step timeStep) * secondsPerTick ].\r                self writeTimelineImage: name\r                    duration: duration / (rates at: index)\r                    on: timeline.\r                frame := frame + 1 ] ].\r        "La répétition terminale matérialise la durée de la dernière image pour FFmpeg."\r        self writeTimelineImage: name duration: nil on: timeline ].\r    ^ directory\r',
+			#category : #replay,
+			#selector : #'exportTimedHistory:every:into:rateAt:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'frameReaderFor: aHistory every: stride\r    | history observe nextIndex |\r    history := self checkedHistory: aHistory every: stride.\r    observe := self newStepObserver.\r    nextIndex := 1.\r    ^ [\r        | end view |\r        nextIndex <= history size ifTrue: [\r            end := nextIndex = 1 ifTrue: [ 1 ] ifFalse: [ (nextIndex + stride - 1) min: history size ].\r            nextIndex to: end do: [ :index |\r                view := observe value: (history at: index) ].\r            nextIndex := end + 1 ].\r        view ]\r',
+			#category : #replay,
+			#selector : #'frameReaderFor:every:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'vercorsFrom: aDirectory\r    | directory |\r    directory := aDirectory asFileReference.\r    ^ self\r        fromTerrain: directory / \'terrain-vercors\'\r        routeFile: directory / \'parcours-vercors.geojson\'\r',
+			#category : #'instance creation',
+			#selector : #'vercorsFrom:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'on: aScene\r    ^ self new scene: aScene; yourself\r',
+			#category : #'instance creation',
+			#selector : #'on:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'fromTerrain: aDirectory wayPoints: wayPoints\r    "Les sommets sont ordonnés et exprimés dans le repère d’entrée du terrain."\r    | points |\r    points := wayPoints collect: [ :wayPoint |\r        wayPoint isPoint\r            ifTrue: [ wayPoint ]\r            ifFalse: [ wayPoint longitude @ wayPoint latitude ] ].\r    ^ self on: (PerceptionScene on: aDirectory wayPoints: points)\r',
+			#category : #'instance creation',
+			#selector : #'fromTerrain:wayPoints:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'fromTerrain: aDirectory routeFile: aFile\r    | geometry features coordinates points |\r    geometry := STONJSON fromString: aFile asFileReference contents.\r    (geometry at: \'type\') = \'FeatureCollection\' ifTrue: [\r        features := geometry at: \'features\'.\r        features size = 1 ifFalse: [ self error: \'Le fichier doit contenir un seul parcours.\' ].\r        geometry := features first ].\r    (geometry at: \'type\') = \'Feature\' ifTrue: [\r        geometry := geometry at: \'geometry\' ].\r    coordinates := (geometry at: \'type\') caseOf: {\r        [ \'Polygon\' ] -> [ (geometry at: \'coordinates\') first ].\r        [ \'LineString\' ] -> [ geometry at: \'coordinates\' ] }\r        otherwise: [ self error: \'Le parcours GeoJSON doit être un Polygon ou un LineString.\' ].\r    points := coordinates collect: [ :pair | pair first @ pair second ].\r    ^ self fromTerrain: aDirectory wayPoints: points\r',
+			#category : #'instance creation',
+			#selector : #'fromTerrain:routeFile:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'projectedWayPoints\r    "Les origines des segments de longueur positive, dans l\'ordre du parcours."\r    ^ segments collect: #first as: Array\r',
+			#category : #accessing,
+			#selector : #projectedWayPoints,
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'observerWith: settings heightAt: heightAt intrudersAt: intrudersAt\r    ^ self observerWith: settings heightAt: heightAt intrudersAt: intrudersAt secondsPerTick: 1\r',
+			#category : #observation,
+			#selector : #'observerWith:heightAt:intrudersAt:',
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'focusIn: step poses: poses settings: settings secondsPerTick: tickSeconds\r    | id drone pose position condition |\r    id := settings at: #focusDrone ifAbsent: [ nil ].\r    id ifNil: [ ^ nil ].\r    pose := poses detect: [ :each | each id = id ] ifNone: [ nil ].\r    drone := (pose ifNil: [ step lostDrones ] ifNotNil: [ step drones ])\r        detect: [ :each | each id = id ] ifNone: [ nil ].\r    drone ifNil: [ ^ nil ].\r    position := pose ifNil: [ self positionOf: drone in: step ] ifNotNil: [ pose position ].\r    condition := settings at: #focusWhen ifAbsent: [ nil ].\r    (condition notNil and: [ (condition value: step value: position) not ]) ifTrue: [ ^ nil ].\r    ^ {\r        #id -> id.\r        #position -> position.\r        #pose -> pose.\r        #speed -> (pose ifNotNil: [ drone currentSpeed / tickSeconds ]) } asDictionary\r',
+			#category : #observation,
+			#selector : #'focusIn:poses:settings:secondsPerTick:',
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'terrain\r    ^ terrain\r',
+			#category : #accessing,
+			#selector : #terrain,
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'perimeterMeters\r    ^ perimeter\r',
+			#category : #accessing,
+			#selector : #perimeterMeters,
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'observerWith: settings heightAt: heightAt intrudersAt: intrudersAt secondsPerTick: tickSeconds\r    | adapter view lossSeconds visibleLosses knownLosses camera fade\r      measureAcceleration previousSpeeds previousSeconds |\r    (tickSeconds isNumber and: [ tickSeconds asFloat isFinite and: [ tickSeconds > 0 ] ])\r        ifFalse: [ self error: \'La durée d’un tik doit être positive et finie.\' ].\r    lossSeconds := settings at: #lossMarkerSeconds ifAbsent: [ 0 ].\r    (lossSeconds isNumber and: [ lossSeconds >= 0 and: [ lossSeconds asFloat isFinite ] ])\r        ifFalse: [ self error: \'La durée d’affichage d’une perte doit être finie et positive ou nulle.\' ].\r    camera := settings at: #camera ifAbsent: [ #(1.0 2000) ].\r    fade := settings at: #fadeAfterSeconds ifAbsent: [ 300 ].\r    adapter := PerceptionCoverageAdapter on: terrain copy.\r    adapter cameraHalfFieldTangent: camera first sensorSidePixels: camera second.\r    adapter fadeAfterSeconds: fade.\r    (settings at: #transparentAfterSeconds ifAbsent: [ nil ]) ifNotNil: [ :seconds |\r        adapter fadeOutDuration: seconds - fade ].\r    view := PerceptionMissionView on: adapter options: settings.\r    measureAcceleration := view droneColorMode = #acceleration.\r    knownLosses := Set new.\r    visibleLosses := OrderedCollection new.\r    ^ [ :step :seconds |\r        | speeds currentSpeeds poses newLosses positions points |\r        speeds := Dictionary new.\r        currentSpeeds := measureAcceleration ifTrue: [ Dictionary new ].\r        poses := step drones collect: [ :drone |\r            | id speed |\r            id := drone id.\r            speed := drone currentSpeed.\r            drone nominalSpeed > 0 ifTrue: [\r                speeds at: id put: speed / drone nominalSpeed ].\r            measureAcceleration ifTrue: [ currentSpeeds at: id put: speed ].\r            PerceptionDronePose id: id position: (self positionOf: drone in: step)\r                heightAboveGround: (heightAt value: step value: drone) ].\r        newLosses := OrderedCollection new.\r        lossSeconds > 0 ifTrue: [\r            step lostDrones do: [ :drone |\r                (knownLosses includes: drone id) ifFalse: [\r                    newLosses add: { drone id. self positionOf: drone in: step. seconds } ] ] ].\r        positions := (intrudersAt value: step) collect: [ :pair |\r            { pair first. self project: pair second } ].\r        adapter recordAt: seconds polygon: route drones: poses.\r        points := positions collect: [ :pair |\r            | reading |\r            reading := adapter observationAt: pair second.\r            { pair first. pair second. reading notNil and: [ reading first = seconds ] } ].\r        visibleLosses := visibleLosses select: [ :marker | seconds - marker third < lossSeconds ].\r        newLosses do: [ :marker | knownLosses add: marker first. visibleLosses add: marker ].\r        view annotateSpeeds: speeds losses: visibleLosses intruders: points.\r        view annotateFocus: (self focusIn: step poses: poses settings: settings secondsPerTick: tickSeconds).\r        measureAcceleration ifTrue: [\r            | values scale |\r            values := Dictionary new.\r            previousSeconds ifNotNil: [\r                "La vitesse du simulateur est un déplacement par tik."\r                scale := tickSeconds * (seconds - previousSeconds).\r                currentSpeeds keysAndValuesDo: [ :id :speed |\r                    previousSpeeds at: id ifPresent: [ :previous |\r                        values at: id put: (speed - previous) / scale ] ] ].\r            view annotateAccelerations: values.\r            previousSpeeds := currentSpeeds.\r            previousSeconds := seconds ].\r        view ]\r',
+			#category : #observation,
+			#selector : #'observerWith:heightAt:intrudersAt:secondsPerTick:',
+			#className : #PerceptionScene,
+			#timeStamp : ''
+		},
+		MCClassDefinition {
+			#name : #PerceptionMissionView,
+			#superclassName : #PerceptionRoassalView,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'options'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'speedRatios'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'accelerations'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'losses'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'intruders'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'speedRatioLimits'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'movementColors'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'gsdLimits'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'focus'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'focusCells'
+				}
+			],
+			#packageName : #PerceptionMission,
+			#type : #normal,
+			#comment : 'Options du rejeu pour le fond, les noms, les vitesses et l’affichage des pertes. Les croix restent à la dernière position enregistrée par SoSe pendant lossMarkerSeconds. Un point mobile devient doré au pas où sa cellule est effectivement relevée. detectedIntruderIds répond les identifiants détectés au dernier pas, pour une lecture dans l’exemple ou un moniteur.\r\rshowCoverage commande le dessin des empreintes et des masques du relief. showRoute commande le trait du parcours. droneMarkerSize donne le diamètre des symboles des drones en pixels.\r\rdroneColorMode choisit speed, acceleration ou none. accelerationThreshold donne la demi-largeur de la zone neutre en m/s². En mode accélération, le bleu indique un freinage et l’orange une hausse de vitesse.\r\rshowDrones, showDroneNames, showDroneStatus et showLossMarkers commandent les symboles et leurs étiquettes. movementColors donne les trois couleurs de mouvement. speedRatioLimits fixe les deux seuils relatifs à la vitesse nominale. coverageColors et gsdLimits configurent les cinq teintes de finesse et leurs quatre bornes.\r\rfocusDrone sélectionne un identifiant à incruster. focusWhen reçoit l’état et la position projetée. showFocusFootprint commande le surlignage du champ optique instantané du drone choisi.\r',
+			#commentStamp : 'PerceptionMission',
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCClassDefinition {
+			#name : #PerceptionFreshnessContract,
+			#superclassName : #Object,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'zone'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'maximumAgeSeconds'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'minimumFreshRatio'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'startSeconds'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'endSeconds'
+				}
+			],
+			#packageName : #PerceptionMission,
+			#type : #normal,
+			#comment : 'Exigence de service portant sur une fraction minimale de cases fraîches dans un rectangle projeté. Le calcul repose sur les dates des derniers relevés confirmés. Les centres des cases fixent le périmètre, y compris pour les surfaces NoData. La limite d’âge est exclusive et les bornes de la fenêtre d’activation sont inclusives.\r\rPerceptionMacroReplay>>freshnessContractFor:minimumFreshRatio: reprend le délai de blanc complet pour créer le contrat. Le contrat peut aussi avoir sa propre limite.\r',
+			#commentStamp : 'PerceptionMission',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCClassDefinition {
+			#name : #MacroSimulatorFreshnessMetrics,
+			#superclassName : #MacroSimulatorMetrics,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'freshness'
+				}
+			],
+			#packageName : #PerceptionMission,
+			#type : #normal,
+			#comment : 'Métriques d’un état macro enrichies de l’acquisition optique et du verdict de fraîcheur. evaluateMetricsOf:freshness: produit un MacroSimulatorMetricsHistory. Utiliser les sélecteurs du rapport dans la liste de champs de MacroSimulatorResultExporter.\r',
+			#commentStamp : 'PerceptionMission',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCClassDefinition {
+			#name : #PerceptionMacroReplay,
+			#superclassName : #Object,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'scene'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'heightAt'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'secondsPerTick'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'displayOptions'
+				}
+			],
+			#packageName : #PerceptionMission,
+			#type : #normal,
+			#comment : 'Rejoue un historique de MacroSimulator sur un parcours associé à un MNT. La géométrie et l’état des relevés appartiennent à PerceptionScene. Le simulateur reste responsable des drones, des vitesses et des événements.\r\rPour créer une simulation, configurer secondsPerTick avant newSimulatorWith:. Les vitesses de configuration sont en m/s et les distances en mètres. Avancer le simulateur par runSingleUpdate:. Pour un historique existant, secondsPerTick donne la durée simulée d’un tik.\r\rdisplayOptions at: #droneColorMode put: #acceleration donne la couleur d’après l’accélération longitudinale entre deux états successifs de l’historique. Le calcul utilise la durée du tik et se fait à chaque état, quel que soit le pas d’affichage.\r',
+			#commentStamp : 'PerceptionMission',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'nombre: valeur\r\r\t| nombre |\r\tnombre := valeur isNumber\r\t\t          ifTrue: [ valeur asFloat ]\r\t\t          ifFalse: [ Float readFrom: valeur ].\r\tnombre isFinite ifFalse: [ self error: \'Valeur non finie\' ].\r\t^ nombre',
+			#category : #systeme,
+			#selector : #'nombre:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.251162+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'projeter: points de: source vers: cible\r\r\t| entree lignes |\r\tentree := travail / \'points.txt\'.\r\tentree writeStreamDo: [ :flux |\r\t\t\tpoints do: [ :xy |\r\t\t\t\t\tflux\r\t\t\t\t\t\tnextPutAll: (\' \' join: (xy collect: #asString));\r\t\t\t\t\t\tlf ] ].\r\tlignes := (self\r\t\t           resultat: {\r\t\t\t\t           \'gdaltransform\'.\r\t\t\t\t           \'-s_srs\'.\r\t\t\t\t           source.\r\t\t\t\t           \'-t_srs\'.\r\t\t\t\t           cible }\r\t\t           entree: entree) lines.\r\tlignes size = points size ifFalse: [\r\t\tself error: \'Transformation incomplète\' ].\r\t^ lignes collect: [ :ligne |\r\t\t\t  | champs |\r\t\t\t  champs := ligne substrings.\r\t\t\t  {\r\t\t\t\t  (self nombre: champs first).\r\t\t\t\t  (self nombre: champs second) } ]',
+			#category : #coordonnees,
+			#selector : #'projeter:de:vers:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.26888+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'json: fichier\r\r\t^ STONJSON fromString: fichier contents',
+			#category : #systeme,
+			#selector : #'json:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.250556+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'utm: points emprise: bornes\r\r\t| longitude latitude zone |\r\tlongitude := (points collect: #first) sum / points size.\r\tlatitude := (points collect: #second) sum / points size.\r\t(latitude > -80 and: [\r\t\t latitude < 84 and: [ bornes third - bornes first <= 180 ] ])\r\t\tifFalse: [ self error: \'Préciser le CRS métrique avec #crsGrille\' ].\r\tzone := ((longitude + 180 / 6) floor + 1 max: 1) min: 60.\r\t^ \'EPSG:\' , ((latitude >= 0\r\t\t    ifTrue: [ 32600 ]\r\t\t    ifFalse: [ 32700 ]) + zone) asString',
+			#category : #coordonnees,
+			#selector : #'utm:emprise:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.277067+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'polygone: fichier sortie: dossier options: options\r\r\t| sortie staging |\r\tsortie := dossier asFileReference asAbsolute.\r\tsortie exists ifTrue: [\r\t\tself error: \'Choisir un nouveau dossier de sortie\' ].\r\tsortie parent ensureCreateDirectory.\r\tstaging := sortie parent / (\'.terrain-\' , UUID new asString).\r\tstaging ensureCreateDirectory.\r\t[\r\t\ttravail := staging / \'travail\'.\r\t\ttravail ensureCreateDirectory.\r\t\tself\r\t\t\tproduire: fichier asFileReference\r\t\t\tdans: staging\r\t\t\toptions: options.\r\t\ttravail ensureDeleteAll.\r\t\tsortie exists ifTrue: [\r\t\t\tself error: \'Le dossier de sortie existe déjà\' ].\r\t\tstaging copy renameTo: sortie basename ] ensure: [\r\t\tstaging ensureDeleteAll ].\r\t^ sortie',
+			#category : #execution,
+			#selector : #'polygone:sortie:options:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.253561+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'quote: valeur\r\r\t| apostrophe |\r\tapostrophe := (Character value: 39) asString.\r\t^ apostrophe , (valeur asString\r\t\t   copyReplaceAll: apostrophe\r\t\t   with:\r\t\t   apostrophe , (Character value: 92) asString , apostrophe\r\t\t   , apostrophe) , apostrophe',
+			#category : #systeme,
+			#selector : #'quote:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.269385+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'raster: fichier grille: tuile epsg: epsg\r\r\t| warp brut colonnes lignes octets entete |\r\twarp := travail / \'warp.tif\'.\r\tbrut := travail / \'altitudes.bin\'.\r\tcolonnes := tuile fifth.\r\tlignes := tuile sixth.\r\t{\r\t\twarp.\r\t\tbrut.\r\t\t(travail / \'altitudes.hdr\').\r\t\t(travail / \'altitudes.bin.aux.xml\') } do: [ :ref | ref ensureDelete ].\r\tself\r\t\tresultat: {\r\t\t\t\t\'gdalwarp\'.\r\t\t\t\t\'-q\'.\r\t\t\t\t\'-t_srs\'.\r\t\t\t\tepsg.\r\t\t\t\t\'-te\' } , (self bornes: tuile) , {\r\t\t\t\t\'-ts\'.\r\t\t\t\tcolonnes.\r\t\t\t\tlignes.\r\t\t\t\t\'-ot\'.\r\t\t\t\t\'Float32\'.\r\t\t\t\t\'-dstnodata\'.\r\t\t\t\t\'-9999\'.\r\t\t\t\t\'-r\'.\r\t\t\t\t\'bilinear\'.\r\t\t\t\tfichier fullName.\r\t\t\t\twarp fullName }\r\t\tentree: nil.\r\tself\r\t\tresultat: {\r\t\t\t\t\'gdal_translate\'.\r\t\t\t\t\'-q\'.\r\t\t\t\t\'-b\'.\r\t\t\t\t\'1\'.\r\t\t\t\t\'-of\'.\r\t\t\t\t\'ENVI\'.\r\t\t\t\twarp fullName.\r\t\t\t\tbrut fullName }\r\t\tentree: nil.\r\tentete := (travail / \'altitudes.hdr\') contents.\r\t((entete includesSubstring: \'byte order = 0\') and: [\r\t\t entete includesSubstring: \'header offset = 0\' ]) ifFalse: [\r\t\tself error: \'ENVI Float32 little-endian attendu\' ].\r\toctets := brut binaryReadStreamDo: [ :flux | flux upToEnd ].\r\toctets size = (colonnes * lignes * 4) ifFalse: [\r\t\tself error: \'Taille raster inattendue\' ].\r\t^ self\r\t\t  decoder: octets\r\t\t  colonnes: colonnes\r\t\t  lignes: lignes\r\t\t  ign: false',
+			#category : #raster,
+			#selector : #'raster:grille:epsg:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.270821+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'shell: commande\r    "Les outils GDAL utilisent les bibliothèques du système."\r    ^ LibC system: \'/usr/bin/env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH \', commande\r',
+			#category : #systeme,
+			#selector : #'shell:',
+			#className : #PreparerTerrain,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'epsgMetrique: description\r\r\t| id axes |\r\t(description at: \'type\') = \'ProjectedCRS\' ifFalse: [ ^ nil ].\r\tid := description at: \'id\' ifAbsent: [ ^ nil ].\r\t(id at: \'authority\') = \'EPSG\' ifFalse: [ ^ nil ].\r\taxes := (description at: \'coordinate_system\') at: \'axis\'.\r\t(axes size >= 2 and: [\r\t\t\t (axes first at: \'unit\') = \'metre\' and: [\r\t\t\t\t (axes second at: \'unit\') = \'metre\' ] ]) ifFalse: [ ^ nil ].\r\t^ \'EPSG:\' , (id at: \'code\') asString',
+			#category : #coordonnees,
+			#selector : #'epsgMetrique:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.248314+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'relief: source epsg: epsg\r\r\t| resultat dx dy largeur hauteur |\r\tdx := grille third.\r\tdy := grille fourth.\r\tlargeur := grille fifth.\r\thauteur := grille sixth.\r\tresultat := Array new: hauteur.\r\t0 to: hauteur - 1 by: 640 do: [ :y |\r\t\t\t| lignes |\r\t\t\tlignes := 640 min: hauteur - y.\r\t\t\t1 to: lignes do: [ :j |\r\t\t\tresultat at: y + j put: (Float32Array new: largeur) ].\r\t\t\t0 to: largeur - 1 by: 640 do: [ :x |\r\t\t\t\t\t| colonnes tuile valeurs |\r\t\t\t\t\tcolonnes := 640 min: largeur - x.\r\t\t\t\t\ttuile := {\r\t\t\t\t\t\t         (grille first + (x * dx)).\r\t\t\t\t\t\t         (grille second - (y * dy)).\r\t\t\t\t\t\t         dx.\r\t\t\t\t\t\t         dy.\r\t\t\t\t\t\t         colonnes.\r\t\t\t\t\t\t         lignes }.\r\t\t\t\t\tvaleurs := self tuile: tuile fournisseur: source epsg: epsg.\r\t\t\t\t\t1 to: lignes do: [ :j |\r\t\t\t\t\t\t\t(resultat at: y + j)\r\t\t\t\t\t\t\t\treplaceFrom: x + 1\r\t\t\t\t\t\t\t\tto: x + colonnes\r\t\t\t\t\t\t\t\twith: (valeurs at: j)\r\t\t\t\t\t\t\t\tstartingAt: 1 ] ] ].\r\t^ resultat',
+			#category : #raster,
+			#selector : #'relief:epsg:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.273391+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'commande: arguments entree: entree sortie: sortie\r\r\t| texte erreur statut |\r\terreur := travail / \'erreur.txt\'.\r\ttexte := \'PATH=/opt/homebrew/bin:/usr/local/bin:$PATH LC_ALL=C \'\r\t         ,\r\t         (\' \' join: (arguments collect: [ :arg | self quote: arg ])).\r\tentree ifNotNil: [\r\t\ttexte := texte , \' < \' , (self quote: entree fullName) ].\r\ttexte := texte , \' > \' , (self quote: sortie fullName) , \' 2> \'\r\t         , (self quote: erreur fullName).\r\tstatut := self shell: texte.\r\tstatut = 0 ifFalse: [\r\t\tself error: arguments first , \' a échoué. \' , erreur contents ]',
+			#category : #systeme,
+			#selector : #'commande:entree:sortie:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.242658+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'crsDeclare: objet\r\r\t| crs props type |\r\tobjet isDictionary ifFalse: [ ^ nil ].\r\tcrs := objet at: \'crs\' ifAbsent: [ ^ nil ].\r\tcrs isString ifTrue: [ ^ crs ].\r\tcrs isDictionary ifFalse: [ ^ nil ].\r\tprops := crs at: \'properties\' ifAbsent: [ Dictionary new ].\r\ttype := (crs at: \'type\' ifAbsent: [ \'\' ]) asUppercase.\r\ttype = \'NAME\' ifTrue: [ ^ props at: \'name\' ].\r\ttype = \'EPSG\' ifTrue: [ ^ \'EPSG:\' , (props at: \'code\') asString ].\r\tself error: \'Déclaration de CRS inconnue\'',
+			#category : #coordonnees,
+			#selector : #'crsDeclare:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.244094+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'produire: fichier dans: dossier options: options\r\r\t| polygone points crs sourceMetrique origine yBas localisation emprise region ancien cible epsg projetes dx dy marge mnt mns fournisseur raster meta |\r\tpolygone := self polygone: fichier.\r\tpoints := polygone first.\r\tcrs := options\r\t\t       at: #crsPoints\r\t\t       ifAbsent: [ polygone second ifNil: [ \'EPSG:4326\' ] ].\r\tsourceMetrique := self epsgMetrique: (self descriptionCrs: crs).\r\torigine := options at: #origine ifAbsent: [ nil ].\r\tyBas := options at: #yVersLeBas ifAbsent: [ false ].\r\torigine\r\t\tifNil: [\r\t\tyBas ifTrue: [ self error: \'#yVersLeBas exige une origine\' ] ]\r\t\tifNotNil: [\r\t\t\t\tsourceMetrique ifNil: [\r\t\t\t\t\tself error: \'Une origine exige un CRS métrique\' ].\r\t\t\t\torigine := origine collect: [ :x | self nombre: x ].\r\t\t\t\tpoints := points collect: [ :xy |\r\t\t\t\t\t\t          {\r\t\t\t\t\t\t\t          (origine first + xy first).\r\t\t\t\t\t\t\t          (origine second + (xy second * (yBas\r\t\t\t\t\t\t\t\t             ifTrue: [ -1 ]\r\t\t\t\t\t\t\t\t             ifFalse: [ 1 ]))) } ] ].\r\tlocalisation := self projeter: points de: crs vers: \'EPSG:4326\'.\r\temprise := self emprise: localisation.\r\t(emprise first >= -180 and: [\r\t\t\t emprise third <= 180 and: [\r\t\t\t\t emprise second >= -90 and: [ emprise fourth <= 90 ] ] ])\r\t\tifFalse: [ self error: \'Sommets hors domaine\' ].\r\tregion := self region: emprise.\r\tancien := (options at: #etendre ifAbsent: [ nil ]) ifNotNil: [\r\t\t          :chemin |\r\t\t          self json: chemin asFileReference / \'terrain.json\' ].\r\tcible := options at: #crsGrille ifAbsent: [\r\t\t\t         ancien\r\t\t\t\t         ifNil: [\r\t\t\t\t\t\t         sourceMetrique ifNil: [\r\t\t\t\t\t\t\t\t         region = \'ign\'\r\t\t\t\t\t\t\t\t\t         ifTrue: [ \'EPSG:2154\' ]\r\t\t\t\t\t\t\t\t\t         ifFalse: [ self utm: localisation emprise: emprise ] ] ]\r\t\t\t\t         ifNotNil: [ ancien at: \'crs\' ] ].\r\tepsg := self epsgMetrique: (self descriptionCrs: cible).\r\tepsg ifNil: [\r\t\tself error: \'La grille exige un CRS EPSG projeté en mètres\' ].\r\tdx := self nombre: (options\r\t\t\t       at: #pas\r\t\t\t       ifAbsent: [\r\t\t\t       ancien\r\t\t\t\t       ifNil: [ 20 ]\r\t\t\t\t       ifNotNil: [ (ancien at: \'cellSize\') first ] ]).\r\tdy := self nombre: (options at: #pasNord ifAbsent: [\r\t\t\t\t       (ancien isNil or: [ options includesKey: #pas ])\r\t\t\t\t\t       ifTrue: [ dx ]\r\t\t\t\t\t       ifFalse: [ (ancien at: \'cellSize\') second ] ]).\r\tmarge := self nombre: (options at: #marge ifAbsent: [ 700 ]).\r\t(dx > 0 and: [ dy > 0 and: [ marge >= 0 ] ]) ifFalse: [\r\t\tself error: \'Vérifier les pas et la marge\' ].\r\tancien ifNotNil: [\r\t\t\t((ancien at: \'crs\') = epsg and: [\r\t\t\t\t\t (ancien at: \'cellSize\') asArray = {\r\t\t\t\t\t\t dx.\r\t\t\t\t\t\t dy } ]) ifFalse: [\r\t\t\t\tself error: \'Pour étendre, conserver le CRS et les deux pas\' ] ].\r\tprojetes := self projeter: points de: crs vers: epsg.\r\tgrille := self\r\t\t          grillePour: projetes\r\t\t          pas: {\r\t\t\t\t          dx.\r\t\t\t\t          dy }\r\t\t          marge: marge\r\t\t          ancien: ancien.\r\tmnt := (options at: #mnt ifAbsent: [ nil ]) ifNotNil: [ :chemin |\r\t\t       chemin asFileReference asAbsolute ].\r\tmns := (options at: #mns ifAbsent: [ nil ]) ifNotNil: [ :chemin |\r\t\t       chemin asFileReference asAbsolute ].\r\tfournisseur := mnt\r\t\t               ifNil: [ options at: #source ifAbsent: [ \'auto\' ] ]\r\t\t               ifNotNil: [ \'geotiff\' ].\r\tfournisseur = \'auto\' ifTrue: [ fournisseur := region ].\r\t(mnt isNil and: [ (#( \'ign\' \'usgs\' ) includes: fournisseur) not ])\r\t\tifTrue: [\r\t\tself error: \'Choisir IGN ou USGS, ou fournir un MNT local\' ].\r\traster := mnt\r\t\t          ifNil: [ self relief: fournisseur epsg: epsg ]\r\t\t          ifNotNil: [ self raster: mnt grille: grille epsg: epsg ].\r\tself ecrireCsv: raster dans: dossier / \'mnt.csv\'.\r\tmns ifNotNil: [\r\t\t\tself\r\t\t\t\tecrireCsv: (self raster: mns grille: grille epsg: epsg)\r\t\t\t\tdans: dossier / \'mns.csv\' ].\r\tmeta := {\r\t\t        (\'version\' -> 1).\r\t\t        (\'crs\' -> epsg).\r\t\t        (\'topLeft\' -> {\r\t\t\t         grille first.\r\t\t\t         grille second }).\r\t\t        (\'cellSize\' -> {\r\t\t\t         dx.\r\t\t\t         dy }).\r\t\t        (\'columns\' -> grille fifth).\r\t\t        (\'rows\' -> grille sixth).\r\t\t        (\'noData\' -> -9999.0).\r\t\t        (\'ground\' -> \'mnt.csv\').\r\t\t        (\'surface\' -> (mns ifNotNil: [ \'mns.csv\' ])).\r\t\t        (\'polygonProjected\' -> projetes).\r\t\t        (\'source\' -> fournisseur).\r\t\t        (\'inputCrs\' -> crs).\r\t\t        (\'inputOrigin\' -> origine).\r\t\t        (\'inputYDown\' -> yBas) } asDictionary.\r\tdossier / \'terrain.json\' writeStreamDo: [ :flux |\r\t\t\tflux\r\t\t\t\tnextPutAll: (STONJSON toString: meta);\r\t\t\t\tlf ]',
+			#category : #execution,
+			#selector : #'produire:dans:options:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.267104+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'region: bornes\r\r\t| ouest sud est nord |\r\touest := bornes first.\r\tsud := bornes second.\r\test := bornes third.\r\tnord := bornes fourth.\r\t(ouest >= -6 and: [ est <= 10 and: [ sud >= 41 and: [ nord <= 52 ] ] ])\r\t\tifTrue: [ ^ \'ign\' ].\r\t(ouest >= -125.5 and: [\r\t\t est <= -66 and: [ sud >= 24 and: [ nord <= 50 ] ] ]) ifTrue: [\r\t\t^ \'usgs\' ].\r\t^ nil',
+			#category : #coordonnees,
+			#selector : #'region:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.271958+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'descriptionCrs: crs\r\r\t^ STONJSON fromString: (self\r\t\t\t   resultat: {\r\t\t\t\t\t   \'gdalsrsinfo\'.\r\t\t\t\t\t   \'-o\'.\r\t\t\t\t\t   \'projjson\'.\r\t\t\t\t\t   crs }\r\t\t\t   entree: nil)',
+			#category : #coordonnees,
+			#selector : #'descriptionCrs:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.245854+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'ecrireCsv: raster dans: fichier\r\r\t| valide |\r\tvalide := false.\r\tfichier writeStreamDo: [ :flux |\r\t\t\traster do: [ :ligne |\r\t\t\t\t\tligne\r\t\t\t\t\t\tdo: [ :v |\r\t\t\t\t\t\t\t\tv = -9999 ifFalse: [ valide := true ].\r\t\t\t\t\t\t\t\tflux nextPutAll: (v printShowingDecimalPlaces: 4) ]\r\t\t\t\t\t\tseparatedBy: [ flux nextPut: $, ].\r\t\t\t\t\tflux lf ] ].\r\tvalide ifFalse: [\r\t\tself error: \'Le raster ne contient aucune altitude valide\' ]',
+			#category : #raster,
+			#selector : #'ecrireCsv:dans:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.246965+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'grillePour: points pas: pas marge: marge ancien: ancien\r\r\t| bornes dx dy ax ay gauche droite bas haut precedent |\r\tbornes := (self emprise: points)\r\t\t          with: { -1. -1. 1. 1 }\r\t\t          collect: [ :bord :sens | bord + (marge * sens) ].\r\tdx := pas first.\r\tdy := pas second.\r\tax := 0.\r\tay := 0.\r\tancien ifNotNil: [\r\t\t\tax := (ancien at: \'topLeft\') first.\r\t\t\tay := (ancien at: \'topLeft\') second.\r\t\t\tprecedent := self bornes: {\r\t\t\t\t\t             ax.\r\t\t\t\t\t             ay.\r\t\t\t\t\t             dx.\r\t\t\t\t\t             dy.\r\t\t\t\t\t             (ancien at: \'columns\').\r\t\t\t\t\t             (ancien at: \'rows\') }.\r\t\t\tbornes := {\r\t\t\t\t          (bornes first min: precedent first).\r\t\t\t\t          (bornes second min: precedent second).\r\t\t\t\t          (bornes third max: precedent third).\r\t\t\t\t          (bornes fourth max: precedent fourth) } ].\r\tgauche := (bornes first - ax / dx + 1e-9) floor.\r\tbas := (bornes second - ay / dy + 1e-9) floor.\r\tdroite := (bornes third - ax / dx - 1e-9) ceiling.\r\thaut := (bornes fourth - ay / dy - 1e-9) ceiling.\r\t(gauche >= droite or: [ bas >= haut ]) ifTrue: [\r\t\tself error: \'Emprise vide\' ].\r\t^ {\r\t\t  (ax + (gauche * dx)).\r\t\t  (ay + (haut * dy)).\r\t\t  dx.\r\t\t  dy.\r\t\t  (droite - gauche).\r\t\t  (haut - bas) }',
+			#category : #grille,
+			#selector : #'grillePour:pas:marge:ancien:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.250265+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'polygone: fichier\r\r\t| objet crs sommets type |\r\tobjet := self json: fichier.\r\tcrs := self crsDeclare: objet.\r\tobjet isDictionary ifTrue: [\r\t\t\ttype := objet at: \'type\'.\r\t\t\ttype = \'FeatureCollection\' ifTrue: [\r\t\t\t\t\tsommets := objet at: \'features\'.\r\t\t\t\t\tsommets size = 1 ifFalse: [\r\t\t\t\t\t\tself error: \'Un seul polygone est attendu\' ].\r\t\t\t\t\tobjet := sommets first.\r\t\t\t\t\tcrs := (self crsDeclare: objet) ifNil: [ crs ] ].\r\t\t\t(objet at: \'type\') = \'Feature\' ifTrue: [\r\t\t\t\t\tobjet := objet at: \'geometry\'.\r\t\t\t\t\tcrs := (self crsDeclare: objet) ifNil: [ crs ] ].\r\t\t\t(objet at: \'type\') = \'Polygon\' ifFalse: [\r\t\t\t\tself error: \'Un Polygon est attendu\' ].\r\t\t\tobjet := (objet at: \'coordinates\') first ].\r\tsommets := objet collect: [ :xy |\r\t\t\t           {\r\t\t\t\t           (self nombre: xy first).\r\t\t\t\t           (self nombre: xy second) } ].\r\t(sommets notEmpty and: [ sommets first = sommets last ]) ifTrue: [\r\t\tsommets := sommets allButLast ].\r\tsommets asSet size < 3 ifTrue: [\r\t\tself error: \'Trois sommets distincts sont requis\' ].\r\t^ {\r\t\t  sommets.\r\t\t  crs }',
+			#category : #coordonnees,
+			#selector : #'polygone:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.252613+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'emprise: points\r\r\t| x y |\r\tx := points collect: #first.\r\ty := points collect: #second.\r\t^ {\r\t\t  x min.\r\t\t  y min.\r\t\t  x max.\r\t\t  y max }',
+			#category : #coordonnees,
+			#selector : #'emprise:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.24752+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'resultat: arguments entree: entree\r\r\t| sortie |\r\tsortie := travail / \'commande.txt\'.\r\tself commande: arguments entree: entree sortie: sortie.\r\t^ sortie contents',
+			#category : #systeme,
+			#selector : #'resultat:entree:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.273714+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'telecharger: url parametres: parametres\r\r\t| arguments fichier |\r\tfichier := travail / \'reponse.bin\'.\r\targuments := OrderedCollection withAll:\r\t\t             #( \'curl\' \'--fail\' \'--silent\' \'--show-error\'\r\t\t                \'--compressed\' \'--max-time\' \'60\' \'--get\' ).\r\tparametres keysAndValuesDo: [ :cle :valeur |\r\t\t\targuments\r\t\t\t\tadd: \'--data-urlencode\';\r\t\t\t\tadd: cle , \'=\' , valeur asString ].\r\targuments\r\t\tadd: \'--output\';\r\t\tadd: fichier fullName;\r\t\tadd: url.\r\tself resultat: arguments entree: nil.\r\t^ fichier',
+			#category : #raster,
+			#selector : #'telecharger:parametres:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.27476+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'tuile: tuile fournisseur: source epsg: epsg\r\t| bbox colonnes lignes fichier octets numero |\r\tbbox := \',\' join: ((self bornes: tuile) collect: #asString).\r\tcolonnes := tuile fifth. lignes := tuile sixth.\r\tsource = \'ign\' ifTrue: [\r\t\tfichier := self telecharger: \'https://data.geopf.fr/wms-r/wms\' parametres: {\r\t\t\t\'SERVICE\' -> \'WMS\'. \'VERSION\' -> \'1.3.0\'. \'REQUEST\' -> \'GetMap\'.\r\t\t\t\'CRS\' -> epsg. \'BBOX\' -> bbox. \'WIDTH\' -> colonnes. \'HEIGHT\' -> lignes.\r\t\t\t\'LAYERS\' -> \'ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES\'. \'STYLES\' -> \'normal\'.\r\t\t\t\'FORMAT\' -> \'image/x-bil;bits=32\'} asDictionary.\r\t\toctets := fichier binaryReadStreamDo: [:flux | flux upToEnd].\r\t\toctets size = (colonnes * lignes * 4) ifFalse: [self error: \'Réponse BIL IGN inattendue\'].\r\t\t^ self decoder: octets colonnes: colonnes lignes: lignes ign: true].\r\tnumero := epsg allButFirst: 5.\r\tfichier := self telecharger: \'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage\'\r\t\tparametres: {\'bbox\' -> bbox. \'bboxSR\' -> numero. \'imageSR\' -> numero.\r\t\t\t\'size\' -> (colonnes asString , \',\' , lignes asString). \'format\' -> \'tiff\'.\r\t\t\t\'pixelType\' -> \'F32\'. \'adjustAspectRatio\' -> \'false\'. \'f\' -> \'image\'} asDictionary.\r\t^ self raster: fichier grille: tuile epsg: epsg\r',
+			#category : #raster,
+			#selector : #'tuile:fournisseur:epsg:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.276184+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'decoder: octets colonnes: colonnes lignes: lignes ign: ign\r\r\t| position |\r\tposition := 1.\r\t^ (1 to: lignes) collect: [ :ligne |\r\t\t\t  | valeurs |\r\t\t\t  valeurs := Float32Array new: colonnes.\r\t\t\t  1 to: colonnes do: [ :colonne |\r\t\t\t\t\t  | bits valeur |\r\t\t\t\t\t  bits := octets unsignedLongAt: position bigEndian: false.\r\t\t\t\t\t  position := position + 4.\r\t\t\t\t\t  valeur := Float fromIEEE32Bit: bits.\r\t\t\t\t\t  (valeur isFinite not or: [\r\t\t\t\t\t\t   ign and: [ #( -99999 -32768 -999999 ) includes: valeur ] ])\r\t\t\t\t\t\t  ifTrue: [ valeur := -9999.0 ].\r\t\t\t\t\t  valeurs at: colonne put: valeur ].\r\t\t\t  valeurs ]',
+			#category : #raster,
+			#selector : #'decoder:colonnes:lignes:ign:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.245544+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'bornes: tuile\r\r\t| x y dx dy |\r\tx := tuile first.\r\ty := tuile second.\r\tdx := tuile third.\r\tdy := tuile fourth.\r\t^ {\r\t\t  x.\r\t\t  (y - (dy * tuile sixth)).\r\t\t  (x + (dx * tuile fifth)).\r\t\t  y }',
+			#category : #grille,
+			#selector : #'bornes:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.241411+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'polygone: fichier sortie: dossier options: options\r\r\t^ self new polygone: fichier sortie: dossier options: options',
+			#category : #execution,
+			#selector : #'polygone:sortie:options:',
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.240234+01:00'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'vercors\r\r\t^ self\r\t\t  polygone: \'/Users/llagadec/Downloads/parcours-vercors.geojson\'\r\t\t  sortie: \'/Users/llagadec/Downloads/terrain\'\r\t\t  options: Dictionary new',
+			#category : #example,
+			#selector : #vercors,
+			#className : #PreparerTerrain,
+			#timeStamp : '2026-11-24T17:03:20.240684+01:00'
+		},
+		MCClassDefinition {
+			#name : #PreparerTerrain,
+			#superclassName : #Object,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'travail'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'grille'
+				}
+			],
+			#packageName : #MNT-Generation,
+			#type : #normal,
+			#comment : '',
+			#commentStamp : '',
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'jouerVercors\r    | example simulator |\r    example := self vercors.\r    simulator := example simulate.\r    ^ example replay playHistory: simulator history every: 5\r',
+			#category : #examples,
+			#selector : #jouerVercors,
+			#className : #SoSeAtelier,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'vercors\r    ^ SoSeVercorsExample vercorsFrom: FileLocator imageDirectory / \'rejeu-vercors\'\r',
+			#category : #examples,
+			#selector : #vercors,
+			#className : #SoSeAtelier,
+			#timeStamp : ''
+		},
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'jouer: simulator\r    | replay |\r    replay := self vercors replay.\r    replay secondsPerTick: 1.\r    ^ replay playHistory: simulator history every: 5\r',
+			#category : #examples,
+			#selector : #'jouer:',
+			#className : #SoSeAtelier,
+			#timeStamp : ''
+		},
+		MCClassDefinition {
+			#name : #SoSeAtelier,
+			#superclassName : #Object,
+			#variables : OrderedCollection [ ],
+			#packageName : #SoSe-Atelier,
+			#type : #normal,
+			#comment : '',
+			#commentStamp : '',
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		}
+	],
+	#packages : [
+		'DroneSystem-Macro',
+		'DroneSystem-Macro-Replay',
+		'DroneSystem-Simulation-Macrolevel',
+		'DroneSystem-Installation',
+		'Drone-SystemCouplagePerceptionRoassal',
+		'PerceptionMission',
+		'PerceptionMission-Examples',
+		'PerceptionMission-Replay',
+		'MNT-Generation',
+		'SoSe-Atelier'
+	],
+	#known : {
+		[
+			#PerceptionMissionView,
+			#drawPolygon,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'drawPolygon\r    (options at: #showRoute ifAbsent: [ true ]) ifTrue: [ super drawPolygon ]\r',
+				#category : #drawing,
+				#selector : #drawPolygon,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'export:every:into:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'export: simulator every: stride into: aDirectory\r    "Exporte les métriques à chaque tik et une image tous les stride tiks."\r    | output images |\r    output := aDirectory asFileReference asAbsolute.\r    output parent ensureCreateDirectory.\r    output createDirectory.\r    self exportMetricsOf: simulator into: output.\r    images := replay exportHistory: simulator history every: stride into: output.\r    (output / \'images.txt\') writeStreamDo: [ :stream |\r        stream nextPutAll: images fullName; lf ].\r    ^ output\r',
+				#category : #export,
+				#selector : #'export:every:into:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#projectedWayPoints,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'projectedWayPoints\r    ^ scene projectedWayPoints\r',
+				#category : #configuration,
+				#selector : #projectedWayPoints,
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'decoder:colonnes:lignes:ign:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'decoder: octets colonnes: colonnes lignes: lignes ign: ign\r\r\t| position |\r\tposition := 1.\r\t^ (1 to: lignes) collect: [ :ligne |\r\t\t\t  | valeurs |\r\t\t\t  valeurs := Float32Array new: colonnes.\r\t\t\t  1 to: colonnes do: [ :colonne |\r\t\t\t\t\t  | bits valeur |\r\t\t\t\t\t  bits := octets unsignedLongAt: position bigEndian: false.\r\t\t\t\t\t  position := position + 4.\r\t\t\t\t\t  valeur := Float fromIEEE32Bit: bits.\r\t\t\t\t\t  (valeur isFinite not or: [\r\t\t\t\t\t\t   ign and: [ #( -99999 -32768 -999999 ) includes: valeur ] ])\r\t\t\t\t\t\t  ifTrue: [ valeur := -9999.0 ].\r\t\t\t\t\t  valeurs at: colonne put: valeur ].\r\t\t\t  valeurs ]',
+				#category : #raster,
+				#selector : #'decoder:colonnes:lignes:ign:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.549534+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'on:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'on: aScene\r    ^ self new scene: aScene; yourself\r',
+				#category : #'instance creation',
+				#selector : #'on:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'fromTerrain:routeFile:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'fromTerrain: aDirectory routeFile: aFile\r    | geometry features coordinates points |\r    geometry := STONJSON fromString: aFile asFileReference contents.\r    (geometry at: \'type\') = \'FeatureCollection\' ifTrue: [\r        features := geometry at: \'features\'.\r        features size = 1 ifFalse: [ self error: \'Le fichier doit contenir un seul parcours.\' ].\r        geometry := features first ].\r    (geometry at: \'type\') = \'Feature\' ifTrue: [\r        geometry := geometry at: \'geometry\' ].\r    coordinates := (geometry at: \'type\') caseOf: {\r        [ \'Polygon\' ] -> [ (geometry at: \'coordinates\') first ].\r        [ \'LineString\' ] -> [ geometry at: \'coordinates\' ] }\r        otherwise: [ self error: \'Le parcours GeoJSON doit être un Polygon ou un LineString.\' ].\r    points := coordinates collect: [ :pair | pair first @ pair second ].\r    ^ self fromTerrain: aDirectory wayPoints: points\r',
+				#category : #'instance creation',
+				#selector : #'fromTerrain:routeFile:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'newSimulatorWith:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'newSimulatorWith: configure\r    | parameters minSpeed nominalSpeed maxSpeed |\r    parameters := MacroSimulatorParameters new\r        numberOfDrones: 20;\r        totalDistance: self perimeterMeters;\r        minSpeed: 5;\r        nominalSpeed: 10;\r        maxSpeed: 15;\r        sensingRadius: 20;\r        captureRadius: 20;\r        policy: #capingPolicy;\r        seed: 3950149054165;\r        yourself.\r    configure value: parameters.\r    (parameters numberOfDrones isInteger and: [ parameters numberOfDrones > 0 ])\r        ifFalse: [ self error: \'L’effectif doit être un entier positif.\' ].\r    minSpeed := parameters minSpeed.\r    nominalSpeed := parameters nominalSpeed.\r    maxSpeed := parameters maxSpeed.\r    (({ minSpeed. nominalSpeed. maxSpeed } allSatisfy: [ :speed | speed isNumber and: [ speed asFloat isFinite ] ])\r        and: [ minSpeed >= 0 and: [ nominalSpeed > 0 and: [\r            minSpeed <= nominalSpeed and: [ nominalSpeed <= maxSpeed ] ] ] ])\r                ifFalse: [ self error: \'Les vitesses doivent respecter 0 ≤ min ≤ nominale ≤ max et nominale > 0.\' ].\r    "MacroSimulatorDrone >> update ajoute la vitesse à l’abscisse à chaque mouvement."\r    parameters\r        minSpeed: minSpeed * secondsPerTick;\r        nominalSpeed: nominalSpeed * secondsPerTick;\r        maxSpeed: maxSpeed * secondsPerTick.\r    ^ parameters initializeSimulator\r',
+				#category : #simulation,
+				#selector : #'newSimulatorWith:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#initialize,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'initialize\r    super initialize.\r    secondsPerTick := 1.\r    self heightAboveGround: 180.\r    displayOptions := {\r        #background -> #hillshade.\r        #showDroneNames -> false.\r        #showSpeedColors -> true.\r        #lossMarkerSeconds -> 40.\r        #fadeAfterSeconds -> 16.\r        #transparentAfterSeconds -> 28 } asDictionary\r',
+				#category : #initialization,
+				#selector : #initialize,
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMissionView
+		] : OrderedCollection [
+			MCClassDefinition {
+				#name : #PerceptionMissionView,
+				#superclassName : #PerceptionRoassalView,
+				#variables : OrderedCollection [
+					MCInstanceVariableDefinition {
+						#name : 'options'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'speedRatios'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'losses'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'intruders'
+					}
+				],
+				#packageName : #PerceptionMission,
+				#type : #normal,
+				#comment : 'Options du rejeu pour le fond, les noms, les vitesses et l’affichage des pertes. Les croix restent à la dernière position enregistrée par SoSe pendant lossMarkerSeconds. Un point mobile devient doré au pas où sa cellule est effectivement relevée. detectedIntruderIds répond les identifiants détectés au dernier pas, pour une lecture dans l’exemple ou un moniteur.\r',
+				#commentStamp : 'PerceptionMission',
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			},
+			MCClassDefinition {
+				#name : #PerceptionMissionView,
+				#superclassName : #PerceptionRoassalView,
+				#variables : OrderedCollection [
+					MCInstanceVariableDefinition {
+						#name : 'options'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'speedRatios'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'accelerations'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'losses'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'intruders'
+					}
+				],
+				#packageName : #PerceptionMission,
+				#type : #normal,
+				#comment : 'Options du rejeu pour le fond, les noms, les vitesses et l’affichage des pertes. Les croix restent à la dernière position enregistrée par SoSe pendant lossMarkerSeconds. Un point mobile devient doré au pas où sa cellule est effectivement relevée. detectedIntruderIds répond les identifiants détectés au dernier pas, pour une lecture dans l’exemple ou un moniteur.\r\rshowCoverage commande le dessin des empreintes et des masques du relief. showRoute commande le trait du parcours. droneMarkerSize donne le diamètre des symboles des drones en pixels.\r\rdroneColorMode choisit speed, acceleration ou none. accelerationThreshold donne la demi-largeur de la zone neutre en m/s². En mode accélération, le bleu indique un freinage et l’orange une hausse de vitesse.\r',
+				#commentStamp : 'PerceptionMission',
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#displayOptions,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'displayOptions\r    ^ displayOptions\r',
+				#category : #configuration,
+				#selector : #displayOptions,
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'heightAboveGround:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'heightAboveGround: metres\r    (metres isNumber and: [ metres asFloat isFinite and: [ metres > 0 ] ])\r        ifFalse: [ self error: \'La hauteur au-dessus du sol doit être positive et finie.\' ].\r    self heightAt: [ :step :drone | metres ]\r',
+				#category : #configuration,
+				#selector : #'heightAboveGround:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain
+		] : OrderedCollection [
+			MCClassDefinition {
+				#name : #PreparerTerrain,
+				#superclassName : #Object,
+				#variables : OrderedCollection [
+					MCInstanceVariableDefinition {
+						#name : 'travail'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'grille'
+					}
+				],
+				#packageName : #MNT-Generation,
+				#type : #normal,
+				#comment : '',
+				#commentStamp : '',
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'nombre:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'nombre: valeur\r\r\t| nombre |\r\tnombre := valeur isNumber\r\t\t          ifTrue: [ valeur asFloat ]\r\t\t          ifFalse: [ Float readFrom: valeur ].\r\tnombre isFinite ifFalse: [ self error: \'Valeur non finie\' ].\r\t^ nombre',
+				#category : #systeme,
+				#selector : #'nombre:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.556896+01:00'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#showsCoverage,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'showsCoverage\r    ^ options at: #showCoverage ifAbsent: [ true ]\r',
+				#category : #configuration,
+				#selector : #showsCoverage,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#drawLegend,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'drawLegend\r    | y muted |\r    super drawLegend.\r    y := canvas extent y - 49.\r    muted := Color fromHexString: \'C0CEE0\'.\r    (options at: #showSpeedColors ifAbsent: [ false ]) ifTrue: [\r        self label: \'Vitesse\' at: 465 @ y size: 13 color: muted.\r        self label: \'Lente\' at: 533 @ y size: 13 color: (Color fromHexString: \'62C6FF\').\r        self label: \'Nominale\' at: 596 @ y size: 13 color: Color white.\r        self label: \'Rapide\' at: 686 @ y size: 13 color: (Color fromHexString: \'FFAE68\') ].\r    self label: \'Hachures · masque\' at: 777 @ y size: 13\r        color: (Color fromHexString: \'F879A7\').\r    adapter transparentAfterSeconds ifNotNil: [ :seconds |\r        self label: \'Transparent à \', seconds printString, \' s\'\r            at: 270 @ (y + 21) size: 13 color: muted ].\r    (options at: #lossMarkerSeconds ifAbsent: [ 0 ]) > 0 ifTrue: [\r        self label: \'Croix rouge · perte\' at: 460 @ (y + 21)\r            size: 13 color: (Color fromHexString: \'FF706B\') ].\r    intruders ifNotEmpty: [\r        self label: \'Point doré · détecté\' at: 760 @ (y + 21)\r            size: 13 color: (Color fromHexString: \'FFE48F\') ]\r',
+				#category : #drawing,
+				#selector : #drawLegend,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'drawLegend\r    | y muted coverage mode |\r    coverage := self showsCoverage.\r    coverage\r        ifTrue: [ super drawLegend ]\r        ifFalse: [\r            self\r                label: \'Temps simulé  \', ((adapter time ifNil: [ 0 ]) printShowingDecimalPlaces: 2), \' s\'\r                at: 16 @ 10\r                size: 18\r                color: Color white ].\r    y := canvas extent y - 49.\r    muted := Color fromHexString: \'C0CEE0\'.\r    mode := self droneColorMode.\r    mode = #none ifFalse: [\r        | labels |\r        labels := mode = #acceleration\r            ifTrue: [ #( \'Accélération\' \'Freine\' \'Stable\' \'Accélère\' ) ]\r            ifFalse: [ #( \'Vitesse\' \'Lente\' \'Nominale\' \'Rapide\' ) ].\r        self label: labels first at: 445 @ y size: 13 color: muted.\r        self label: labels second at: 552 @ y size: 13 color: (Color fromHexString: \'62C6FF\').\r        self label: labels third at: 614 @ y size: 13 color: Color white.\r        self label: labels fourth at: 697 @ y size: 13 color: (Color fromHexString: \'FFAE68\') ].\r    coverage ifTrue: [\r        self label: \'Hachures · masque\' at: 777 @ y size: 13\r            color: (Color fromHexString: \'F879A7\').\r        adapter transparentAfterSeconds ifNotNil: [ :seconds |\r            self label: \'Transparent à \', seconds printString, \' s\'\r                at: 270 @ (y + 21) size: 13 color: muted ] ].\r    (options at: #lossMarkerSeconds ifAbsent: [ 0 ]) > 0 ifTrue: [\r        self label: \'Croix rouge · perte\' at: 460 @ (y + 21)\r            size: 13 color: (Color fromHexString: \'FF706B\') ].\r    intruders ifNotEmpty: [\r        self label: \'Point doré · détecté\' at: 760 @ (y + 21)\r            size: 13 color: (Color fromHexString: \'FFE48F\') ]\r',
+				#category : #drawing,
+				#selector : #drawLegend,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'scheduleOutageOn:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'scheduleOutageOn: simulator\r    "Les événements portent sur le voisinage utilisé par la loi de commande."\r    simulator scheduleAllDistanceMeasurementAvailable: false at: 25.\r    simulator scheduleVisionAvailable: false at: 45 matching: [ :drone | true ].\r    simulator scheduleVisionAvailable: true at: 70 matching: [ :drone | true ].\r    simulator scheduleAllDistanceMeasurementAvailable: true at: 85.\r    simulator current drones size > 1 ifTrue: [\r        simulator loose: simulator current drones first id at: 55.\r        simulator newIncomerAt: 110 ].\r    ^ simulator\r',
+				#category : #simulation,
+				#selector : #'scheduleOutageOn:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'shell:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'shell: commande\r    ^ self\r        ffiCall: #(int system(String commande))\r        module: \'/usr/lib/libSystem.B.dylib\'',
+				#category : #systeme,
+				#selector : #'shell:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.576893+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'heightAt:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'heightAt: aBlock\r    "Le bloc reçoit le tik et le drone, et renvoie une hauteur au-dessus du sol en mètres."\r    heightAt := aBlock\r',
+				#category : #configuration,
+				#selector : #'heightAt:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'json:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'json: fichier\r\r\t^ STONJSON fromString: fichier contents',
+				#category : #systeme,
+				#selector : #'json:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.556499+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'region:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'region: bornes\r\r\t| ouest sud est nord |\r\touest := bornes first.\r\tsud := bornes second.\r\test := bornes third.\r\tnord := bornes fourth.\r\t(ouest >= -6 and: [ est <= 10 and: [ sud >= 41 and: [ nord <= 52 ] ] ])\r\t\tifTrue: [ ^ \'ign\' ].\r\t(ouest >= -125.5 and: [\r\t\t est <= -66 and: [ sud >= 24 and: [ nord <= 50 ] ] ]) ifTrue: [\r\t\t^ \'usgs\' ].\r\t^ nil',
+				#category : #coordonnees,
+				#selector : #'region:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.574622+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'telecharger:parametres:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'telecharger: url parametres: parametres\r\r\t| arguments fichier |\r\tfichier := travail / \'reponse.bin\'.\r\targuments := OrderedCollection withAll:\r\t\t             #( \'curl\' \'--fail\' \'--silent\' \'--show-error\'\r\t\t                \'--compressed\' \'--max-time\' \'60\' \'--get\' ).\r\tparametres keysAndValuesDo: [ :cle :valeur |\r\t\t\targuments\r\t\t\t\tadd: \'--data-urlencode\';\r\t\t\t\tadd: cle , \'=\' , valeur asString ].\r\targuments\r\t\tadd: \'--output\';\r\t\tadd: fichier fullName;\r\t\tadd: url.\r\tself resultat: arguments entree: nil.\r\t^ fichier',
+				#category : #raster,
+				#selector : #'telecharger:parametres:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.577515+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'ecrireCsv:dans:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'ecrireCsv: raster dans: fichier\r\r\t| valide |\r\tvalide := false.\r\tfichier writeStreamDo: [ :flux |\r\t\t\traster do: [ :ligne |\r\t\t\t\t\tligne\r\t\t\t\t\t\tdo: [ :v |\r\t\t\t\t\t\t\t\tv = -9999 ifFalse: [ valide := true ].\r\t\t\t\t\t\t\t\tflux nextPutAll: (v printShowingDecimalPlaces: 4) ]\r\t\t\t\t\t\tseparatedBy: [ flux nextPut: $, ].\r\t\t\t\t\tflux lf ] ].\r\tvalide ifFalse: [\r\t\tself error: \'Le raster ne contient aucune altitude valide\' ]',
+				#category : #raster,
+				#selector : #'ecrireCsv:dans:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.552471+01:00'
+			}
+		],
+		[
+			#MacroSimulatorParameters,
+			#computeInterWayPointsDistances,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'computeInterWayPointsDistances\r\r\t| td tmp result d |\r\ttd := 0.0.\r\t"Consider wayPoints"\r\ttmp := wayPoints copy asOrderedCollection.\r\t"Close the loop; first is seen as last\'s succesor"\r\ttmp add: wayPoints first.\r\t"Compute inter wayPoints distance"\r\tresult := (1 to: wayPoints size ) collect: [ :i |\r\t\t         ( self haversineMetersFrom: (tmp at: i) to: (tmp at: (i % wayPoints size )+ 1))/1000 "use kilometers as unit" ].\r\r\r\t^ result',
+				#category : #'computing - waypoints',
+				#selector : #computeInterWayPointsDistances,
+				#className : #MacroSimulatorParameters,
+				#timeStamp : '2026-11-21T11:51:08.51877+01:00'
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'computeInterWayPointsDistances\r    "Les GeoPoint gardent les kilomètres du profil historique. Un Point est déjà projeté."\r    | points |\r    points := self wayPoints.\r    ^ (1 to: points size) collect: [ :index |\r        | start stop |\r        start := points at: index.\r        stop := points at: (index \\\\ points size) + 1.\r        (self isGeographicPoint: start)\r            ifTrue: [ (self haversineMetersFrom: start to: stop) / 1000 ]\r            ifFalse: [ start distanceTo: stop ] ]\r',
+				#category : #'computing - waypoints',
+				#selector : #computeInterWayPointsDistances,
+				#className : #MacroSimulatorParameters,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'fromTerrain:wayPoints:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'fromTerrain: aDirectory wayPoints: wayPoints\r    "Les sommets sont ordonnés et exprimés dans le repère d’entrée du terrain."\r    | points |\r    points := wayPoints collect: [ :wayPoint |\r        wayPoint isPoint\r            ifTrue: [ wayPoint ]\r            ifFalse: [ wayPoint longitude @ wayPoint latitude ] ].\r    ^ self on: (PerceptionScene on: aDirectory wayPoints: points)\r',
+				#category : #'instance creation',
+				#selector : #'fromTerrain:wayPoints:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#vercors,
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'vercors\r\r\t^ self\r\t\t  polygone: \'/Users/llagadec/Downloads/parcours-vercors.geojson\'\r\t\t  sortie: \'/Users/llagadec/Downloads/terrain\'\r\t\t  options: Dictionary new',
+				#category : #example,
+				#selector : #vercors,
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.544721+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'frameReaderFor:every:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'frameReaderFor: aHistory every: stride\r    | history observe nextIndex tickSeconds |\r    (stride isInteger and: [ stride > 0 ])\r        ifFalse: [ self error: \'L’intervalle entre deux images doit être un entier positif.\' ].\r    history := aHistory asArray.\r    history ifEmpty: [ self error: \'L’historique est vide.\' ].\r    tickSeconds := secondsPerTick.\r    observe := scene observerWith: displayOptions\r        heightAt: heightAt\r        intrudersAt: [ :step | #() ]\r        secondsPerTick: tickSeconds.\r    nextIndex := 1.\r    ^ [\r        | end view |\r        nextIndex <= history size ifTrue: [\r            end := nextIndex = 1 ifTrue: [ 1 ] ifFalse: [ (nextIndex + stride - 1) min: history size ].\r            nextIndex to: end do: [ :index |\r                | step |\r                step := history at: index.\r                view := observe value: step value: step timeStep * tickSeconds ].\r            nextIndex := end + 1 ].\r        view ]\r',
+				#category : #replay,
+				#selector : #'frameReaderFor:every:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'commande:entree:sortie:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'commande: arguments entree: entree sortie: sortie\r\r\t| texte erreur statut |\r\terreur := travail / \'erreur.txt\'.\r\ttexte := \'PATH=/opt/homebrew/bin:/usr/local/bin:$PATH LC_ALL=C \'\r\t         ,\r\t         (\' \' join: (arguments collect: [ :arg | self quote: arg ])).\r\tentree ifNotNil: [\r\t\ttexte := texte , \' < \' , (self quote: entree fullName) ].\r\ttexte := texte , \' > \' , (self quote: sortie fullName) , \' 2> \'\r\t         , (self quote: erreur fullName).\r\tstatut := self shell: texte.\r\tstatut = 0 ifFalse: [\r\t\tself error: arguments first , \' a échoué. \' , erreur contents ]',
+				#category : #systeme,
+				#selector : #'commande:entree:sortie:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.546809+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'utm:emprise:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'utm: points emprise: bornes\r\r\t| longitude latitude zone |\r\tlongitude := (points collect: #first) sum / points size.\r\tlatitude := (points collect: #second) sum / points size.\r\t(latitude > -80 and: [\r\t\t latitude < 84 and: [ bornes third - bornes first <= 180 ] ])\r\t\tifFalse: [ self error: \'Préciser le CRS métrique avec #crsGrille\' ].\r\tzone := ((longitude + 180 / 6) floor + 1 max: 1) min: 60.\r\t^ \'EPSG:\' , ((latitude >= 0\r\t\t    ifTrue: [ 32600 ]\r\t\t    ifFalse: [ 32700 ]) + zone) asString',
+				#category : #coordonnees,
+				#selector : #'utm:emprise:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.579741+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'polygone:sortie:options:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'polygone: fichier sortie: dossier options: options\r\r\t| sortie staging |\r\tsortie := dossier asFileReference asAbsolute.\r\tsortie exists ifTrue: [\r\t\tself error: \'Choisir un nouveau dossier de sortie\' ].\r\tsortie parent ensureCreateDirectory.\r\tstaging := sortie parent / (\'.terrain-\' , UUID new asString).\r\tstaging ensureCreateDirectory.\r\t[\r\t\ttravail := staging / \'travail\'.\r\t\ttravail ensureCreateDirectory.\r\t\tself\r\t\t\tproduire: fichier asFileReference\r\t\t\tdans: staging\r\t\t\toptions: options.\r\t\ttravail ensureDeleteAll.\r\t\tsortie exists ifTrue: [\r\t\t\tself error: \'Le dossier de sortie existe déjà\' ].\r\t\tstaging copy renameTo: sortie basename ] ensure: [\r\t\tstaging ensureDeleteAll ].\r\t^ sortie',
+				#category : #execution,
+				#selector : #'polygone:sortie:options:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.559417+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'tuile:fournisseur:epsg:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'tuile: tuile fournisseur: source epsg: epsg\r\t| bbox colonnes lignes fichier octets numero |\r\tbbox := \',\' join: ((self bornes: tuile) collect: #asString).\r\tcolonnes := tuile fifth. lignes := tuile sixth.\r\tsource = \'ign\' ifTrue: [\r\t\tfichier := self telecharger: \'https://data.geopf.fr/wms-r/wms\' parametres: {\r\t\t\t\'SERVICE\' -> \'WMS\'. \'VERSION\' -> \'1.3.0\'. \'REQUEST\' -> \'GetMap\'.\r\t\t\t\'CRS\' -> epsg. \'BBOX\' -> bbox. \'WIDTH\' -> colonnes. \'HEIGHT\' -> lignes.\r\t\t\t\'LAYERS\' -> \'ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES\'. \'STYLES\' -> \'normal\'.\r\t\t\t\'FORMAT\' -> \'image/x-bil;bits=32\'} asDictionary.\r\t\toctets := fichier binaryReadStreamDo: [:flux | flux upToEnd].\r\t\toctets size = (colonnes * lignes * 4) ifFalse: [self error: \'Réponse BIL IGN inattendue\'].\r\t\t^ self decoder: octets colonnes: colonnes lignes: lignes ign: true].\r\tnumero := epsg allButFirst: 5.\r\tfichier := self telecharger: \'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage\'\r\t\tparametres: {\'bbox\' -> bbox. \'bboxSR\' -> numero. \'imageSR\' -> numero.\r\t\t\t\'size\' -> (colonnes asString , \',\' , lignes asString). \'format\' -> \'tiff\'.\r\t\t\t\'pixelType\' -> \'F32\'. \'adjustAspectRatio\' -> \'false\'. \'f\' -> \'image\'} asDictionary.\r\t^ self raster: fichier grille: tuile epsg: epsg\r',
+				#category : #raster,
+				#selector : #'tuile:fournisseur:epsg:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.578799+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay
+		] : OrderedCollection [
+			MCClassDefinition {
+				#name : #PerceptionMacroReplay,
+				#superclassName : #Object,
+				#variables : OrderedCollection [
+					MCInstanceVariableDefinition {
+						#name : 'scene'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'heightAt'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'secondsPerTick'
+					},
+					MCInstanceVariableDefinition {
+						#name : 'displayOptions'
+					}
+				],
+				#packageName : #PerceptionMission,
+				#type : #normal,
+				#comment : 'Rejoue un historique de MacroSimulator sur un parcours associé à un MNT. La géométrie et l’état des relevés appartiennent à PerceptionScene. Le simulateur reste responsable des drones, des vitesses et des événements.\r\rPour créer une simulation, configurer secondsPerTick avant newSimulatorWith:. Les vitesses de configuration sont en m/s et les distances en mètres. Avancer le simulateur par runSingleUpdate:. Pour un historique existant, secondsPerTick donne la durée simulée d’un tik.\r\rdisplayOptions at: #droneColorMode put: #acceleration donne la couleur d’après l’accélération longitudinale entre deux états successifs de l’historique. Le calcul utilise la durée du tik et se fait à chaque état, quel que soit le pas d’affichage.\r',
+				#commentStamp : 'PerceptionMission',
+				#tagName : #Replay,
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			}
+		],
+		[
+			#PerceptionScene,
+			#'observerWith:heightAt:intrudersAt:secondsPerTick:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'observerWith: settings heightAt: heightAt intrudersAt: intrudersAt secondsPerTick: tickSeconds\r    | adapter view lossSeconds visibleLosses knownLosses camera fade\r      measureAcceleration previousSpeeds previousSeconds |\r    (tickSeconds isNumber and: [ tickSeconds asFloat isFinite and: [ tickSeconds > 0 ] ])\r        ifFalse: [ self error: \'La durée d’un tik doit être positive et finie.\' ].\r    lossSeconds := settings at: #lossMarkerSeconds ifAbsent: [ 0 ].\r    (lossSeconds isNumber and: [ lossSeconds >= 0 and: [ lossSeconds asFloat isFinite ] ])\r        ifFalse: [ self error: \'La durée d’affichage d’une perte doit être finie et positive ou nulle.\' ].\r    camera := settings at: #camera ifAbsent: [ #(1.0 2000) ].\r    fade := settings at: #fadeAfterSeconds ifAbsent: [ 300 ].\r    adapter := PerceptionCoverageAdapter on: terrain copy.\r    adapter cameraHalfFieldTangent: camera first sensorSidePixels: camera second.\r    adapter fadeAfterSeconds: fade.\r    (settings at: #transparentAfterSeconds ifAbsent: [ nil ]) ifNotNil: [ :seconds |\r        adapter fadeOutDuration: seconds - fade ].\r    view := PerceptionMissionView on: adapter options: settings.\r    measureAcceleration := view droneColorMode = #acceleration.\r    knownLosses := Set new.\r    visibleLosses := OrderedCollection new.\r    ^ [ :step :seconds |\r        | speeds currentSpeeds poses newLosses positions points |\r        speeds := Dictionary new.\r        currentSpeeds := measureAcceleration ifTrue: [ Dictionary new ].\r        poses := step drones collect: [ :drone |\r            | id speed |\r            id := drone id.\r            speed := drone currentSpeed.\r            drone nominalSpeed > 0 ifTrue: [\r                speeds at: id put: speed / drone nominalSpeed ].\r            measureAcceleration ifTrue: [ currentSpeeds at: id put: speed ].\r            PerceptionDronePose id: id position: (self positionOf: drone in: step)\r                heightAboveGround: (heightAt value: step value: drone) ].\r        newLosses := OrderedCollection new.\r        lossSeconds > 0 ifTrue: [\r            step lostDrones do: [ :drone |\r                (knownLosses includes: drone id) ifFalse: [\r                    newLosses add: { drone id. self positionOf: drone in: step. seconds } ] ] ].\r        positions := (intrudersAt value: step) collect: [ :pair |\r            { pair first. self project: pair second } ].\r        adapter recordAt: seconds polygon: route drones: poses.\r        points := positions collect: [ :pair |\r            | reading |\r            reading := adapter observationAt: pair second.\r            { pair first. pair second. reading notNil and: [ reading first = seconds ] } ].\r        visibleLosses := visibleLosses select: [ :marker | seconds - marker third < lossSeconds ].\r        newLosses do: [ :marker | knownLosses add: marker first. visibleLosses add: marker ].\r        view annotateSpeeds: speeds losses: visibleLosses intruders: points.\r        measureAcceleration ifTrue: [\r            | values scale |\r            values := Dictionary new.\r            previousSeconds ifNotNil: [\r                "La vitesse du simulateur est un déplacement par tik."\r                scale := tickSeconds * (seconds - previousSeconds).\r                currentSpeeds keysAndValuesDo: [ :id :speed |\r                    previousSpeeds at: id ifPresent: [ :previous |\r                        values at: id put: (speed - previous) / scale ] ] ].\r            view annotateAccelerations: values.\r            previousSpeeds := currentSpeeds.\r            previousSeconds := seconds ].\r        view ]\r',
+				#category : #observation,
+				#selector : #'observerWith:heightAt:intrudersAt:secondsPerTick:',
+				#className : #PerceptionScene,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'vercorsFrom:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'vercorsFrom: aDirectory\r    ^ self on: (PerceptionMacroReplay vercorsFrom: aDirectory)\r',
+				#category : #'instance creation',
+				#selector : #'vercorsFrom:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'polygone:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'polygone: fichier\r\r\t| objet crs sommets type |\r\tobjet := self json: fichier.\r\tcrs := self crsDeclare: objet.\r\tobjet isDictionary ifTrue: [\r\t\t\ttype := objet at: \'type\'.\r\t\t\ttype = \'FeatureCollection\' ifTrue: [\r\t\t\t\t\tsommets := objet at: \'features\'.\r\t\t\t\t\tsommets size = 1 ifFalse: [\r\t\t\t\t\t\tself error: \'Un seul polygone est attendu\' ].\r\t\t\t\t\tobjet := sommets first.\r\t\t\t\t\tcrs := (self crsDeclare: objet) ifNil: [ crs ] ].\r\t\t\t(objet at: \'type\') = \'Feature\' ifTrue: [\r\t\t\t\t\tobjet := objet at: \'geometry\'.\r\t\t\t\t\tcrs := (self crsDeclare: objet) ifNil: [ crs ] ].\r\t\t\t(objet at: \'type\') = \'Polygon\' ifFalse: [\r\t\t\t\tself error: \'Un Polygon est attendu\' ].\r\t\t\tobjet := (objet at: \'coordinates\') first ].\r\tsommets := objet collect: [ :xy |\r\t\t\t           {\r\t\t\t\t           (self nombre: xy first).\r\t\t\t\t           (self nombre: xy second) } ].\r\t(sommets notEmpty and: [ sommets first = sommets last ]) ifTrue: [\r\t\tsommets := sommets allButLast ].\r\tsommets asSet size < 3 ifTrue: [\r\t\tself error: \'Trois sommets distincts sont requis\' ].\r\t^ {\r\t\t  sommets.\r\t\t  crs }',
+				#category : #coordonnees,
+				#selector : #'polygone:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.558469+01:00'
+			}
+		],
+		[
+			#PerceptionScene,
+			#'observerWith:heightAt:intrudersAt:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'observerWith: settings heightAt: heightAt intrudersAt: intrudersAt\r    | adapter view lossSeconds visibleLosses knownLosses camera fade |\r    lossSeconds := settings at: #lossMarkerSeconds ifAbsent: [ 0 ].\r    (lossSeconds isNumber and: [ lossSeconds >= 0 and: [ lossSeconds asFloat isFinite ] ])\r        ifFalse: [ self error: \'La durée d’affichage d’une perte doit être finie et positive ou nulle.\' ].\r    camera := settings at: #camera ifAbsent: [ #(1.0 2000) ].\r    fade := settings at: #fadeAfterSeconds ifAbsent: [ 300 ].\r    adapter := PerceptionCoverageAdapter on: terrain copy.\r    adapter cameraHalfFieldTangent: camera first sensorSidePixels: camera second.\r    adapter fadeAfterSeconds: fade.\r    (settings at: #transparentAfterSeconds ifAbsent: [ nil ]) ifNotNil: [ :seconds |\r        adapter fadeOutDuration: seconds - fade ].\r    view := PerceptionMissionView on: adapter options: settings.\r    knownLosses := Set new.\r    visibleLosses := OrderedCollection new.\r    ^ [ :step :seconds |\r        | speeds poses newLosses positions points |\r        speeds := Dictionary new.\r        poses := step drones collect: [ :drone |\r            drone nominalSpeed > 0 ifTrue: [\r                speeds at: drone id put: drone currentSpeed / drone nominalSpeed ].\r            PerceptionDronePose id: drone id position: (self positionOf: drone in: step)\r                heightAboveGround: (heightAt value: step value: drone) ].\r        newLosses := OrderedCollection new.\r        lossSeconds > 0 ifTrue: [\r            step lostDrones do: [ :drone |\r                (knownLosses includes: drone id) ifFalse: [\r                    newLosses add: { drone id. self positionOf: drone in: step. seconds } ] ] ].\r        positions := (intrudersAt value: step) collect: [ :pair |\r            { pair first. self project: pair second } ].\r        adapter recordAt: seconds polygon: route drones: poses.\r        points := positions collect: [ :pair |\r            | reading |\r            reading := adapter observationAt: pair second.\r            { pair first. pair second. reading notNil and: [ reading first = seconds ] } ].\r        visibleLosses := visibleLosses select: [ :marker | seconds - marker third < lossSeconds ].\r        newLosses do: [ :marker | knownLosses add: marker first. visibleLosses add: marker ].\r        view annotateSpeeds: speeds losses: visibleLosses intruders: points.\r        view ]\r',
+				#category : #observation,
+				#selector : #'observerWith:heightAt:intrudersAt:',
+				#className : #PerceptionScene,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'observerWith: settings heightAt: heightAt intrudersAt: intrudersAt\r    ^ self observerWith: settings heightAt: heightAt intrudersAt: intrudersAt secondsPerTick: 1\r',
+				#category : #observation,
+				#selector : #'observerWith:heightAt:intrudersAt:',
+				#className : #PerceptionScene,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#simulate,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'simulate\r    | simulator |\r    simulator := self newSimulatorWith: [ :parameters | ].\r    self scheduleOutageOn: simulator.\r    simulator runSingleUpdate: 140.\r    ^ simulator\r',
+				#category : #simulation,
+				#selector : #simulate,
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'exportHistory:every:into:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'exportHistory: aHistory every: stride into: aDirectory\r    | nextFrame directory view index |\r    nextFrame := self frameReaderFor: aHistory every: stride.\r    directory := (aDirectory asFileReference / (\'images-\', UUID new asString)) ensureCreateDirectory.\r    index := 0.\r    view := nextFrame value.\r    [ view notNil ] whileTrue: [\r        | file |\r        file := directory / ((index printString padLeftTo: 4 with: $0), \'.png\').\r        file binaryWriteStreamDo: [ :stream | (PNGReadWriter on: stream) nextPutImage: view asForm ].\r        index := index + 1.\r        view := nextFrame value ].\r    ^ directory\r',
+				#category : #replay,
+				#selector : #'exportHistory:every:into:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'grillePour:pas:marge:ancien:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'grillePour: points pas: pas marge: marge ancien: ancien\r\r\t| bornes dx dy ax ay gauche droite bas haut precedent |\r\tbornes := (self emprise: points)\r\t\t          with: { -1. -1. 1. 1 }\r\t\t          collect: [ :bord :sens | bord + (marge * sens) ].\r\tdx := pas first.\r\tdy := pas second.\r\tax := 0.\r\tay := 0.\r\tancien ifNotNil: [\r\t\t\tax := (ancien at: \'topLeft\') first.\r\t\t\tay := (ancien at: \'topLeft\') second.\r\t\t\tprecedent := self bornes: {\r\t\t\t\t\t             ax.\r\t\t\t\t\t             ay.\r\t\t\t\t\t             dx.\r\t\t\t\t\t             dy.\r\t\t\t\t\t             (ancien at: \'columns\').\r\t\t\t\t\t             (ancien at: \'rows\') }.\r\t\t\tbornes := {\r\t\t\t\t          (bornes first min: precedent first).\r\t\t\t\t          (bornes second min: precedent second).\r\t\t\t\t          (bornes third max: precedent third).\r\t\t\t\t          (bornes fourth max: precedent fourth) } ].\r\tgauche := (bornes first - ax / dx + 1e-9) floor.\r\tbas := (bornes second - ay / dy + 1e-9) floor.\r\tdroite := (bornes third - ax / dx - 1e-9) ceiling.\r\thaut := (bornes fourth - ay / dy - 1e-9) ceiling.\r\t(gauche >= droite or: [ bas >= haut ]) ifTrue: [\r\t\tself error: \'Emprise vide\' ].\r\t^ {\r\t\t  (ax + (gauche * dx)).\r\t\t  (ay + (haut * dy)).\r\t\t  dx.\r\t\t  dy.\r\t\t  (droite - gauche).\r\t\t  (haut - bas) }',
+				#category : #grille,
+				#selector : #'grillePour:pas:marge:ancien:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.5562+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'descriptionCrs:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'descriptionCrs: crs\r\r\t^ STONJSON fromString: (self\r\t\t\t   resultat: {\r\t\t\t\t\t   \'gdalsrsinfo\'.\r\t\t\t\t\t   \'-o\'.\r\t\t\t\t\t   \'projjson\'.\r\t\t\t\t\t   crs }\r\t\t\t   entree: nil)',
+				#category : #coordonnees,
+				#selector : #'descriptionCrs:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.549921+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'resultat:entree:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'resultat: arguments entree: entree\r\r\t| sortie |\r\tsortie := travail / \'commande.txt\'.\r\tself commande: arguments entree: entree sortie: sortie.\r\t^ sortie contents',
+				#category : #systeme,
+				#selector : #'resultat:entree:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.576483+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'produire:dans:options:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'produire: fichier dans: dossier options: options\r\r\t| polygone points crs sourceMetrique origine yBas localisation emprise region ancien cible epsg projetes dx dy marge mnt mns fournisseur raster meta |\r\tpolygone := self polygone: fichier.\r\tpoints := polygone first.\r\tcrs := options\r\t\t       at: #crsPoints\r\t\t       ifAbsent: [ polygone second ifNil: [ \'EPSG:4326\' ] ].\r\tsourceMetrique := self epsgMetrique: (self descriptionCrs: crs).\r\torigine := options at: #origine ifAbsent: [ nil ].\r\tyBas := options at: #yVersLeBas ifAbsent: [ false ].\r\torigine\r\t\tifNil: [\r\t\tyBas ifTrue: [ self error: \'#yVersLeBas exige une origine\' ] ]\r\t\tifNotNil: [\r\t\t\t\tsourceMetrique ifNil: [\r\t\t\t\t\tself error: \'Une origine exige un CRS métrique\' ].\r\t\t\t\torigine := origine collect: [ :x | self nombre: x ].\r\t\t\t\tpoints := points collect: [ :xy |\r\t\t\t\t\t\t          {\r\t\t\t\t\t\t\t          (origine first + xy first).\r\t\t\t\t\t\t\t          (origine second + (xy second * (yBas\r\t\t\t\t\t\t\t\t             ifTrue: [ -1 ]\r\t\t\t\t\t\t\t\t             ifFalse: [ 1 ]))) } ] ].\r\tlocalisation := self projeter: points de: crs vers: \'EPSG:4326\'.\r\temprise := self emprise: localisation.\r\t(emprise first >= -180 and: [\r\t\t\t emprise third <= 180 and: [\r\t\t\t\t emprise second >= -90 and: [ emprise fourth <= 90 ] ] ])\r\t\tifFalse: [ self error: \'Sommets hors domaine\' ].\r\tregion := self region: emprise.\r\tancien := (options at: #etendre ifAbsent: [ nil ]) ifNotNil: [\r\t\t          :chemin |\r\t\t          self json: chemin asFileReference / \'terrain.json\' ].\r\tcible := options at: #crsGrille ifAbsent: [\r\t\t\t         ancien\r\t\t\t\t         ifNil: [\r\t\t\t\t\t\t         sourceMetrique ifNil: [\r\t\t\t\t\t\t\t\t         region = \'ign\'\r\t\t\t\t\t\t\t\t\t         ifTrue: [ \'EPSG:2154\' ]\r\t\t\t\t\t\t\t\t\t         ifFalse: [ self utm: localisation emprise: emprise ] ] ]\r\t\t\t\t         ifNotNil: [ ancien at: \'crs\' ] ].\r\tepsg := self epsgMetrique: (self descriptionCrs: cible).\r\tepsg ifNil: [\r\t\tself error: \'La grille exige un CRS EPSG projeté en mètres\' ].\r\tdx := self nombre: (options\r\t\t\t       at: #pas\r\t\t\t       ifAbsent: [\r\t\t\t       ancien\r\t\t\t\t       ifNil: [ 20 ]\r\t\t\t\t       ifNotNil: [ (ancien at: \'cellSize\') first ] ]).\r\tdy := self nombre: (options at: #pasNord ifAbsent: [\r\t\t\t\t       (ancien isNil or: [ options includesKey: #pas ])\r\t\t\t\t\t       ifTrue: [ dx ]\r\t\t\t\t\t       ifFalse: [ (ancien at: \'cellSize\') second ] ]).\r\tmarge := self nombre: (options at: #marge ifAbsent: [ 700 ]).\r\t(dx > 0 and: [ dy > 0 and: [ marge >= 0 ] ]) ifFalse: [\r\t\tself error: \'Vérifier les pas et la marge\' ].\r\tancien ifNotNil: [\r\t\t\t((ancien at: \'crs\') = epsg and: [\r\t\t\t\t\t (ancien at: \'cellSize\') asArray = {\r\t\t\t\t\t\t dx.\r\t\t\t\t\t\t dy } ]) ifFalse: [\r\t\t\t\tself error: \'Pour étendre, conserver le CRS et les deux pas\' ] ].\r\tprojetes := self projeter: points de: crs vers: epsg.\r\tgrille := self\r\t\t          grillePour: projetes\r\t\t          pas: {\r\t\t\t\t          dx.\r\t\t\t\t          dy }\r\t\t          marge: marge\r\t\t          ancien: ancien.\r\tmnt := (options at: #mnt ifAbsent: [ nil ]) ifNotNil: [ :chemin |\r\t\t       chemin asFileReference asAbsolute ].\r\tmns := (options at: #mns ifAbsent: [ nil ]) ifNotNil: [ :chemin |\r\t\t       chemin asFileReference asAbsolute ].\r\tfournisseur := mnt\r\t\t               ifNil: [ options at: #source ifAbsent: [ \'auto\' ] ]\r\t\t               ifNotNil: [ \'geotiff\' ].\r\tfournisseur = \'auto\' ifTrue: [ fournisseur := region ].\r\t(mnt isNil and: [ (#( \'ign\' \'usgs\' ) includes: fournisseur) not ])\r\t\tifTrue: [\r\t\tself error: \'Choisir IGN ou USGS, ou fournir un MNT local\' ].\r\traster := mnt\r\t\t          ifNil: [ self relief: fournisseur epsg: epsg ]\r\t\t          ifNotNil: [ self raster: mnt grille: grille epsg: epsg ].\r\tself ecrireCsv: raster dans: dossier / \'mnt.csv\'.\r\tmns ifNotNil: [\r\t\t\tself\r\t\t\t\tecrireCsv: (self raster: mns grille: grille epsg: epsg)\r\t\t\t\tdans: dossier / \'mns.csv\' ].\r\tmeta := {\r\t\t        (\'version\' -> 1).\r\t\t        (\'crs\' -> epsg).\r\t\t        (\'topLeft\' -> {\r\t\t\t         grille first.\r\t\t\t         grille second }).\r\t\t        (\'cellSize\' -> {\r\t\t\t         dx.\r\t\t\t         dy }).\r\t\t        (\'columns\' -> grille fifth).\r\t\t        (\'rows\' -> grille sixth).\r\t\t        (\'noData\' -> -9999.0).\r\t\t        (\'ground\' -> \'mnt.csv\').\r\t\t        (\'surface\' -> (mns ifNotNil: [ \'mns.csv\' ])).\r\t\t        (\'polygonProjected\' -> projetes).\r\t\t        (\'source\' -> fournisseur).\r\t\t        (\'inputCrs\' -> crs).\r\t\t        (\'inputOrigin\' -> origine).\r\t\t        (\'inputYDown\' -> yBas) } asDictionary.\r\tdossier / \'terrain.json\' writeStreamDo: [ :flux |\r\t\t\tflux\r\t\t\t\tnextPutAll: (STONJSON toString: meta);\r\t\t\t\tlf ]',
+				#category : #execution,
+				#selector : #'produire:dans:options:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.570137+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'crsDeclare:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'crsDeclare: objet\r\r\t| crs props type |\r\tobjet isDictionary ifFalse: [ ^ nil ].\r\tcrs := objet at: \'crs\' ifAbsent: [ ^ nil ].\r\tcrs isString ifTrue: [ ^ crs ].\r\tcrs isDictionary ifFalse: [ ^ nil ].\r\tprops := crs at: \'properties\' ifAbsent: [ Dictionary new ].\r\ttype := (crs at: \'type\' ifAbsent: [ \'\' ]) asUppercase.\r\ttype = \'NAME\' ifTrue: [ ^ props at: \'name\' ].\r\ttype = \'EPSG\' ifTrue: [ ^ \'EPSG:\' , (props at: \'code\') asString ].\r\tself error: \'Déclaration de CRS inconnue\'',
+				#category : #coordonnees,
+				#selector : #'crsDeclare:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.548215+01:00'
+			}
+		],
+		[
+			#PerceptionScene,
+			#perimeterMeters,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'perimeterMeters\r    ^ perimeter\r',
+				#category : #accessing,
+				#selector : #perimeterMeters,
+				#className : #PerceptionScene,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'epsgMetrique:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'epsgMetrique: description\r\r\t| id axes |\r\t(description at: \'type\') = \'ProjectedCRS\' ifFalse: [ ^ nil ].\r\tid := description at: \'id\' ifAbsent: [ ^ nil ].\r\t(id at: \'authority\') = \'EPSG\' ifFalse: [ ^ nil ].\r\taxes := (description at: \'coordinate_system\') at: \'axis\'.\r\t(axes size >= 2 and: [\r\t\t\t (axes first at: \'unit\') = \'metre\' and: [\r\t\t\t\t (axes second at: \'unit\') = \'metre\' ] ]) ifFalse: [ ^ nil ].\r\t^ \'EPSG:\' , (id at: \'code\') asString',
+				#category : #coordonnees,
+				#selector : #'epsgMetrique:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.554273+01:00'
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'emprise:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'emprise: points\r\r\t| x y |\r\tx := points collect: #first.\r\ty := points collect: #second.\r\t^ {\r\t\t  x min.\r\t\t  y min.\r\t\t  x max.\r\t\t  y max }',
+				#category : #coordonnees,
+				#selector : #'emprise:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.553302+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'vercorsFrom:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'vercorsFrom: aDirectory\r    | directory |\r    directory := aDirectory asFileReference.\r    ^ self\r        fromTerrain: directory / \'terrain-vercors\'\r        routeFile: directory / \'parcours-vercors.geojson\'\r',
+				#category : #'instance creation',
+				#selector : #'vercorsFrom:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#FullAppMacroReplay,
+			#soSe,
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'soSe\r    "Une exécution de l’expérience SoSe, avec pacingRate 0.9 et sensibilité 0.01."\r    | parameters simulator |\r    parameters := MacroSimulatorParameters new\r        numberOfDrones: 100;\r        nominalSpeed: 10;\r        maxSpeed: 15;\r        sensingRadius: 20;\r        captureRadius: 20;\r        totalDistance: 10000;\r        policy: #capingPolicy;\r        seed: 3950149054165;\r        yourself.\r    simulator := parameters initializeSimulator.\r    simulator behavior sensibility: 0.01; pacingRate: 0.9.\r    simulator loose: 1 at: 200.\r    simulator loose: 30 at: 500.\r    simulator loose: 80 at: 800.\r    simulator newIncomerAt: 500.\r    simulator newIncomerAt: 500.\r    simulator newIncomerAt: 1000.\r    simulator run: 1500.\r    ^ simulator\r',
+				#category : #exemples,
+				#selector : #soSe,
+				#className : #FullAppMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#replay,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'replay\r    ^ replay\r',
+				#category : #configuration,
+				#selector : #replay,
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'projeter:de:vers:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'projeter: points de: source vers: cible\r\r\t| entree lignes |\r\tentree := travail / \'points.txt\'.\r\tentree writeStreamDo: [ :flux |\r\t\t\tpoints do: [ :xy |\r\t\t\t\t\tflux\r\t\t\t\t\t\tnextPutAll: (\' \' join: (xy collect: #asString));\r\t\t\t\t\t\tlf ] ].\r\tlignes := (self\r\t\t           resultat: {\r\t\t\t\t           \'gdaltransform\'.\r\t\t\t\t           \'-s_srs\'.\r\t\t\t\t           source.\r\t\t\t\t           \'-t_srs\'.\r\t\t\t\t           cible }\r\t\t           entree: entree) lines.\r\tlignes size = points size ifFalse: [\r\t\tself error: \'Transformation incomplète\' ].\r\t^ lignes collect: [ :ligne |\r\t\t\t  | champs |\r\t\t\t  champs := ligne substrings.\r\t\t\t  {\r\t\t\t\t  (self nombre: champs first).\r\t\t\t\t  (self nombre: champs second) } ]',
+				#category : #coordonnees,
+				#selector : #'projeter:de:vers:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.571744+01:00'
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'scene:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'scene: aScene\r    scene := aScene\r',
+				#category : #initialization,
+				#selector : #'scene:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'playHistory:every:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'playHistory: aHistory every: stride\r    | nextFrame view animation lastFrame window extent |\r    nextFrame := self frameReaderFor: aHistory every: stride.\r    view := nextFrame value.\r    extent := view canvas extent + (20 @ 40).\r    lastFrame := Time millisecondClockValue.\r    animation := view canvas newAnimation.\r    animation\r        repeat;\r        onStepDo: [\r            (Time millisecondsSince: lastFrame) >= 80 ifTrue: [\r                nextFrame value\r                    ifNil: [ animation stop ]\r                    ifNotNil: [ :nextView | nextView refresh ].\r                lastFrame := Time millisecondClockValue ] ].\r    window := view open.\r    window extent: extent.\r    ^ window\r',
+				#category : #replay,
+				#selector : #'playHistory:every:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'initializeOn:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'initializeOn: aReplay\r    replay := aReplay.\r    replay secondsPerTick: 2; heightAboveGround: 180.\r    replay displayOptions\r        at: #camera put: { 0.5. 2000 };\r        at: #droneColorMode put: #acceleration;\r        at: #droneMarkerSize put: 5;\r        at: #fadeAfterSeconds put: 40;\r        at: #transparentAfterSeconds put: 75.\r    ^ self\r',
+				#category : #configuration,
+				#selector : #'initializeOn:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#drawDrones,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'drawDrones\r    | names |\r    names := options at: #showDroneNames ifAbsent: [ true ].\r    adapter poses do: [ :pose |\r        (adapter terrain includesProjectedPoint: pose position) ifTrue: [\r            | point |\r            point := self screenPoint: pose position.\r            self dotAt: point size: 9 color: (self speedColorFor: pose id).\r            names ifTrue: [ self label: pose id asString at: point + (6 @ -17)\r                size: 12 color: Color white ] ] ].\r    losses do: [ :marker |\r        (adapter terrain includesProjectedPoint: marker second) ifTrue: [\r            | point color |\r            point := self screenPoint: marker second.\r            color := Color fromHexString: \'FF706B\'.\r            self drawLineFrom: point - (5 @ 5) to: point + (5 @ 5) color: color.\r            self drawLineFrom: point + (-5 @ 5) to: point + (5 @ -5) color: color.\r            names ifTrue: [ self label: marker first asString at: point + (7 @ -15)\r                size: 12 color: color ] ] ].\r    intruders do: [ :marker |\r        (adapter terrain includesProjectedPoint: marker second) ifTrue: [\r            self dotAt: (self screenPoint: marker second)\r                size: (marker third ifTrue: [ 12 ] ifFalse: [ 4 ])\r                color: (Color fromHexString: (marker third\r                    ifTrue: [ \'FFE48F\' ] ifFalse: [ \'8994A4\' ])) ] ]\r',
+				#category : #drawing,
+				#selector : #drawDrones,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'drawDrones\r    | names markerSize |\r    names := options at: #showDroneNames ifAbsent: [ true ].\r    markerSize := options at: #droneMarkerSize ifAbsent: [ 9 ].\r    adapter poses do: [ :pose |\r        (adapter terrain includesProjectedPoint: pose position) ifTrue: [\r            | point |\r            point := self screenPoint: pose position.\r            self dotAt: point size: markerSize color: (self droneColorFor: pose id).\r            names ifTrue: [ self label: pose id asString at: point + (6 @ -17)\r                size: 12 color: Color white ] ] ].\r    losses do: [ :marker |\r        (adapter terrain includesProjectedPoint: marker second) ifTrue: [\r            | point color |\r            point := self screenPoint: marker second.\r            color := Color fromHexString: \'FF706B\'.\r            self drawLineFrom: point - (5 @ 5) to: point + (5 @ 5) color: color.\r            self drawLineFrom: point + (-5 @ 5) to: point + (5 @ -5) color: color.\r            names ifTrue: [ self label: marker first asString at: point + (7 @ -15)\r                size: 12 color: color ] ] ].\r    intruders do: [ :marker |\r        (adapter terrain includesProjectedPoint: marker second) ifTrue: [\r            self dotAt: (self screenPoint: marker second)\r                size: (marker third ifTrue: [ 12 ] ifFalse: [ 4 ])\r                color: (Color fromHexString: (marker third\r                    ifTrue: [ \'FFE48F\' ] ifFalse: [ \'8994A4\' ])) ] ]\r',
+				#category : #drawing,
+				#selector : #drawDrones,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'bornes:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'bornes: tuile\r\r\t| x y dx dy |\r\tx := tuile first.\r\ty := tuile second.\r\tdx := tuile third.\r\tdy := tuile fourth.\r\t^ {\r\t\t  x.\r\t\t  (y - (dy * tuile sixth)).\r\t\t  (x + (dx * tuile fifth)).\r\t\t  y }',
+				#category : #grille,
+				#selector : #'bornes:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.54545+01:00'
+			}
+		],
+		[
+			#FullAppMacroReplay,
+			#'isSeWithSeedIndex:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'isSeWithSeedIndex: anIndex\r    | simulator |\r    simulator := MacroSimulatorExample generateScenario: anIndex.\r    simulator run: 1500.\r    ^ simulator\r',
+				#category : #exemples,
+				#selector : #'isSeWithSeedIndex:',
+				#className : #FullAppMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionScene,
+			#projectedWayPoints,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'projectedWayPoints\r    "Les origines des segments de longueur positive, dans l\'ordre du parcours."\r    ^ segments collect: #first as: Array\r',
+				#category : #position,
+				#selector : #projectedWayPoints,
+				#className : #PerceptionScene,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'relief:epsg:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'relief: source epsg: epsg\r\r\t| resultat dx dy largeur hauteur |\r\tdx := grille third.\r\tdy := grille fourth.\r\tlargeur := grille fifth.\r\thauteur := grille sixth.\r\tresultat := Array new: hauteur.\r\t0 to: hauteur - 1 by: 640 do: [ :y |\r\t\t\t| lignes |\r\t\t\tlignes := 640 min: hauteur - y.\r\t\t\t1 to: lignes do: [ :j |\r\t\t\tresultat at: y + j put: (Float32Array new: largeur) ].\r\t\t\t0 to: largeur - 1 by: 640 do: [ :x |\r\t\t\t\t\t| colonnes tuile valeurs |\r\t\t\t\t\tcolonnes := 640 min: largeur - x.\r\t\t\t\t\ttuile := {\r\t\t\t\t\t\t         (grille first + (x * dx)).\r\t\t\t\t\t\t         (grille second - (y * dy)).\r\t\t\t\t\t\t         dx.\r\t\t\t\t\t\t         dy.\r\t\t\t\t\t\t         colonnes.\r\t\t\t\t\t\t         lignes }.\r\t\t\t\t\tvaleurs := self tuile: tuile fournisseur: source epsg: epsg.\r\t\t\t\t\t1 to: lignes do: [ :j |\r\t\t\t\t\t\t\t(resultat at: y + j)\r\t\t\t\t\t\t\t\treplaceFrom: x + 1\r\t\t\t\t\t\t\t\tto: x + colonnes\r\t\t\t\t\t\t\t\twith: (valeurs at: j)\r\t\t\t\t\t\t\t\tstartingAt: 1 ] ] ].\r\t^ resultat',
+				#category : #raster,
+				#selector : #'relief:epsg:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.57616+01:00'
+			}
+		],
+		[
+			#SoSeVercorsExample
+		] : OrderedCollection [
+			MCClassDefinition {
+				#name : #SoSeVercorsExample,
+				#superclassName : #Object,
+				#variables : OrderedCollection [
+					MCInstanceVariableDefinition {
+						#name : 'replay'
+					}
+				],
+				#packageName : #DroneSystem-Macro,
+				#type : #normal,
+				#comment : 'Exemple de SoSe sur la boucle du Vercors avec observation hybride des voisins et rendu des relevés du MNT. Charger reprise-distances.st pour partager les sommets projetés en mètres entre la commande et le rejeu.\r\rexample := SoSeVercorsExample vercorsFrom: bundle / \'rejeu-vercors\'.\rsimulator := example simulate.\rexample replay playHistory: simulator history every: 5.\rexample export: simulator every: 5 into: output.\r\rLe scénario fait disparaître d’abord la mesure de distance, puis le gisement. Avec les lois à deux écarts, un drone qui ne dispose plus de deux valeurs exploitables garde sa dernière vitesse. Lorsque les écarts redeviennent exploitables, la loi s’applique au tik courant. Le rendu optique du MNT lit l’historique et possède sa propre configuration.\r',
+				#commentStamp : 'SoSe',
+				#tagName : #Replay,
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#'speedColorFor:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'speedColorFor: id\r    | ratio |\r    (options at: #showSpeedColors ifAbsent: [ false ]) ifFalse: [ ^ Color white ].\r    ratio := speedRatios at: id ifAbsent: [ 1 ].\r    ratio < 0.95 ifTrue: [ ^ Color fromHexString: \'62C6FF\' ].\r    ratio > 1.05 ifTrue: [ ^ Color fromHexString: \'FFAE68\' ].\r    ^ Color white\r',
+				#category : #drawing,
+				#selector : #'speedColorFor:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'speedColorFor: id\r    | ratio |\r    self droneColorMode = #speed ifFalse: [ ^ Color white ].\r    ratio := speedRatios at: id ifAbsent: [ 1 ].\r    ratio < 0.95 ifTrue: [ ^ Color fromHexString: \'62C6FF\' ].\r    ratio > 1.05 ifTrue: [ ^ Color fromHexString: \'FFAE68\' ].\r    ^ Color white\r',
+				#category : #drawing,
+				#selector : #'speedColorFor:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'polygone:sortie:options:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'polygone: fichier sortie: dossier options: options\r\r\t^ self new polygone: fichier sortie: dossier options: options',
+				#category : #execution,
+				#selector : #'polygone:sortie:options:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.544243+01:00'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#'overlayFor:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'overlayFor: aTerrain\r    | overlay hatch |\r    overlay := super overlayFor: aTerrain.\r    adapter transparentAfterSeconds ifNotNil: [\r        adapter visibleGridObservationsDo: [ :cell :reading |\r            | color |\r            color := overlay colorAt: cell.\r            overlay colorAt: cell put: (color alpha: 0.90 * (adapter opacityOf: reading)) ] ].\r    hatch := (Color fromHexString: \'F879A7\') alpha: 0.85.\r    adapter shadowGridCellsDo: [ :cell |\r        ((cell x + cell y) \\\\ 5) < 2 ifTrue: [\r            overlay colorAt: cell put: hatch ] ].\r    ^ overlay\r',
+				#category : #drawing,
+				#selector : #'overlayFor:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'overlayFor: aTerrain\r    | overlay hatch |\r    self showsCoverage ifFalse: [\r        ^ Form extent: aTerrain columns @ aTerrain rows depth: 32 ].\r    overlay := super overlayFor: aTerrain.\r    adapter transparentAfterSeconds ifNotNil: [\r        adapter visibleGridObservationsDo: [ :cell :reading |\r            | color |\r            color := overlay colorAt: cell.\r            overlay colorAt: cell put: (color alpha: 0.90 * (adapter opacityOf: reading)) ] ].\r    hatch := (Color fromHexString: \'F879A7\') alpha: 0.85.\r    adapter shadowGridCellsDo: [ :cell |\r        ((cell x + cell y) \\\\ 5) < 2 ifTrue: [\r            overlay colorAt: cell put: hatch ] ].\r    ^ overlay\r',
+				#category : #drawing,
+				#selector : #'overlayFor:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#perimeterMeters,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'perimeterMeters\r    ^ scene perimeterMeters\r',
+				#category : #configuration,
+				#selector : #perimeterMeters,
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMacroReplay,
+			#'secondsPerTick:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'secondsPerTick: seconds\r    (seconds isNumber and: [ seconds asFloat isFinite and: [ seconds > 0 ] ])\r        ifFalse: [ self error: \'La durée d’un tik doit être positive et finie.\' ].\r    secondsPerTick := seconds\r',
+				#category : #configuration,
+				#selector : #'secondsPerTick:',
+				#className : #PerceptionMacroReplay,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#'initializeOn:options:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'initializeOn: anAdapter options: settings\r    super initializeOn: anAdapter.\r    options := settings copy.\r    (#(hillshade elevation none) includes: (options at: #background ifAbsent: [ #hillshade ]))\r        ifFalse: [ self error: \'Fond de carte inconnu.\' ].\r    canvas extent: 960 @ 740.\r    speedRatios := Dictionary new.\r    losses := intruders := #()\r',
+				#category : #configuration,
+				#selector : #'initializeOn:options:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			},
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'initializeOn: anAdapter options: settings\r    | mode threshold |\r    super initializeOn: anAdapter.\r    options := settings copy.\r    (#(hillshade elevation none) includes: (options at: #background ifAbsent: [ #hillshade ]))\r        ifFalse: [ self error: \'Fond de carte inconnu.\' ].\r    mode := self droneColorMode.\r    (#(speed acceleration none) includes: mode)\r        ifFalse: [ self error: \'Mode de couleur des drones inconnu.\' ].\r    mode = #acceleration ifTrue: [\r        threshold := self accelerationThreshold.\r        (threshold isNumber and: [ threshold >= 0 and: [ threshold asFloat isFinite ] ])\r            ifFalse: [ self error: \'Le seuil d’accélération doit être positif ou nul et fini.\' ] ].\r    canvas extent: 960 @ 740.\r    speedRatios := Dictionary new.\r    accelerations := Dictionary new.\r    losses := intruders := #()\r',
+				#category : #configuration,
+				#selector : #'initializeOn:options:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'fromTerrain:routeFile:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'fromTerrain: aDirectory routeFile: aFile\r    ^ self on: (PerceptionMacroReplay fromTerrain: aDirectory routeFile: aFile)\r',
+				#category : #'instance creation',
+				#selector : #'fromTerrain:routeFile:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'on:',
+			true
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : true,
+				#source : 'on: aReplay\r    ^ self new initializeOn: aReplay\r',
+				#category : #'instance creation',
+				#selector : #'on:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'newSimulatorWith:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'newSimulatorWith: configure\r    "Les vitesses du bloc sont en m/s et les portées sont en mètres."\r    | simulator points |\r    points := replay projectedWayPoints.\r    points asSet size >= 3\r        ifFalse: [ self error: \'Le parcours hybride exige au moins trois sommets distincts.\' ].\r    simulator := replay newSimulatorWith: [ :parameters |\r        parameters\r            wayPoints: points;\r            numberOfDrones: 20;\r            minSpeed: 5;\r            nominalSpeed: 10;\r            maxSpeed: 15;\r            sensingRadius: 1600;\r            captureRadius: 90;\r            policy: #revisedCapingPolicy.\r        configure value: parameters ].\r    simulator perceptionModel: MacroSimulatorHybridPerception new.\r    simulator behavior sensibility: 0.01; pacingRate: 0.9.\r    ^ simulator\r',
+				#category : #simulation,
+				#selector : #'newSimulatorWith:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#droneColorMode,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'droneColorMode\r    ^ options at: #droneColorMode ifAbsent: [\r        (options at: #showSpeedColors ifAbsent: [ false ])\r            ifTrue: [ #speed ]\r            ifFalse: [ #none ] ]\r',
+				#category : #configuration,
+				#selector : #droneColorMode,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#SoSeVercorsExample,
+			#'exportMetricsOf:into:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'exportMetricsOf: simulator into: aDirectory\r    | exporter metrics |\r    exporter := MacroSimulatorResultExporter directoryName: aDirectory.\r    metrics := simulator evaluateMetrics.\r    ^ exporter exportHistoryCSV: metrics named: \'sose\'\r        fields: #(timeStep fleetSize maxGap stdGap avgSpeed coverageRatio\r            directPerceptionRatio angularPerceptionRatio unobservablePerceptionRatio\r            outOfRangePerceptionRatio avgGapEstimationError maxGapEstimationError)\r',
+				#category : #export,
+				#selector : #'exportMetricsOf:into:',
+				#className : #SoSeVercorsExample,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'quote:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'quote: valeur\r\r\t| apostrophe |\r\tapostrophe := (Character value: 39) asString.\r\t^ apostrophe , (valeur asString\r\t\t   copyReplaceAll: apostrophe\r\t\t   with:\r\t\t   apostrophe , (Character value: 92) asString , apostrophe\r\t\t   , apostrophe) , apostrophe',
+				#category : #systeme,
+				#selector : #'quote:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.572259+01:00'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#'annotateAccelerations:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'annotateAccelerations: values\r    accelerations := values\r',
+				#category : #configuration,
+				#selector : #'annotateAccelerations:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#FullAppMacroReplay
+		] : OrderedCollection [
+			MCClassDefinition {
+				#name : #FullAppMacroReplay,
+				#superclassName : #Object,
+				#variables : OrderedCollection [ ],
+				#packageName : #DroneSystem-Macro,
+				#type : #normal,
+				#comment : 'Rejeux unitaires du profil macro. SoSe reprend une combinaison de paramètres de l’exemple 8. ISSe conserve la séquence de graines et le générateur de scénarios de MacroSimulatorExample.\r\r    FullAppMacroReplay soSe history inspect.\r    (FullAppMacroReplay isSeWithSeedIndex: 10) evaluateMetrics inspect.\r\rLe rejeu Vercors se trouve dans PerceptionVercorsMissionExample.',
+				#commentStamp : 'FullApp',
+				#tagName : #Replay,
+				#traitComposition : '{}',
+				#classTraitComposition : '{}'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#accelerationThreshold,
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'accelerationThreshold\r    ^ options at: #accelerationThreshold ifAbsent: [ 0 ]\r',
+				#category : #configuration,
+				#selector : #accelerationThreshold,
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		],
+		[
+			#PreparerTerrain,
+			#'raster:grille:epsg:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'raster: fichier grille: tuile epsg: epsg\r\r\t| warp brut colonnes lignes octets entete |\r\twarp := travail / \'warp.tif\'.\r\tbrut := travail / \'altitudes.bin\'.\r\tcolonnes := tuile fifth.\r\tlignes := tuile sixth.\r\t{\r\t\twarp.\r\t\tbrut.\r\t\t(travail / \'altitudes.hdr\').\r\t\t(travail / \'altitudes.bin.aux.xml\') } do: [ :ref | ref ensureDelete ].\r\tself\r\t\tresultat: {\r\t\t\t\t\'gdalwarp\'.\r\t\t\t\t\'-q\'.\r\t\t\t\t\'-t_srs\'.\r\t\t\t\tepsg.\r\t\t\t\t\'-te\' } , (self bornes: tuile) , {\r\t\t\t\t\'-ts\'.\r\t\t\t\tcolonnes.\r\t\t\t\tlignes.\r\t\t\t\t\'-ot\'.\r\t\t\t\t\'Float32\'.\r\t\t\t\t\'-dstnodata\'.\r\t\t\t\t\'-9999\'.\r\t\t\t\t\'-r\'.\r\t\t\t\t\'bilinear\'.\r\t\t\t\tfichier fullName.\r\t\t\t\twarp fullName }\r\t\tentree: nil.\r\tself\r\t\tresultat: {\r\t\t\t\t\'gdal_translate\'.\r\t\t\t\t\'-q\'.\r\t\t\t\t\'-b\'.\r\t\t\t\t\'1\'.\r\t\t\t\t\'-of\'.\r\t\t\t\t\'ENVI\'.\r\t\t\t\twarp fullName.\r\t\t\t\tbrut fullName }\r\t\tentree: nil.\r\tentete := (travail / \'altitudes.hdr\') contents.\r\t((entete includesSubstring: \'byte order = 0\') and: [\r\t\t entete includesSubstring: \'header offset = 0\' ]) ifFalse: [\r\t\tself error: \'ENVI Float32 little-endian attendu\' ].\r\toctets := brut binaryReadStreamDo: [ :flux | flux upToEnd ].\r\toctets size = (colonnes * lignes * 4) ifFalse: [\r\t\tself error: \'Taille raster inattendue\' ].\r\t^ self\r\t\t  decoder: octets\r\t\t  colonnes: colonnes\r\t\t  lignes: lignes\r\t\t  ign: false',
+				#category : #raster,
+				#selector : #'raster:grille:epsg:',
+				#className : #PreparerTerrain,
+				#timeStamp : '2026-11-24T17:03:19.573699+01:00'
+			}
+		],
+		[
+			#PerceptionMissionView,
+			#'droneColorFor:',
+			false
+		] : OrderedCollection [
+			MCMethodDefinition {
+				#classIsMeta : false,
+				#source : 'droneColorFor: id\r    | acceleration threshold |\r    self droneColorMode = #acceleration ifFalse: [ ^ self speedColorFor: id ].\r    acceleration := accelerations at: id ifAbsent: [ 0 ].\r    threshold := self accelerationThreshold.\r    acceleration < threshold negated ifTrue: [ ^ Color fromHexString: \'62C6FF\' ].\r    acceleration > threshold ifTrue: [ ^ Color fromHexString: \'FFAE68\' ].\r    ^ Color white\r',
+				#category : #drawing,
+				#selector : #'droneColorFor:',
+				#className : #PerceptionMissionView,
+				#timeStamp : ''
+			}
+		]
+	}
+}

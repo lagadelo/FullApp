@@ -1,0 +1,239 @@
+--- a/src/DroneSystem-Macro/MacroSimulatorDrone.class.st
++++ b/src/DroneSystem-Macro/MacroSimulatorDrone.class.st
+@@ -27,7 +27,9 @@
+ 		'maxSpeed',
+ 		'minSpeed',
+ 		'distanceMeasurementAvailable',
+-		'visionAvailable'
++		'visionAvailable',
++		'revisitTargetSeconds',
++		'secondsPerTick'
+ 	],
+ 	#category : 'DroneSystem-Macro',
+ 	#package : 'DroneSystem-Macro'
+@@ -235,3 +237,23 @@
+ MacroSimulatorDrone >> visionAvailable: aBoolean [
+ 	visionAvailable := aBoolean
+ ]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorDrone >> revisitTargetSeconds [
++	^ revisitTargetSeconds
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorDrone >> revisitTargetSeconds: seconds [
++	revisitTargetSeconds := seconds
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorDrone >> secondsPerTick [
++	^ secondsPerTick ifNil: [ 1 ]
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorDrone >> secondsPerTick: seconds [
++	secondsPerTick := seconds
++]
+--- a/src/DroneSystem-Macro/MacroSimulatorParameters.class.st
++++ b/src/DroneSystem-Macro/MacroSimulatorParameters.class.st
+@@ -24,7 +24,9 @@
+ 		'policy',
+ 		'seed',
+ 		'interWayPointsDistances',
+-		'wayPointsPositions'
++		'wayPointsPositions',
++		'revisitTargetSeconds',
++		'secondsPerTick'
+ 	],
+ 	#category : 'DroneSystem-Macro',
+ 	#package : 'DroneSystem-Macro'
+@@ -1056,6 +1058,8 @@
+ 	tmp sensingRadius: self sensingRadius.
+ 	tmp captureRadius: self captureRadius.
+ 	tmp position: Float infinity.
++	tmp revisitTargetSeconds: self revisitTargetSeconds.
++	tmp secondsPerTick: self secondsPerTick.
+ 	^ tmp
+ ]
+ 
+@@ -1357,3 +1361,27 @@
+ 
+ 	wayPointsPositions := aValue
+ ]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorParameters >> revisitTargetSeconds [
++	^ revisitTargetSeconds
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorParameters >> revisitTargetSeconds: seconds [
++	(seconds isNil or: [ seconds isNumber and: [ seconds asFloat isFinite and: [ seconds > 0 ] ] ])
++		ifFalse: [ self error: 'Le délai de revisite doit être strictement positif et fini.' ].
++	revisitTargetSeconds := seconds
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorParameters >> secondsPerTick [
++	^ secondsPerTick ifNil: [ 1 ]
++]
++
++{ #category : 'accessing - revisit' }
++MacroSimulatorParameters >> secondsPerTick: seconds [
++	(seconds isNumber and: [ seconds asFloat isFinite and: [ seconds > 0 ] ])
++		ifFalse: [ self error: 'La durée du tik doit être strictement positive et finie.' ].
++	secondsPerTick := seconds
++]
+--- a/src/DroneSystem-Macro/MacroSimulatorBehavior.class.st
++++ b/src/DroneSystem-Macro/MacroSimulatorBehavior.class.st
+@@ -53,20 +53,7 @@
+ 
+ { #category : 'policies' }
+ MacroSimulatorBehavior >> capingPolicy [
+-	^ [ :aStep |
+-		aStep drones do: [ :a |
+-			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+-				| weight ratio denominator |
+-				denominator := ga max: gb.
+-				weight := denominator = 0
+-					ifTrue: [ 0.0 ]
+-					ifFalse: [ ((ga - gb) / denominator) asFloat ].
+-				ratio := weight abs < self sensibility
+-					ifTrue: [ self pacingRate ]
+-					ifFalse: [ weight * 2 + 1 ].
+-				a currentSpeed:
+-					(((a currentSpeed * ratio roundUpTo: 0.1) min: a maxSpeed)
+-						max: a minSpeed) ] ] ]
++	^ self capingCommandsUsing: #capingPolicy
+ ]
+ 
+ { #category : 'running - patrol extensions' }
+@@ -151,22 +138,7 @@
+ 
+ { #category : 'policies' }
+ MacroSimulatorBehavior >> revisedCapingPolicy [
+-	^ [ :aStep |
+-		aStep drones do: [ :a |
+-			self withObservedGapsOf: a in: aStep do: [ :ga :gb |
+-				| weight newSpeed denominator |
+-				denominator := ga max: gb.
+-				weight := denominator = 0
+-					ifTrue: [ 0.0 ]
+-					ifFalse: [ ((ga - gb) / denominator) asFloat ].
+-				newSpeed := weight abs < self sensibility
+-					ifTrue: [
+-						a currentSpeed
+-							+ ((a nominalSpeed - a currentSpeed) * self pacingRate) ]
+-					ifFalse: [
+-						((a currentSpeed * (weight * 2 + 1) roundUpTo: 0.1)
+-							min: a maxSpeed) max: a minSpeed ].
+-				a currentSpeed: newSpeed ] ] ]
++	^ self capingCommandsUsing: #revisedCapingPolicy
+ ]
+ 
+ { #category : 'accessing' }
+@@ -205,3 +177,34 @@
+ 	aTwoArgumentBlock value: ga value: gb.
+ 	^ true
+ ]
++
++{ #category : 'policies - revisit' }
++MacroSimulatorBehavior >> revisitCapingPolicy [
++	^ self capingCommandsUsing: #revisitCapingPolicy
++]
++
++{ #category : 'policies - revisit' }
++MacroSimulatorBehavior >> capingCommandsUsing: selector [
++	^ [ :step | step drones do: [ :drone |
++		self withObservedGapsOf: drone in: step do: [ :ahead :behind |
++			drone currentSpeed: (self capingCommandFor: drone ahead: ahead behind: behind using: selector) ] ] ]
++]
++
++{ #category : 'policies - revisit' }
++MacroSimulatorBehavior >> capingCommandFor: drone ahead: ahead behind: behind using: selector [
++	"All speeds in this method are displacements in metres per tik."
++	| maximumGap error ratio reference command |
++	maximumGap := ahead max: behind.
++	error := maximumGap = 0 ifTrue: [ 0.0 ] ifFalse: [ ((ahead - behind) / maximumGap) asFloat ].
++	(error abs < self sensibility and: [ selector ~= #capingPolicy ]) ifTrue: [
++		reference := drone nominalSpeed.
++		selector = #revisitCapingPolicy ifTrue: [
++			drone revisitTargetSeconds ifNotNil: [ :seconds |
++				reference := (reference max: maximumGap / seconds * drone secondsPerTick) min: drone maxSpeed ] ].
++		command := drone currentSpeed + ((reference - drone currentSpeed) * self pacingRate).
++		^ selector = #revisitCapingPolicy
++			ifTrue: [ (command min: drone maxSpeed) max: drone minSpeed ]
++			ifFalse: [ command ] ].
++	ratio := error abs < self sensibility ifTrue: [ self pacingRate ] ifFalse: [ error * 2 + 1 ].
++	^ ((drone currentSpeed * ratio roundUpTo: 0.1) min: drone maxSpeed) max: drone minSpeed
++]
+--- a/src/DroneSystem-Macro/MacroSimulatorHybridPerception.class.st
++++ b/src/DroneSystem-Macro/MacroSimulatorHybridPerception.class.st
+@@ -133,11 +133,11 @@
+ 		^ MacroSimulatorPerceptionObservation
+ 			status: #outOfRange
+ 			trueGap: trueGap distance: euclidean bearing: relativeAngle radiansToDegrees estimatedGap: nil candidates: 0 ].
+-	aDrone distanceMeasurementAvailable ifTrue: [
++	(self allowsDistanceFor: aDrone) ifTrue: [
+ 		^ MacroSimulatorPerceptionObservation
+ 			status: #direct
+ 			trueGap: trueGap distance: euclidean bearing: relativeAngle radiansToDegrees estimatedGap: trueGap candidates: 1 ].
+-	aDrone visionAvailable ifFalse: [
++	(self allowsBearingFor: aDrone) ifFalse: [
+ 		^ MacroSimulatorPerceptionObservation
+ 			status: #noVision
+ 			trueGap: trueGap distance: euclidean bearing: relativeAngle radiansToDegrees estimatedGap: nil candidates: 0 ].
+@@ -198,3 +198,13 @@
+ 	^ ((aVector x * c) - (aVector y * s))
+ 		@ ((aVector x * s) + (aVector y * c))
+ ]
++
++{ #category : 'observing' }
++MacroSimulatorHybridPerception >> allowsDistanceFor: drone [
++	^ drone distanceMeasurementAvailable
++]
++
++{ #category : 'observing' }
++MacroSimulatorHybridPerception >> allowsBearingFor: drone [
++	^ drone visionAvailable
++]
+--- /dev/null
++++ b/src/DroneSystem-Macro/MacroSimulatorSelectablePerception.class.st
+@@ -0,0 +1,36 @@
++"
++A single observation hypothesis on a georeferenced path. Range and sensor outage
++flags are still evaluated by the hybrid perception model.
++"
++Class {
++	#name : 'MacroSimulatorSelectablePerception',
++	#superclass : 'MacroSimulatorHybridPerception',
++	#instVars : [ 'mode' ],
++	#category : 'DroneSystem-Macro'
++}
++
++{ #category : 'instance creation' }
++MacroSimulatorSelectablePerception class >> mode: selector [
++	^ self new initializeMode: selector
++]
++
++{ #category : 'initialization' }
++MacroSimulatorSelectablePerception >> initializeMode: selector [
++	(#(distance bearing) includes: selector) ifFalse: [ self error: 'Hypothèse de perception inconnue.' ].
++	mode := selector
++]
++
++{ #category : 'accessing' }
++MacroSimulatorSelectablePerception >> mode [
++	^ mode
++]
++
++{ #category : 'observing' }
++MacroSimulatorSelectablePerception >> allowsDistanceFor: drone [
++	^ mode = #distance and: [ super allowsDistanceFor: drone ]
++]
++
++{ #category : 'observing' }
++MacroSimulatorSelectablePerception >> allowsBearingFor: drone [
++	^ mode = #bearing and: [ super allowsBearingFor: drone ]
++]

@@ -1,0 +1,269 @@
+{
+	[
+		#PerceptionMacroReplay,
+		#'secondsPerTick:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'secondsPerTick: seconds\r\r\t(seconds isNumber and: [\r\t\t seconds asFloat isFinite and: [ seconds > 0 ] ]) ifFalse: [\r\t\tself error: \'La durée d’un tik doit être positive et finie.\' ].\r\tsecondsPerTick := seconds',
+			#category : #configuration,
+			#selector : #'secondsPerTick:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.081508+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'fromTerrain:routeFile:',
+		true
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'fromTerrain: aDirectory routeFile: aFile\r\r\t| geometry features coordinates points |\r\tgeometry := STONJSON fromString: aFile asFileReference contents.\r\t(geometry at: \'type\') = \'FeatureCollection\' ifTrue: [\r\t\t\tfeatures := geometry at: \'features\'.\r\t\t\tfeatures size = 1 ifFalse: [\r\t\t\t\tself error: \'Le fichier doit contenir un seul parcours.\' ].\r\t\t\tgeometry := features first ].\r\t(geometry at: \'type\') = \'Feature\' ifTrue: [\r\t\tgeometry := geometry at: \'geometry\' ].\r\tcoordinates := (geometry at: \'type\')\r\t\t               caseOf: {\r\t\t\t\t               ([ \'Polygon\' ]\r\t\t\t\t                -> [ (geometry at: \'coordinates\') first ]).\r\t\t\t\t               ([ \'LineString\' ] -> [ geometry at: \'coordinates\' ]) }\r\t\t               otherwise: [\r\t\t\t\t               self error:\r\t\t\t\t\t               \'Le parcours GeoJSON doit être un Polygon ou un LineString.\' ].\r\tpoints := coordinates collect: [ :pair | pair first @ pair second ].\r\t^ self fromTerrain: aDirectory wayPoints: points',
+			#category : #'instance creation',
+			#selector : #'fromTerrain:routeFile:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.072592+01:00'
+		}
+	],
+	[
+		#MacroSimulatorParameters,
+		#computeInterWayPointsDistances,
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'computeInterWayPointsDistances\r\r\t| td tmp result d |\r\ttd := 0.0.\r\t"Consider wayPoints"\r\ttmp := wayPoints copy asOrderedCollection.\r\t"Close the loop; first is seen as last\'s succesor"\r\ttmp add: wayPoints first.\r\t"Compute inter wayPoints distance"\r\tresult := (1 to: wayPoints size ) collect: [ :i |\r\t\t         ( self haversineMetersFrom: (tmp at: i) to: (tmp at: (i \\\\ wayPoints size )+ 1))/1000 "use kilometers as unit" ].\r\r\r\t^ result',
+			#category : #'computing - waypoints',
+			#selector : #computeInterWayPointsDistances,
+			#className : #MacroSimulatorParameters,
+			#timeStamp : '2026-11-24T19:44:57.818606+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#initialize,
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'initialize\r\r\tsuper initialize.\r\tsecondsPerTick := 1.\r\tself heightAboveGround: 180.\r\tdisplayOptions := {\r\t\t                  (#background -> #hillshade).\r\t\t                  (#showDroneNames -> false).\r\t\t                  (#showSpeedColors -> true).\r\t\t                  (#lossMarkerSeconds -> 40).\r\t\t                  (#fadeAfterSeconds -> 16).\r\t\t                  (#transparentAfterSeconds -> 28) } asDictionary',
+			#category : #initialization,
+			#selector : #initialize,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.077792+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay
+	] : [
+		MCClassDefinition {
+			#name : #PerceptionMacroReplay,
+			#superclassName : #Object,
+			#variables : OrderedCollection [
+				MCInstanceVariableDefinition {
+					#name : 'scene'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'heightAt'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'secondsPerTick'
+				},
+				MCInstanceVariableDefinition {
+					#name : 'displayOptions'
+				}
+			],
+			#packageName : #PerceptionMission,
+			#type : #normal,
+			#comment : 'Rejoue un historique de MacroSimulator sur un parcours associé à un MNT. La géométrie et l’état des relevés appartiennent à PerceptionScene. Le simulateur reste responsable des drones, des vitesses et des événements.\r\rPour créer une simulation, configurer secondsPerTick avant newSimulatorWith:. Les vitesses de configuration sont en m/s et les distances en mètres. Avancer le simulateur par runSingleUpdate:. Pour un historique existant, secondsPerTick donne la durée simulée d’un tik.\r',
+			#commentStamp : '',
+			#tagName : #Replay,
+			#traitComposition : '{}',
+			#classTraitComposition : '{}'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#perimeterMeters,
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'perimeterMeters\r\r\t^ scene perimeterMeters',
+			#category : #configuration,
+			#selector : #perimeterMeters,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.079961+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'heightAt:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'heightAt: aBlock\r\t"Le bloc reçoit le tik et le drone, et renvoie une hauteur au-dessus du sol en mètres."\r\r\theightAt := aBlock',
+			#category : #configuration,
+			#selector : #'heightAt:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.077397+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#example,
+		true
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'example \r\r|replay sim | \rsim := MacroSimulatorExample example6b.\rreplay := (self\r    vercorsFrom: FileLocator home / \'Downloads\' / \'rejeu-vercors\').\rreplay displayOptions\r    at: #showCoverage put: false;\r    at: #showRoute put: false;\r    at: #lossMarkerSeconds put: 10; at: #droneColorMode put: "#acceleration" #speed.\r   replay  playHistory: sim  history every: 5.',
+			#category : #'instance creation',
+			#selector : #example,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.071354+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'exportHistory:every:into:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'exportHistory: aHistory every: stride into: aDirectory\r\r\t| nextFrame directory view index |\r\tnextFrame := self frameReaderFor: aHistory every: stride.\r\tdirectory := (aDirectory asFileReference\r\t              / (\'images-\' , UUID new asString))\r\t\t             ensureCreateDirectory.\r\tindex := 0.\r\tview := nextFrame value.\r\t[ view notNil ] whileTrue: [\r\t\t\t| file |\r\t\t\tfile := directory\r\t\t\t        / ((index printString padLeftTo: 4 with: $0) , \'.png\').\r\t\t\tfile binaryWriteStreamDo: [ :stream |\r\t\t\t\t(PNGReadWriter on: stream) nextPutImage: view asForm ].\r\t\t\tindex := index + 1.\r\t\t\tview := nextFrame value ].\r\t^ directory',
+			#category : #replay,
+			#selector : #'exportHistory:every:into:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.075089+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'vercorsFrom:',
+		true
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'vercorsFrom: aDirectory\r\r\t| directory |\r\tdirectory := aDirectory asFileReference.\r\t^ self\r\t\t  fromTerrain: directory / \'terrain-vercors\'\r\t\t  routeFile: directory / \'parcours-vercors.geojson\'',
+			#category : #'instance creation',
+			#selector : #'vercorsFrom:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.074087+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'frameReaderFor:every:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'frameReaderFor: aHistory every: stride\r    | history observe nextIndex tickSeconds |\r    (stride isInteger and: [ stride > 0 ])\r        ifFalse: [ self error: \'L’intervalle entre deux images doit être un entier positif.\' ].\r    history := aHistory asArray.\r    history ifEmpty: [ self error: \'L’historique est vide.\' ].\r    tickSeconds := secondsPerTick.\r    observe := scene observerWith: displayOptions\r        heightAt: heightAt\r        intrudersAt: [ :step | #() ]\r        secondsPerTick: tickSeconds.\r    nextIndex := 1.\r    ^ [\r        | end view |\r        nextIndex <= history size ifTrue: [\r            end := nextIndex = 1 ifTrue: [ 1 ] ifFalse: [ (nextIndex + stride - 1) min: history size ].\r            nextIndex to: end do: [ :index |\r                | step |\r                step := history at: index.\r                view := observe value: step value: step timeStep * tickSeconds ].\r            nextIndex := end + 1 ].\r        view ]\r',
+			#category : #replay,
+			#selector : #'frameReaderFor:every:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.076464+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'newSimulatorWith:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'newSimulatorWith: configure\r\r\t| parameters minSpeed nominalSpeed maxSpeed |\r\tparameters := MacroSimulatorParameters new\r\t\t              numberOfDrones: 20;\r\t\t              totalDistance: self perimeterMeters;\r\t\t              minSpeed: 5;\r\t\t              nominalSpeed: 10;\r\t\t              maxSpeed: 15;\r\t\t              sensingRadius: 20;\r\t\t              captureRadius: 20;\r\t\t              policy: #capingPolicy;\r\t\t              seed: 3950149054165;\r\t\t              yourself.\r\tconfigure value: parameters.\r\t(parameters numberOfDrones isInteger and: [\r\t\t parameters numberOfDrones > 0 ]) ifFalse: [\r\t\tself error: \'L’effectif doit être un entier positif.\' ].\r\tminSpeed := parameters minSpeed.\r\tnominalSpeed := parameters nominalSpeed.\r\tmaxSpeed := parameters maxSpeed.\r\t(({\r\t\t  minSpeed.\r\t\t  nominalSpeed.\r\t\t  maxSpeed } allSatisfy: [ :speed |\r\t\t  speed isNumber and: [ speed asFloat isFinite ] ]) and: [\r\t\t\t minSpeed >= 0 and: [\r\t\t\t\t\t nominalSpeed > 0 and: [\r\t\t\t\t\t\t minSpeed <= nominalSpeed and: [ nominalSpeed <= maxSpeed ] ] ] ])\r\t\tifFalse: [\r\t\t\t\tself error:\r\t\t\t\t\t\'Les vitesses doivent respecter 0 ≤ min ≤ nominale ≤ max et nominale > 0.\' ].\r\t"MacroSimulatorDrone >> update ajoute la vitesse à l’abscisse à chaque mouvement."\r\tparameters\r\t\tminSpeed: minSpeed * secondsPerTick;\r\t\tnominalSpeed: nominalSpeed * secondsPerTick;\r\t\tmaxSpeed: maxSpeed * secondsPerTick.\r\t^ parameters initializeSimulator',
+			#category : #simulation,
+			#selector : #'newSimulatorWith:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.079662+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'heightAboveGround:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'heightAboveGround: metres\r\r\t(metres isNumber and: [ metres asFloat isFinite and: [ metres > 0 ] ])\r\t\tifFalse: [\r\t\t\tself error:\r\t\t\t\t\'La hauteur au-dessus du sol doit être positive et finie.\' ].\r\tself heightAt: [ :step :drone | metres ]',
+			#category : #configuration,
+			#selector : #'heightAboveGround:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.077096+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#displayOptions,
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'displayOptions\r\r\t^ displayOptions',
+			#category : #configuration,
+			#selector : #displayOptions,
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.074241+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'playHistory:every:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'playHistory: aHistory every: stride\r\r\t| nextFrame view animation lastFrame window extent |\r\tnextFrame := self frameReaderFor: aHistory every: stride.\r\tview := nextFrame value.\r\textent := view canvas extent + (20 @ 40).\r\tlastFrame := Time millisecondClockValue.\r\tanimation := view canvas newAnimation.\r\tanimation\r\t\trepeat;\r\t\tonStepDo: [\r\t\t\t\t(Time millisecondsSince: lastFrame) >= 80 ifTrue: [\r\t\t\t\t\t\t\tnextFrame value\r\t\t\t\t\t\t\t\tifNil: [ animation stop ]\r\t\t\t\t\t\t\t\tifNotNil: [ :nextView | nextView refresh ].\r\t\t\t\t\t\t\tlastFrame := Time millisecondClockValue ] ].\r\twindow := view open.\r\twindow extent: extent.\r\t^ window',
+			#category : #replay,
+			#selector : #'playHistory:every:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.08082+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'fromTerrain:wayPoints:',
+		true
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'fromTerrain: aDirectory wayPoints: wayPoints\r\t"Les sommets sont ordonnés et exprimés dans le repère d’entrée du terrain."\r\r\t| points |\r\tpoints := wayPoints collect: [ :wayPoint |\r\t\t\t          wayPoint isPoint\r\t\t\t\t          ifTrue: [ wayPoint ]\r\t\t\t\t          ifFalse: [ wayPoint longitude @ wayPoint latitude ] ].\r\t^ self on: (PerceptionScene on: aDirectory wayPoints: points)',
+			#category : #'instance creation',
+			#selector : #'fromTerrain:wayPoints:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.073377+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'on:',
+		true
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : true,
+			#source : 'on: aScene\r\r\t^ self new\r\t\t  scene: aScene;\r\t\t  yourself',
+			#category : #'instance creation',
+			#selector : #'on:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.073643+01:00'
+		}
+	],
+	[
+		#PerceptionMacroReplay,
+		#'scene:',
+		false
+	] : [
+		MCMethodDefinition {
+			#classIsMeta : false,
+			#source : 'scene: aScene\r\r\tscene := aScene',
+			#category : #initialization,
+			#selector : #'scene:',
+			#className : #PerceptionMacroReplay,
+			#timeStamp : '2026-11-24T19:44:58.081012+01:00'
+		}
+	]
+}

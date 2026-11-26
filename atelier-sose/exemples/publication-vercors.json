@@ -1,0 +1,30 @@
+{
+  "format": "sose-atelier-parameters",
+  "version": 1,
+  "scenario": "geometry",
+  "terrain": {
+    "example": "vercors"
+  },
+  "simulation": {
+    "numberOfDrones": 12,
+    "ticks": 12,
+    "tickSeconds": 2,
+    "perceptionMode": "hybrid",
+    "sensingRadius": 1600
+  },
+  "publication": {
+    "ticks": [12],
+    "modes": ["state"],
+    "footprintHeights": [50, 150, 250],
+    "showRoute": true,
+    "showDrones": false,
+    "showDroneNames": false,
+    "showLosses": false,
+    "showMasked": true,
+    "focusDrone": 9,
+    "focusRadiusMeters": 450,
+    "mapDroneIds": [9],
+    "trailTicks": 0,
+    "camera": [0.5, 2000]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM_0_19&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+  "source": "Plan IGN — © IGN",
+  "license": "Licence Ouverte 2.0",
+  "licenseUrl": "https://www.data.gouv.fr/datasets/plan-ign",
+  "retrieved": "2026-11-25",
+  "processing": "Découpé et reprojeté sur l’emprise Lambert-93 du MNT à la résolution de la vidéo par interpolation bilinéaire",
+  "grid": {
+    "crs": "EPSG:2154",
+    "topLeft": [
+      883175.0,
+      6427725.0
+    ],
+    "cellSize": [
+      25.0,
+      25.0
+    ],
+    "columns": 245,
+    "rows": 329
+  },
+  "rasterSize": [
+    477,
+    640
+  ]
+}

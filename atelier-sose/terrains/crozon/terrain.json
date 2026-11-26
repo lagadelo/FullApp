@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "crs": "EPSG:32630",
+  "topLeft": [
+    377450.0,
+    5352650.0
+  ],
+  "cellSize": [
+    50.0,
+    50.0
+  ],
+  "columns": 356,
+  "rows": 234,
+  "noData": -9999.0,
+  "ground": "mnt.csv",
+  "surface": null,
+  "inputCrs": "EPSG:4326",
+  "inputOrigin": null,
+  "inputYDown": false,
+  "source": "Copernicus DEM GLO-30 Public",
+  "sourceUrl": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N48_00_W005_00_DEM/Copernicus_DSM_COG_10_N48_00_W005_00_DEM.tif",
+  "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+  "cartography": {
+    "overlay": "cartographie-grille.png",
+    "source": "© OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap",
+    "credit": "© OpenStreetMap · © OpenMapTiles",
+    "sourceUrl": "https://openfreemap.org/",
+    "tileTemplate": "https://tiles.openfreemap.org/planet/20261122_124456_pt/{z}/{x}/{y}.pbf",
+    "zoom": 12,
+    "grid": {
+      "crs": "EPSG:32630",
+      "topLeft": [
+        377450.0,
+        5352650.0
+      ],
+      "cellSize": [
+        50.0,
+        50.0
+      ],
+      "columns": 356,
+      "rows": 234
+    }
+  }
+}

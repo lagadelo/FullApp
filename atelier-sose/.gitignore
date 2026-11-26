@@ -1,0 +1,10 @@
+.DS_Store
+PharoDebug.log
+pharo-local/
+*.image
+*.changes
+*.sources
+*.aux
+*.toc
+*.out
+*.log
